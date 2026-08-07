@@ -63,6 +63,7 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 - Staff 可以管理本组织的运营数据，但不能跨组织访问数据。
 - 所有服务端查询必须按 `organizationId` 和当前 membership 权限进行授权，不能只依赖前端路由隐藏。
 - 学生资料、家长联系方式和活动信息不公开展示；首版不支持公开活动页。
+- 组织可选择开启一个只读的组织公开主页（名称、简介、logo、加入入口），由 staff 维护展示字段；这不等同于公开活动页，活动详情、排练、helper roster 依然不对外公开。
 
 ### 3.3 账号与加入方式
 
@@ -85,10 +86,11 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 7. 家长 helper roster 自动轮换、手工调整和换班申请。
 8. 移动端和桌面端均可使用的响应式 Web 应用。
 9. 面向产品推广的静态 Landing page。
+10. 组织公开主页（只读展示信息）与动态二维码入口，用于线下物料引流。
 
 ### 4.2 MVP 不包含
 
-- 器材租借、当前持有者和维修历史。
+- 器材借还流程（check-out/check-in）、维修历史记录和责任人变更审批（只读的器材信息与当前持有人展示见 §4.3 近期扩展）。
 - Tutor/导师名册。
 - Band fee、invoice、收款或其他财务流程。
 - 通用表单设计器、复杂条件逻辑和自定义字段平台。
@@ -104,7 +106,9 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 
 后续可以在不破坏核心组织模型的前提下增加：
 
-- 器材库存、借用、归还、维修和责任人。
+- 器材只读信息卡片与二维码查看（近期扩展，优先级最高，详见 §6.8）。
+- 完整器材借还流程、维修记录和责任人变更审批（中期扩展）。
+- 成员招募二维码：扫码提交意向信息，经 Staff 审核后转为正式 Student/Household 记录（近期扩展，详见 §6.7）。
 - Tutor 名册和教学安排。
 - 费用、invoice、支付和财务报表。
 - 通用表单设计器。
@@ -143,6 +147,39 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 - 一个成人联系人可以关联多个学生。
 - 系统按邮箱归并联系人，邮箱比姓名更优先作为去重依据。
 - 任何需要发送邮件的场景都必须按最终邮箱地址去重，避免同一联系人因多个学生或多个 group 收到重复邮件。
+
+#### 组织公开主页字段
+
+| 字段 | 说明 | 关键规则 |
+| --- | --- | --- |
+| publicProfileEnabled | 是否开启公开主页 | 默认关闭，Owner/Staff 手动开启 |
+| publicSlug | 公开访问路径标识 | 全局唯一；修改后必须同步更新 dyqr 短链 targetUrl，避免已打印二维码失效 |
+| publicDisplayName | 对外展示名称 | 默认等于组织名，可覆盖 |
+| publicSummary | 一句话简介 | 纯文本，长度限制 |
+| publicLogoUrl | 展示用 logo | 复用现有附件/静态资源存储机制 |
+
+规则：
+
+- 公开主页只读取上述展示字段，不允许查询、拼接或展示任何学生、家长联系方式、活动、排练或 helper roster 数据。
+- `publicProfileEnabled` 为否时，公开路由和对应二维码目标必须返回统一的"暂未开放"提示，不泄露组织是否存在（呼应 §5.2 附件下载"统一无权限结果"的既有安全风格）。
+
+#### 招募与待审核提交（近期扩展，详见 §6.7，暂不进入本次 MVP 交付范围）
+
+| 对象 | 说明 |
+| --- | --- |
+| RecruitmentSubmission | 访客通过招募二维码提交的待审核意向信息 |
+
+RecruitmentSubmission 字段：`id`、`organizationId`、`sourceQrCodeId`（可空，来源二维码）、`studentName`、`contactName`、`contactEmail`、`contactPhone`（可选）、`interestedGroupId`（可选）、`note`（可选）、`status`、`reviewedByMembershipId`、`reviewedAt`、`resultStudentId`、`resultHouseholdId`（批准后关联的正式记录，拒绝时为空）、`submittedAt`。
+
+状态机：`submitted → approved | rejected`。"疑似重复"作为拒绝时的可选原因值，不单独设状态，保持状态机精简。
+
+规则：
+
+- 提交本身不认证，只能写入这一张表，不能读取组织任何既有数据。
+- 批准操作必须复用本节已有的邮箱归并去重规则，不能因同一家庭重复扫码提交而创建重复 Household/Student；批准操作必须幂等。
+- 批准后新建 Student 默认状态为 `interested`。
+- 提交速率、单一 IP/邮箱短时间重复提交必须有限流和 Turnstile 保护。
+- 每次提交、批准、拒绝都进入 audit trail。
 
 ### 5.2 活动、更新与附件
 
@@ -235,6 +272,45 @@ SwapRequest 状态：
 
 AuditEntry 至少包含：组织、操作者、操作、对象类型、对象 ID、发生时间、必要的变更摘要和请求追踪 ID。普通 staff 不能删除审计记录。
 
+### 5.6 器材与资产管理（近期扩展，详见 §6.8，暂不进入本次 MVP 交付范围）
+
+轻量版：只做只读展示，不做借还流程和维修记录。
+
+| 对象 | 说明 |
+| --- | --- |
+| Asset | 组织持有的可追踪物品（乐器、制服等），挂一个二维码 |
+
+Asset 字段：`id`、`organizationId`、`name`、`type`（如乐器/制服）、`serialNumber`（可选）、`currentHolderStudentId`（可空，Staff 手工维护的展示字段）、`notes`（自由文本）、`qrCodeId`、`status`。
+
+状态机：`active | retired`。
+
+规则：
+
+- `currentHolderStudentId` 由 Staff 直接编辑，不驱动任何状态转换，也不产生借还流程。
+- 物品标记 `retired` 后对应二维码转为下线提示，不能继续展示为"可查看"。
+- 即便未来扩展为完整版（借还状态机 + 维修记录 + 责任人变更审批），维修记录也只保留自由文本备注，不做结构化金额字段，避免滑向财务/赔偿边界。
+
+### 5.7 二维码与外部集成
+
+everband 通过 dyqr.me（外部服务，见 §8.5）生成和管理动态二维码。三个二维码场景（组织入口、成员招募、器材查看）共用同一个领域对象。
+
+| 对象 | 说明 |
+| --- | --- |
+| QrCode | 挂在某个 everband 实体上的动态二维码 |
+
+QrCode 字段：`id`、`organizationId`、`targetType`（`org_entry | recruitment | asset`）、`targetObjectId`、`dyqrAlias`（dyqr 短链 alias）、`currentTargetUrl`（当前跳转目标，用于展示和排查）、`status`、`createdByMembershipId`、`createdAt`、`updatedAt`。
+
+本版本只会创建 `targetType = org_entry` 的记录；`recruitment` 和 `asset` 枚举值提前定义，待 §5.1/§5.6 对应场景排期后再实际创建。
+
+状态机：`active | disabled | broken`（`broken` 表示对应 dyqr 短链在 dyqr 侧已被删除或持续报错，无法继续跳转，需要 Staff 重新生成）。
+
+规则：
+
+- QrCode 必须归属一个组织和一个明确的目标类型 + 目标对象；目标对象被删除、归档或下线时，对应 QrCode 必须转为 `disabled`，或改写 targetUrl 指向"内容已下线"说明页，不能让已打印二维码指向 404 或无提示失败。
+- 创建、更新 targetUrl、禁用/重新启用都必须写入 audit trail。
+- dyqr 侧扫描统计通过轮询同步展示（dyqr 无 webhook），不作为强一致实时数据，页面须标注最后更新时间。
+- dyqr 平台账号的套餐配额是全部组织共享的；需要 everband 自己对单组织的二维码创建速率/总量设软性上限，防止一个组织耗尽平台共享配额（具体数值见 §14 待确认事项）。
+
 ## 6. 核心用户流程
 
 ### 6.1 Organization Owner 建立组织
@@ -316,6 +392,48 @@ AuditEntry 至少包含：组织、操作者、操作、对象类型、对象 ID
 8. Staff 审核请求。
 9. 批准后更新 roster，通知受影响联系人；拒绝后保留原分配。
 
+### 6.6 组织公开主页与入口二维码
+
+1. Owner/Staff 在 Settings 中开启公开主页，系统按组织名称生成默认 `publicSlug`（可修改）。
+2. 填写对外展示名称、简介、logo，预览效果。
+3. 系统用平台 dyqr 账号创建短链，`targetUrl` 指向该组织的公开主页地址，生成对应 `QrCode` 记录。
+4. Staff 下载二维码（SVG/PNG），用于线下物料。
+5. Staff 后续修改展示名称/简介/logo 时，二维码图案和 dyqr 短链都不需要变化，公开主页内容直接更新。
+6. 若 Staff 修改 `publicSlug`，系统必须同步更新 dyqr 短链的 `targetUrl`。
+7. Staff 可随时关闭公开主页；关闭后公开主页路由本身返回统一"暂未开放"提示，dyqr 短链保持不变。
+
+完成标准：组织能生成至少一个有效的入口二维码，扫码后能看到当前公开信息；关闭主页后原二维码访问统一显示不可用提示，不泄露组织是否存在。
+
+可见性要求：公开主页不需要登录即可访问，但只能展示已定义的展示字段，不能通过该页面的任何链接、接口或调试信息间接触达学生/家长/活动数据。
+
+### 6.7 成员招募二维码与审核（近期扩展，暂不进入本次 MVP 交付范围）
+
+1. Staff 在 Members 页开启招募入口，可选预设目标 group。
+2. 系统生成招募表单页面 URL 及对应二维码（`QrCode`，目标类型 `recruitment`）。
+3. Staff 下载二维码，线下张贴/分发。
+4. 访客扫码，无需登录，填写学生姓名、联系人姓名、邮箱、可选电话与备注，提交。
+5. 系统校验必填字段与邮箱格式，经 Turnstile 校验后生成 `submitted` 状态的 RecruitmentSubmission，向提交人发送"已收到，等待审核"确认邮件（不含任何组织内部数据）。
+6. Staff 在待审核列表查看提交，可编辑纠错、按规范化邮箱与已有数据比对疑似重复。
+7. Staff 批准：创建或复用 Household/AdultContact，创建 Student（默认 `interested`），可选加入指定 group，按 §3.3 邀请流程发送加入邀请。
+8. Staff 拒绝：记录原因，不创建任何正式成员数据。
+9. 每次生成、提交、批准、拒绝写入 audit trail。
+
+完成标准：组织可生成至少一个有效招募二维码；提交不产生正式成员数据直到 Staff 批准；Staff 能在一个列表里区分待审核/已批准/已拒绝，并追溯每条提交最终对应的 Student/Household（如有）。
+
+可见性要求：表单页面只能写入，不能读取组织任何既有数据；批准/拒绝只能由 Staff/Owner 执行。
+
+### 6.8 器材二维码查看（近期扩展，暂不进入本次 MVP 交付范围，轻量版）
+
+1. Staff 创建器材记录，填写名称、类别、编号，可选填当前持有学生。
+2. 系统生成 `QrCode`（目标类型 `asset`），Staff 下载二维码贴在实物上。
+3. 任何人扫码进入只读详情页，看到名称、类别、当前持有人（如已填写）、Staff 联系方式。
+4. Staff 更新当前持有人时，无需重新打印二维码，页面内容自动更新。
+5. 物品退役时 Staff 将其标记为 `retired`，二维码转为下线提示。
+
+完成标准：Staff 能为器材生成二维码并随时更新展示信息；扫码页面不提供任何写操作入口。
+
+可见性要求：详情页对外公开，但只能展示 Staff 主动填写的器材字段，不能关联展示学生的其他信息（如所在 group、联系方式）。
+
 ## 7. 页面与信息架构
 
 ### 7.1 Landing page
@@ -350,7 +468,7 @@ Landing page 不展示尚未实现的器材、财务、学生账号和公开活�
 - Rehearsals：series、occurrence 和 helper roster。
 - Notifications：发送记录和失败任务。
 - Audit：按对象、操作者和时间筛选的审计记录。
-- Settings：组织、staff、时区、terms 和通知默认设置。
+- Settings：组织、staff、时区、terms、通知默认设置、公开主页与二维码。
 
 所有页面必须支持移动端浏览；staff 的复杂表格和批量操作优先保证桌面体验，同时提供移动端可用的核心查看和审批流程。
 
@@ -369,6 +487,7 @@ packages/
   validation/       # 输入和导入校验
   ui/               # 两个应用共享的设计系统和组件
   config/           # TypeScript、格式化、测试和环境配置
+  integrations/     # 第三方服务客户端封装（如 dyqr.me 二维码/短链客户端）
 ```
 
 具体目录可以在初始化工程时调整，但必须保持 Landing page 与应用站可以独立构建和部署，共享包不能反向依赖任一应用。
@@ -381,7 +500,7 @@ packages/
 - [Queues](https://developers.cloudflare.com/queues/)：CSV 导入、邮件 fan-out 和重试；失败任务进入死信队列或等价的可观察失败状态。
 - [Workflows](https://developers.cloudflare.com/workflows/get-started/guide/)：活动提醒、排练展开等跨请求、可重试和可恢复的任务。
 - [Email Service](https://developers.cloudflare.com/email-service/)：magic link/OTP、邀请和事务邮件。Email Sending 当前在官方文档中标注为 Beta，正式上线前必须核查计划、限制、费用和发信域名配置。
-- [Turnstile](https://developers.cloudflare.com/turnstile/get-started/)：Landing page 联系和公开组织创建入口的反滥用保护。
+- [Turnstile](https://developers.cloudflare.com/turnstile/get-started/)：Landing page 联系、公开组织创建入口，以及成员招募表单提交的反滥用保护。
 - Workers Logs/Web Analytics：运行时错误、请求、性能和 Landing page 使用数据。
 
 Durable Objects、Workers AI、Vectorize、实时通信和外部数据库不属于 MVP 的默认依赖。只有出现明确的强一致协作、AI 搜索或实时通信需求时才重新评估。
@@ -406,6 +525,17 @@ Durable Objects、Workers AI、Vectorize、实时通信和外部数据库不属�
 - 不把未成年人账号、密码、医疗信息或不必要的敏感字段加入 MVP。
 - 数据删除、导出、保留期限和隐私声明需要在正式上线前完成产品与法律审查。
 - 产品首发面向澳洲，但不对外承诺澳洲数据驻留；Cloudflare 服务的位置能力不能直接等同于法律上的驻留承诺。
+- dyqr.me 平台级 bearer token 是账号级全权限凭证（无 scope 限制），必须用 Secrets Store 等价加密机制保存，不能写入业务表、应用日志、审计事件或前端响应；访问权限只限服务端集成模块代码，不通过任何 API 或界面向 Owner/Staff/Parent 暴露。
+- 所有对 dyqr API 的写操作（创建/更新/禁用二维码）必须在 everband 侧记录 `organizationId`、actor 和时间，因为 dyqr 侧日志无法反查调用方所属的 everband 组织。
+
+### 8.5 外部服务集成：dyqr.me（动态二维码）
+
+- dyqr.me 是独立于 Cloudflare 官方服务的第三方外部依赖，用于生成和管理动态二维码与短链，不并入上述 Cloudflare 服务分工。
+- 集成方式：服务端通过 `@dyqr/sdk`（`DyqrClient`）调用 dyqr REST API；SDK 类型覆盖不全时（如需要 campaigns、完整 stats 字段）直接 fetch REST 端点，携带同样的 `Authorization: Bearer` 头。
+- 鉴权模型：dyqr 没有服务级 API Key，鉴权走 OAuth device authorization。everband 采用平台统一账号模型——由 everband 运营方使用已获准的 `dyqr-cli` client_id 一次性完成 device flow 登录，获得一个平台级 bearer token，作为 Cloudflare Secrets Store 中的单一环境密钥保存，代表 everband 平台整体调用 dyqr API；不是按组织各自连接账号，Owner/Staff 不需要完成任何 dyqr 授权步骤。
+- 各组织的二维码在这一个 dyqr 账号下，通过 everband 自己的 `QrCode` 记录（见 §5.7）做归属区分，dyqr 侧不感知 everband 的组织边界。
+- 二维码架构：QR 图案直接编码 dyqr 短链地址（`https://dyqr.me/{alias}`），由 dyqr 负责真正的跳转；dyqr 短链的 targetUrl 指向 everband 自己域名下的稳定路由（如组织公开主页）。这一架构下，已分发二维码物料的可用性直接依赖 dyqr.me 服务本身（见 §14 待确认事项）。
+- 降级要求：dyqr.me 不可用时，不能阻塞任何核心运营流程（组织、成员、活动、排练、通知）；受影响的只应是"生成新二维码/更新展示样式/刷新扫描统计"这几项功能，须优雅提示"暂不可用"。
 
 ## 9. 核心接口和状态约束
 
@@ -431,6 +561,7 @@ RosterAssignment
 SwapRequest
 Notification
 AuditEntry
+QrCode
 ```
 
 必须实现的状态约束：
@@ -441,10 +572,12 @@ AuditEntry
 - EventUpdate：`draft | published`。
 - EventForm：`open | closed`。
 - SwapRequest：`requested | approved | declined | cancelled`。
+- QrCode：`active | disabled | broken`。
 - 异步任务：至少可以区分 `queued | processing | succeeded | failed`。
 - `active` Student 只能属于一个 group；退出或归档后必须从当前运营受众中排除。
 - 组织、成员、活动、排练、表单、邮件和换班的关键写入必须产生审计记录。
 - CSV 导入、邮件发送和换班审批必须幂等；同一个命令重试不能产生重复学生、重复提交或重复邮件。
+- QrCode 必须归属一个组织且指向明确的目标类型和目标对象；目标对象下线时对应 QrCode 必须转为 `disabled` 或改写为下线说明页。
 
 ## 10. 非功能需求
 
@@ -516,6 +649,15 @@ AuditEntry
 - 审计记录不能由普通 staff 删除或篡改。
 - 登录链接、邀请链接和 OTP 不可重复使用。
 
+### 11.6 组织公开主页与二维码
+
+- Owner/Staff 可以开启/关闭公开主页，编辑展示字段。
+- 关闭公开主页后，公开页面与二维码目标返回统一的"未开放"提示，不泄露组织是否存在。
+- 公开主页不展示任何学生、家长联系方式、活动或排练信息。
+- Staff 可以生成、下载（SVG/PNG）、更新组织入口二维码；已打印的二维码在更新公开信息后无需重新打印即可生效。
+- 组织修改 `publicSlug` 后，系统同步更新 dyqr 短链的 targetUrl，避免已打印二维码失效。
+- dyqr.me 不可用时，除"生成新二维码/刷新统计"外的核心运营流程不受影响。
+
 ## 12. 测试计划
 
 ### 12.1 单元测试
@@ -530,6 +672,8 @@ AuditEntry
 - roster 轮换、手工覆盖和换班状态机。
 - 表单开放/关闭和重复提交规则。
 - 通知偏好、异步任务幂等和审计记录生成。
+- QrCode 目标类型与目标对象的关联校验、目标下线或 publicSlug 变更后的状态转换。
+- 组织公开主页展示字段的读写权限和"未开放"降级逻辑。
 
 ### 12.2 E2E 测试
 
@@ -540,6 +684,7 @@ AuditEntry
 5. Staff 生成排练 roster，parent 申请换班，staff 审批，双方看到正确结果。
 6. 验证不同组织之间、不同 group 之间和过期邀请之间的数据隔离。
 7. 验证移动端核心流程、桌面端 staff 表格、键盘导航和错误提示。
+8. Owner 开启组织公开主页，生成入口二维码，访客扫码看到只读介绍页；关闭主页后页面显示统一不可用提示。
 
 ### 12.3 工程检查
 
@@ -553,7 +698,7 @@ pnpm run build
 pnpm run test:e2e
 ```
 
-Cloudflare preview smoke test 需要覆盖：Worker 启动、D1 读写、R2 授权下载、队列任务触发和邮件 provider 的测试模式。CI 不得向真实组织或真实联系人发送邮件。
+Cloudflare preview smoke test 需要覆盖：Worker 启动、D1 读写、R2 授权下载、队列任务触发和邮件 provider 的测试模式。CI 不得向真实组织或真实联系人发送邮件，也不得对真实 dyqr.me 平台账号发起真实 API 调用或消耗真实配额，dyqr 相关调用必须走 mock/测试替身。
 
 ## 13. 成功指标与试点策略
 
@@ -579,6 +724,11 @@ Cloudflare preview smoke test 需要覆盖：Worker 启动、D1 读写、R2 授�
 - 发布后的 update 可以编辑，但再次发邮件必须由 staff 明确触发。
 - 首发产品和 Landing page 使用英语，PRD 和研发文档默认使用中文。
 - 产品首发面向澳洲，但不承诺澳洲数据驻留。
+- 二维码架构采用"直接编码 dyqr.me 短链"；已分发物料的可用性直接依赖 dyqr.me 服务本身，这是主动接受的权衡（换取更快上线，代价是更强的外部依赖）。
+- dyqr 采用平台统一账号模型：everband 运营方用已获准的 `dyqr-cli` client_id 一次性完成 device flow 获取平台级 token，不需要 dyqr 侧新增 client_id 白名单。
+- 二维码物料的制作与张贴（海报、横幅、器材标签）由组织自行线下完成，everband 只提供可下载的 SVG/PNG，不提供打印/物流服务。
+- 成员招募和器材管理的详细流程已在本次设计中确定（§4.3、§5.1/§5.6、§6.7/§6.8），但均不在本次 MVP 交付范围内，待后续排期时直接转正。
+- 成员招募一旦排期实现，必须采用"提交待审核、Staff 批准后才创建正式 Student/Household 记录"的信任模型，不允许扫码即直接创建正式成员数据。
 
 ### 正式上线前待确认
 
@@ -587,3 +737,8 @@ Cloudflare preview smoke test 需要覆盖：Worker 启动、D1 读写、R2 授�
 - School term 的默认录入体验和组织管理员的维护责任。
 - helper roster 中 eligible household 的具体排除规则。
 - 试点组织是否需要数据导出、历史数据导入或与现有日历并行运行。
+- dyqr 平台账号套餐的具体配额（links 总量、月点击数等）是否够覆盖预期组织规模——配额数值只存在于 dyqr 运营后台配置，代码中无默认值，需直接核查当前生效档位。
+- dyqr.me 平台账号登录凭证的归属和留存 SOP（谁持有、离职/换人时如何交接）——这个账号是全平台共享的关键依赖。
+- 平台共享配额下，是否需要为单组织设置二维码创建软性上限，防止一个组织耗尽全平台额度；具体数值待定。
+- dyqr.me 目前没有可查证的 SLA 或运行时间承诺，是否需要在物料上同时提供人工兜底联系方式。
+- dyqr 的 bearer token 没有细粒度 scope，一旦泄漏可读写该账号下全部短链（覆盖所有 everband 组织），需评估这一风险是否可接受。
