@@ -1,0 +1,15 @@
+{
+  "name": "@everband/integrations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./email": "./src/email/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@everband/config": "workspace:*"
+  }
+}

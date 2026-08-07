@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "phosphor",
+  "aliases": {
+    "components": "@everband/ui/components",
+    "ui": "@everband/ui/components",
+    "utils": "@everband/ui/lib/utils",
+    "lib": "@everband/ui/lib",
+    "hooks": "@everband/ui/hooks"
+  }
+}

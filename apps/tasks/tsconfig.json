@@ -1,0 +1,4 @@
+{
+  "extends": "@everband/config/tsconfig.worker.json",
+  "include": ["src"]
+}

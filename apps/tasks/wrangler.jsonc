@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "everband-tasks",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/index.ts",
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "everband",
+      // 与 apps/app 指向同一个数据库；生产 id 部署前替换
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+  // Queues consumer（import-jobs / email-sends）与 Workflows 在 M4/M7/M8 接入
+}

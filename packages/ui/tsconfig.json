@@ -1,0 +1,4 @@
+{
+  "extends": "@everband/config/tsconfig.react.json",
+  "include": ["src"]
+}

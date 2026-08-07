@@ -1,0 +1,24 @@
+{
+  "name": "@everband/tasks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8788",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@everband/db": "workspace:*",
+    "@everband/domain": "workspace:*",
+    "@everband/integrations": "workspace:*",
+    "@everband/validation": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260804.1",
+    "@everband/config": "workspace:*",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.0.0"
+  }
+}

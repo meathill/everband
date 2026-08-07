@@ -1,0 +1,21 @@
+{
+  "name": "everband",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "format": "biome check --write .",
+    "format:ci": "biome ci .",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "vitest run",
+    "build": "pnpm -r run build",
+    "test:e2e": "echo \"e2e 尚未引入（M2 落地 Playwright）\""
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

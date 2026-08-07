@@ -1,0 +1,425 @@
+/* ============================================================
+   DYQR Design System — Foundations
+   Unified tokens for color, type, spacing, radii, shadows.
+
+   来源：claude.ai/design「DYQR Design System」colors_and_type.css，
+   Everband 采用 emerald 默认主题。除去重一处重复的 midnight 块外
+   保持原样；如需换品牌方向，只改 --brand 组。
+
+   Type: Geist (Google Fonts) + Geist Mono.
+   ============================================================ */
+
+/* 字体 @import 提升到 globals.css 顶部（CSS 规定 @import 必须先于其他规则）。 */
+
+:root {
+  /* --- COLOR — raw palette ---------------------------------- */
+
+  /* Emerald — the primary brand. Deep, confident, business green. */
+  --emerald-50: oklch(0.975 0.02 158);
+  --emerald-100: oklch(0.945 0.04 158);
+  --emerald-200: oklch(0.89 0.07 158);
+  --emerald-300: oklch(0.8 0.105 158);
+  --emerald-400: oklch(0.68 0.13 158);
+  --emerald-500: oklch(0.58 0.14 158); /* hover */
+  --emerald-600: oklch(0.5 0.14 158); /* PRIMARY */
+  --emerald-700: oklch(0.42 0.12 158); /* pressed / dark surfaces */
+  --emerald-800: oklch(0.33 0.09 158);
+  --emerald-900: oklch(0.235 0.06 158);
+  --emerald-950: oklch(0.165 0.04 158);
+
+  /* Ink — warm slate, used for text & dark surfaces */
+  --ink-50: oklch(0.985 0.003 230);
+  --ink-100: oklch(0.965 0.005 230);
+  --ink-200: oklch(0.925 0.007 230);
+  --ink-300: oklch(0.86 0.01 230);
+  --ink-400: oklch(0.7 0.012 230);
+  --ink-500: oklch(0.56 0.014 230);
+  --ink-600: oklch(0.44 0.015 230);
+  --ink-700: oklch(0.33 0.018 230);
+  --ink-800: oklch(0.24 0.02 230);
+  --ink-900: oklch(0.18 0.022 230);
+  --ink-950: oklch(0.12 0.02 230);
+
+  /* Parchment — warm off-white surface (the "premium paper" feel) */
+  --parchment: oklch(0.985 0.006 95);
+  --parchment-2: oklch(0.975 0.01 95);
+
+  /* Accent gold — used sparingly for Pro / paid / earnings */
+  --gold-100: oklch(0.965 0.03 85);
+  --gold-300: oklch(0.87 0.09 85);
+  --gold-500: oklch(0.78 0.13 80);
+  --gold-700: oklch(0.58 0.13 70);
+
+  /* Semantic */
+  --success: var(--emerald-600);
+  --success-soft: var(--emerald-50);
+  --warning: oklch(0.77 0.15 75);
+  --warning-soft: oklch(0.97 0.04 85);
+  --danger: oklch(0.575 0.22 27);
+  --danger-soft: oklch(0.965 0.03 25);
+  --info: oklch(0.58 0.13 240);
+  --info-soft: oklch(0.965 0.025 240);
+
+  /* --- COLOR — semantic surfaces & text --------------------- */
+  --bg: var(--parchment);
+  --bg-elevated: #ffffff;
+  --bg-sunken: var(--ink-100);
+  --bg-inverse: var(--ink-900);
+
+  --fg: var(--ink-900); /* primary text */
+  --fg-2: var(--ink-700); /* secondary */
+  --fg-3: var(--ink-500); /* tertiary / muted */
+  --fg-4: var(--ink-400); /* disabled / placeholders */
+  --fg-on-brand: #ffffff;
+  --fg-inverse: var(--ink-50);
+
+  --border: oklch(0.92 0.01 230);
+  --border-strong: oklch(0.86 0.012 230);
+  --border-brand: var(--emerald-200);
+
+  --brand: var(--emerald-600);
+  --brand-hover: var(--emerald-500);
+  --brand-pressed: var(--emerald-700);
+  --brand-soft: var(--emerald-50);
+  --brand-soft-2: var(--emerald-100);
+
+  --ring: oklch(0.5 0.14 158 / 0.3);
+  --ring-danger: oklch(0.575 0.22 27 / 0.3);
+
+  /* --- TYPE — families -------------------------------------- */
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC",
+    "Microsoft YaHei", sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-cjk: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", var(--font-sans);
+
+  /* --- TYPE — scale (larger than before, base 16) ----------- */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 17px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 36px;
+  --text-5xl: 48px;
+  --text-6xl: 60px;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.7;
+
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- SPACING — 4px grid ----------------------------------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* --- RADII ------------------------------------------------ */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 28px;
+  --radius-full: 9999px;
+
+  /* --- SHADOWS — soft, paper-like --------------------------- */
+  --shadow-xs: 0 1px 2px oklch(0.18 0.02 230 / 0.04);
+  --shadow-sm: 0 1px 2px oklch(0.18 0.02 230 / 0.04), 0 1px 3px oklch(0.18 0.02 230 / 0.06);
+  --shadow-md: 0 2px 4px oklch(0.18 0.02 230 / 0.04), 0 6px 12px oklch(0.18 0.02 230 / 0.08);
+  --shadow-lg: 0 4px 8px oklch(0.18 0.02 230 / 0.06), 0 16px 32px oklch(0.18 0.02 230 / 0.1);
+  --shadow-xl: 0 12px 24px oklch(0.18 0.02 230 / 0.08), 0 28px 56px oklch(0.18 0.02 230 / 0.12);
+  --shadow-inner: inset 0 1px 2px oklch(0.18 0.02 230 / 0.06);
+  --shadow-brand: 0 8px 24px oklch(0.5 0.14 158 / 0.22);
+
+  /* --- MOTION ----------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+}
+
+/* --- DARK MODE ------------------------------------------------ */
+:root[data-theme="dark"],
+.dark {
+  --bg: var(--ink-950);
+  --bg-elevated: var(--ink-900);
+  --bg-sunken: oklch(0.09 0.02 230);
+  --bg-inverse: var(--parchment);
+
+  --fg: var(--ink-50);
+  --fg-2: var(--ink-200);
+  --fg-3: var(--ink-400);
+  --fg-4: var(--ink-500);
+  --fg-inverse: var(--ink-900);
+
+  --border: oklch(0.3 0.015 230);
+  --border-strong: oklch(0.4 0.018 230);
+
+  --brand: var(--emerald-400);
+  --brand-hover: var(--emerald-300);
+  --brand-pressed: var(--emerald-500);
+  --brand-soft: oklch(0.235 0.06 158 / 0.4);
+  --brand-soft-2: oklch(0.33 0.09 158 / 0.5);
+
+  --shadow-sm: 0 1px 2px #000 / 0.4;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* --- THEME · AMBER (refined warm) ---------------------------- */
+:root[data-theme="amber"] {
+  --brand: oklch(0.58 0.15 60); /* burnt amber */
+  --brand-hover: oklch(0.65 0.15 60);
+  --brand-pressed: oklch(0.49 0.14 55);
+  --brand-soft: oklch(0.965 0.03 75);
+  --brand-soft-2: oklch(0.93 0.06 75);
+  --border-brand: oklch(0.89 0.08 70);
+  --ring: oklch(0.58 0.15 60 / 0.3);
+  --success: oklch(0.52 0.13 158); /* keep success green for clarity */
+  --success-soft: oklch(0.965 0.025 158);
+  --shadow-brand: 0 8px 24px oklch(0.58 0.15 60 / 0.25);
+}
+
+/* --- THEME · MIDNIGHT (deep blue + gold) -------------------- */
+:root[data-theme="midnight"] {
+  --bg: oklch(0.975 0.005 85);
+  --bg-elevated: #ffffff;
+  --bg-sunken: oklch(0.955 0.008 230);
+  --bg-inverse: oklch(0.165 0.03 250);
+
+  --fg: oklch(0.18 0.03 250); /* midnight ink */
+  --fg-2: oklch(0.33 0.025 250);
+  --fg-3: oklch(0.5 0.02 250);
+  --fg-4: oklch(0.65 0.015 250);
+
+  --border: oklch(0.91 0.012 240);
+  --border-strong: oklch(0.84 0.018 240);
+  --border-brand: oklch(0.87 0.09 80);
+
+  --brand: oklch(0.26 0.06 250); /* deep midnight blue */
+  --brand-hover: oklch(0.33 0.07 250);
+  --brand-pressed: oklch(0.2 0.055 250);
+  --brand-soft: oklch(0.955 0.02 250);
+  --brand-soft-2: oklch(0.91 0.04 250);
+  --ring: oklch(0.26 0.06 250 / 0.3);
+
+  --success: oklch(0.52 0.13 158);
+  --success-soft: oklch(0.965 0.025 158);
+
+  --shadow-brand: 0 10px 28px oklch(0.26 0.06 250 / 0.3);
+
+  /* gold accent — used by Pro / CTA hover glow / earnings */
+  --gold-500: oklch(0.77 0.14 80);
+  --gold-700: oklch(0.56 0.13 70);
+}
+
+/* ============================================================
+   COSS/UI · SHADCN COMPATIBILITY LAYER
+   把 DYQR token 映射到标准 shadcn / coss-ui 变量名，
+   coss/ui 组件无需改码即继承 emerald / amber / midnight 主题。
+   ============================================================ */
+
+:root {
+  /* Surfaces */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--fg);
+
+  /* Primary brand */
+  --primary: var(--brand);
+  --primary-foreground: var(--fg-on-brand);
+
+  /* Secondary — used for outline / ghost button hover, etc. */
+  --secondary: var(--brand-soft);
+  --secondary-foreground: var(--emerald-700);
+
+  /* Muted — table headers, placeholder rows, disabled */
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--fg-3);
+
+  /* Accent — accordion / menu item hover */
+  --accent: var(--brand-soft);
+  --accent-foreground: var(--fg);
+
+  /* Destructive */
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+
+  /* Borders, inputs, focus ring */
+  --border-color: var(--border);
+  --input: var(--border-strong);
+  --ring-color: var(--brand);
+
+  /* Single coss-ui radius knob (their components compute --radius-sm/md/lg/xl
+     off this). We use 8px to match our --radius-md. */
+  --radius: 0.5rem;
+
+  /* Chart palette — used by their data-vis particles */
+  --chart-1: var(--brand);
+  --chart-2: var(--info);
+  --chart-3: var(--gold-500);
+  --chart-4: var(--danger);
+  --chart-5: var(--emerald-300);
+}
+
+:root[data-theme="dark"],
+.dark {
+  --secondary-foreground: var(--ink-50);
+  --accent-foreground: var(--ink-50);
+}
+
+:root[data-theme="midnight"] {
+  /* Midnight uses gold as the de-facto accent — opt the accent slot
+     into that without disturbing the primary CTA color. */
+  --accent: oklch(0.965 0.03 85);
+  --accent-foreground: var(--gold-700);
+  --chart-3: var(--gold-500);
+}
+
+/* ============================================================
+   BASE STYLES — applied where you want auto-styled elements
+   (use inside an `.ds` wrapper to opt in)
+   ============================================================ */
+
+.ds,
+body.ds {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--fg);
+  background: var(--bg);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.ds h1,
+.ds .h1 {
+  font-size: var(--text-5xl);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-semibold);
+  color: var(--fg);
+}
+.ds h2,
+.ds .h2 {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-snug);
+  font-weight: var(--weight-semibold);
+}
+.ds h3,
+.ds .h3 {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-snug);
+  font-weight: var(--weight-semibold);
+}
+.ds h4,
+.ds .h4 {
+  font-size: var(--text-xl);
+  line-height: var(--leading-snug);
+  font-weight: var(--weight-semibold);
+}
+.ds h5,
+.ds .h5 {
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  font-weight: var(--weight-semibold);
+}
+.ds h6,
+.ds .h6,
+.ds .eyebrow {
+  font-size: var(--text-xs);
+  line-height: 1;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  font-weight: var(--weight-semibold);
+  color: var(--fg-3);
+}
+
+.ds p,
+.ds .body {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
+
+.ds .lead {
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  color: var(--fg-2);
+}
+
+.ds small,
+.ds .small {
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+}
+
+.ds code,
+.ds .mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-feature-settings: "tnum", "zero";
+}
+
+.ds .num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
+}
+
+.ds a {
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+.ds a:hover {
+  color: var(--brand-pressed);
+  border-bottom-color: currentColor;
+}
+
+.ds hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Selection: gentle brand wash */
+.ds ::selection {
+  background: var(--brand-soft-2);
+  color: var(--fg);
+}
