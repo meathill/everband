@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "apps/app", "run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "apps/landing", "run", "dev"],
+      "port": 3001
+    }
+  ]
+}

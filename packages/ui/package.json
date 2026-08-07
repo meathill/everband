@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./components/*": "./src/components/*.tsx",
+    "./hooks/*": "./src/hooks/*.ts",
     "./lib/*": "./src/lib/*.ts",
     "./styles/*": "./src/styles/*"
   },
@@ -12,7 +13,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "^1.7.0",
+    "@daypicker/react": "^10.0.1",
+    "@phosphor-icons/react": "^2.1.10",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "lucide-react": "^1.29.0",
     "tailwind-merge": "^3.0.0"
   },
   "peerDependencies": {

@@ -46,6 +46,90 @@
   --color-danger-soft: var(--danger-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
+  --animate-skeleton: skeleton 2s -1s infinite linear;
+  --animate-caret-blink: 1s ease-out infinite caret-blink;
+  --animate-toast-success-odd: toast-success-odd 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-success-even: toast-success-even 0.32s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-error-odd: toast-error-odd 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+  --animate-toast-error-even: toast-error-even 0.28s cubic-bezier(0.5, 1, 0.89, 1);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success-foreground: var(--success-foreground);
+  --color-info-foreground: var(--info-foreground);
+  @keyframes skeleton {
+  to {
+    background-position: -200% 0;
+    }
+  }
+  @keyframes caret-blink {
+  0%, 70%, to {
+    opacity: 1;
+    }
+  20%, 50% {
+    opacity: 0;
+    }
+  }
+  @keyframes toast-success-odd {
+  0% {
+    scale: 1;
+    }
+  30% {
+    scale: 1.025;
+    }
+  60% {
+    scale: 0.99;
+    }
+  100% {
+    scale: 1;
+    }
+  }
+  @keyframes toast-error-odd {
+  0% {
+    translate: 0 0;
+    }
+  25% {
+    translate: -3px 0;
+    }
+  50% {
+    translate: 3px 0;
+    }
+  75% {
+    translate: -3px 0;
+    }
+  100% {
+    translate: 0 0;
+    }
+  }
+  @keyframes toast-success-even {
+  0% {
+    scale: 1;
+    }
+  30% {
+    scale: 1.025;
+    }
+  60% {
+    scale: 0.99;
+    }
+  100% {
+    scale: 1;
+    }
+  }
+  @keyframes toast-error-even {
+  0% {
+    translate: 0 0;
+    }
+  25% {
+    translate: -3px 0;
+    }
+  50% {
+    translate: 3px 0;
+    }
+  75% {
+    translate: -3px 0;
+    }
+  100% {
+    translate: 0 0;
+    }
+  }
 }
 
 /* DYQR 圆角刻度（与 colors-and-type.css 的 --radius-* 数值一致；
@@ -77,4 +161,22 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* coss/ui 需要的 *-foreground 语义色（浅底上的深色文字对）。
+   数值按 DYQR 色相取深一档，不覆盖 colors-and-type.css 里
+   已定义的 --success/--warning/--info/--danger 本体。 */
+:root {
+  --destructive-foreground: oklch(0.45 0.19 27);
+  --info-foreground: oklch(0.45 0.11 240);
+  --success-foreground: var(--emerald-700);
+  --warning-foreground: var(--gold-700);
+}
+
+:root[data-theme="dark"],
+.dark {
+  --destructive-foreground: oklch(0.7 0.17 27);
+  --info-foreground: oklch(0.7 0.1 240);
+  --success-foreground: var(--emerald-400);
+  --warning-foreground: var(--gold-300);
 }

@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  # CI 禁止真实外呼（PRD §12.3）
+  EMAIL_MODE: mock
+  DYQR_MODE: mock
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 格式与 lint 检查
+        run: pnpm run format:ci
+
+      - name: 类型检查
+        run: pnpm run typecheck
+
+      - name: 单元测试
+        run: pnpm run test
+
+      - name: 构建
+        run: pnpm run build

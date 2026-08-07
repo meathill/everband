@@ -12,9 +12,12 @@
   "iconLibrary": "phosphor",
   "aliases": {
     "components": "@everband/ui/components",
-    "ui": "@everband/ui/components",
     "utils": "@everband/ui/lib/utils",
+    "ui": "@everband/ui/components",
     "lib": "@everband/ui/lib",
     "hooks": "@everband/ui/hooks"
+  },
+  "registries": {
+    "@coss": "https://coss.com/ui/r/{name}.json"
   }
 }

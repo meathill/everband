@@ -1,3 +1,4 @@
+import { Button } from "@everband/ui/components/button";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
@@ -11,6 +12,10 @@ function Home() {
       <p className="text-lg text-muted-foreground">
         Run your community band without the spreadsheets.
       </p>
+      <div className="flex gap-3">
+        <Button>Get started</Button>
+        <Button variant="outline">Sign in</Button>
+      </div>
     </main>
   );
 }

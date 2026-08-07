@@ -15,8 +15,8 @@ function Home() {
         Run your community band without the spreadsheets
       </h1>
       <p className="max-w-2xl text-center text-lg text-muted-foreground">
-        Members, events, rehearsals and parent rosters in one place — instead of spreadsheets,
-        group emails and lost attachments.
+        Members, events, rehearsals and parent rosters in one place — instead of spreadsheets, group
+        emails and lost attachments.
       </p>
     </main>
   );
