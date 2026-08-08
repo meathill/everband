@@ -34,6 +34,15 @@
 - 焦点可见：3px `--ring` halo，禁止裸 `outline: none`
 - 主题切换：`<html data-theme="dark|amber|midnight">`，默认 emerald
 
+## M2 落地的认证/测试基建
+
+- **认证核心在 `apps/app/src/server/auth-core.ts`**：只依赖 db 的可测函数（token 原子消费、OTP 计数、membership 查询）。server functions 是薄封装。改认证逻辑先改 core + 测试。
+- **一次性使用的落实方式**：`UPDATE ... WHERE consumed_at IS NULL` 的受影响行数判断，不是先查后写。OTP 上限同理（`attempt_count < MAX` 在 WHERE 里）。
+- **@cloudflare/vitest-pool-workers 0.20（vitest 4）用插件 API**：`cloudflareTest({ miniflare: {...} })` 放 vite plugins，不再是 `defineWorkersConfig`/`poolOptions`。迁移用 `readD1Migrations` + setup 里 `applyD1Migrations`。
+- **Playwright**：webServer 复用 3000 端口 dev server；mobile project 用 Pixel 7（Chromium 内核，避免下载 WebKit）。e2e 从 /dev/outbox 提取 magic link。
+- **cloudflare:workers 的 env 类型**：`src/server/env.d.ts` 手工声明（ambient module 内 import type），不引入 workers-types 全局，避免与 DOM lib 冲突。绑定变更要同步该文件与 wrangler.jsonc。
+- **TanStack Start 细节**：server fn 校验器叫 `.inputValidator()`；cookie/请求助手从 `@tanstack/react-start/server` 导入（getCookie/setCookie/getRequestIP/getRequestUrl）；vite 需显式 `resolve.alias` 配 `~`（vite 7 无 tsconfigPaths 选项）。
+
 ## 工程坑位记录
 
 - **TS7 (tsgo) 的 extends 解析**：`@everband/config/tsconfig.*.json` 必须出现在每个包的 devDependencies 里，否则 extends 静默失败、skipLibCheck 等选项全部丢失，报出一堆 node_modules d.ts 错误。

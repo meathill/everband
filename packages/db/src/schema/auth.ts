@@ -25,6 +25,17 @@ export const sessions = sqliteTable(
   (table) => [index("idx_sessions_user").on(table.userId)],
 );
 
+// dev/preview 环境的"发件箱"：DevEmailSender 落库于此，由 /dev/outbox 查看，
+// e2e 从中提取 magic link。生产不写入。
+export const devOutbox = sqliteTable("dev_outbox", {
+  id: text("id").primaryKey(),
+  toEmail: text("to_email").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  kind: text("kind").notNull(),
+  createdAt: integer("created_at").notNull(),
+});
+
 export const authTokens = sqliteTable(
   "auth_tokens",
   {

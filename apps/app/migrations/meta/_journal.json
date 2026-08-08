@@ -8,6 +8,13 @@
       "when": 1786107181701,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786108147838,
+      "tag": "0001_dev-outbox",
+      "breakpoints": true
     }
   ]
 }

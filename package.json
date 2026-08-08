@@ -9,12 +9,13 @@
     "format": "biome check --write .",
     "format:ci": "biome ci .",
     "typecheck": "pnpm -r run typecheck",
-    "test": "vitest run",
+    "test": "vitest run && pnpm -C apps/app exec vitest run",
     "build": "pnpm -r run build",
-    "test:e2e": "echo \"e2e 尚未引入（M2 落地 Playwright）\""
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "@playwright/test": "^1.62.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }

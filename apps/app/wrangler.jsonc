@@ -7,6 +7,10 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    // dev | mock | cloudflare（M7 接入真实发送）；CI 用 mock
+    "EMAIL_MODE": "dev"
+  },
   "d1_databases": [
     {
       "binding": "DB",

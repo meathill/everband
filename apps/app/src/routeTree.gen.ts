@@ -10,33 +10,150 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as NewOrgRouteImport } from './routes/new-org'
+import { Route as SelectOrgRouteImport } from './routes/select-org'
+import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as OOrgIdRouteRouteImport } from './routes/o/$orgId/route'
+import { Route as OOrgIdIndexRouteImport } from './routes/o/$orgId/index'
+import { Route as OOrgIdSettingsRouteImport } from './routes/o/$orgId/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewOrgRoute = NewOrgRouteImport.update({
+  id: '/new-org',
+  path: '/new-org',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelectOrgRoute = SelectOrgRouteImport.update({
+  id: '/select-org',
+  path: '/select-org',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevOutboxRoute = DevOutboxRouteImport.update({
+  id: '/dev/outbox',
+  path: '/dev/outbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OOrgIdRouteRoute = OOrgIdRouteRouteImport.update({
+  id: '/o/$orgId',
+  path: '/o/$orgId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
+const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/new-org': typeof NewOrgRoute
+  '/select-org': typeof SelectOrgRoute
+  '/verify': typeof VerifyRoute
+  '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
+  '/dev/outbox': typeof DevOutboxRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/o/$orgId/settings': typeof OOrgIdSettingsRoute
+  '/o/$orgId/': typeof OOrgIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/new-org': typeof NewOrgRoute
+  '/select-org': typeof SelectOrgRoute
+  '/verify': typeof VerifyRoute
+  '/dev/outbox': typeof DevOutboxRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/o/$orgId/settings': typeof OOrgIdSettingsRoute
+  '/o/$orgId': typeof OOrgIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/new-org': typeof NewOrgRoute
+  '/select-org': typeof SelectOrgRoute
+  '/verify': typeof VerifyRoute
+  '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
+  '/dev/outbox': typeof DevOutboxRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/o/$orgId/settings': typeof OOrgIdSettingsRoute
+  '/o/$orgId/': typeof OOrgIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/new-org'
+    | '/select-org'
+    | '/verify'
+    | '/o/$orgId'
+    | '/dev/outbox'
+    | '/invite/$token'
+    | '/o/$orgId/settings'
+    | '/o/$orgId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/new-org'
+    | '/select-org'
+    | '/verify'
+    | '/dev/outbox'
+    | '/invite/$token'
+    | '/o/$orgId/settings'
+    | '/o/$orgId'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/new-org'
+    | '/select-org'
+    | '/verify'
+    | '/o/$orgId'
+    | '/dev/outbox'
+    | '/invite/$token'
+    | '/o/$orgId/settings'
+    | '/o/$orgId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  NewOrgRoute: typeof NewOrgRoute
+  SelectOrgRoute: typeof SelectOrgRoute
+  VerifyRoute: typeof VerifyRoute
+  OOrgIdRouteRoute: typeof OOrgIdRouteRouteWithChildren
+  DevOutboxRoute: typeof DevOutboxRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +165,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-org': {
+      id: '/new-org'
+      path: '/new-org'
+      fullPath: '/new-org'
+      preLoaderRoute: typeof NewOrgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/select-org': {
+      id: '/select-org'
+      path: '/select-org'
+      fullPath: '/select-org'
+      preLoaderRoute: typeof SelectOrgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/outbox': {
+      id: '/dev/outbox'
+      path: '/dev/outbox'
+      fullPath: '/dev/outbox'
+      preLoaderRoute: typeof DevOutboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/o/$orgId': {
+      id: '/o/$orgId'
+      path: '/o/$orgId'
+      fullPath: '/o/$orgId'
+      preLoaderRoute: typeof OOrgIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/o/$orgId/': {
+      id: '/o/$orgId/'
+      path: '/'
+      fullPath: '/o/$orgId/'
+      preLoaderRoute: typeof OOrgIdIndexRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
+    '/o/$orgId/settings': {
+      id: '/o/$orgId/settings'
+      path: '/settings'
+      fullPath: '/o/$orgId/settings'
+      preLoaderRoute: typeof OOrgIdSettingsRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
   }
 }
 
+interface OOrgIdRouteRouteChildren {
+  OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
+  OOrgIdIndexRoute: typeof OOrgIdIndexRoute
+}
+
+const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
+  OOrgIdSettingsRoute: OOrgIdSettingsRoute,
+  OOrgIdIndexRoute: OOrgIdIndexRoute,
+}
+
+const OOrgIdRouteRouteWithChildren = OOrgIdRouteRoute._addFileChildren(
+  OOrgIdRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  NewOrgRoute: NewOrgRoute,
+  SelectOrgRoute: SelectOrgRoute,
+  VerifyRoute: VerifyRoute,
+  OOrgIdRouteRoute: OOrgIdRouteRouteWithChildren,
+  DevOutboxRoute: DevOutboxRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
