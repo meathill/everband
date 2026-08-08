@@ -42,6 +42,13 @@ function OrgLayout() {
               Events
             </Link>
             <Link
+              to="/o/$orgId/rehearsals"
+              params={{ orgId: org.id }}
+              className="hover:text-foreground"
+            >
+              Rehearsals
+            </Link>
+            <Link
               to="/o/$orgId/notifications"
               params={{ orgId: org.id }}
               className="hover:text-foreground"

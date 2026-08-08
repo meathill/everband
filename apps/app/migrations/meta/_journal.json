@@ -50,6 +50,13 @@
       "when": 1786160051071,
       "tag": "0006_notify",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1786160669367,
+      "tag": "0007_rehearsals",
+      "breakpoints": true
     }
   ]
 }

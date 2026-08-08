@@ -5,3 +5,4 @@ export * from "./jobs.ts";
 export * from "./members.ts";
 export * from "./notify.ts";
 export * from "./org.ts";
+export * from "./rehearsals.ts";

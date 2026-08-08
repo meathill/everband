@@ -8,3 +8,4 @@ export * from "./forms.ts";
 export * from "./import.ts";
 export * from "./members.ts";
 export * from "./notify.ts";
+export * from "./rehearsals.ts";

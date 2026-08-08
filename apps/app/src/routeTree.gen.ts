@@ -23,6 +23,7 @@ import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
 import { Route as OOrgIdImportRouteImport } from './routes/o/$orgId/import'
 import { Route as OOrgIdMembersRouteImport } from './routes/o/$orgId/members'
 import { Route as OOrgIdNotificationsRouteImport } from './routes/o/$orgId/notifications'
+import { Route as OOrgIdRehearsalsRouteImport } from './routes/o/$orgId/rehearsals'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o/$orgId/settings'
 import { Route as OOrgIdEventsIndexRouteImport } from './routes/o/$orgId/events/index'
 import { Route as OOrgIdEventsEventIdRouteImport } from './routes/o/$orgId/events/$eventId'
@@ -98,6 +99,11 @@ const OOrgIdNotificationsRoute = OOrgIdNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
+const OOrgIdRehearsalsRoute = OOrgIdRehearsalsRouteImport.update({
+  id: '/rehearsals',
+  path: '/rehearsals',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
 const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/notifications': typeof OOrgIdNotificationsRoute
+  '/o/$orgId/rehearsals': typeof OOrgIdRehearsalsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/notifications': typeof OOrgIdNotificationsRoute
+  '/o/$orgId/rehearsals': typeof OOrgIdRehearsalsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
   '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/notifications': typeof OOrgIdNotificationsRoute
+  '/o/$orgId/rehearsals': typeof OOrgIdRehearsalsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
   '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/import'
     | '/o/$orgId/members'
     | '/o/$orgId/notifications'
+    | '/o/$orgId/rehearsals'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
     | '/o/$orgId/events/$eventId'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/import'
     | '/o/$orgId/members'
     | '/o/$orgId/notifications'
+    | '/o/$orgId/rehearsals'
     | '/o/$orgId/settings'
     | '/o/$orgId'
     | '/o/$orgId/events/$eventId'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/import'
     | '/o/$orgId/members'
     | '/o/$orgId/notifications'
+    | '/o/$orgId/rehearsals'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
     | '/o/$orgId/events/$eventId'
@@ -354,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdNotificationsRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
+    '/o/$orgId/rehearsals': {
+      id: '/o/$orgId/rehearsals'
+      path: '/rehearsals'
+      fullPath: '/o/$orgId/rehearsals'
+      preLoaderRoute: typeof OOrgIdRehearsalsRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
     '/o/$orgId/settings': {
       id: '/o/$orgId/settings'
       path: '/settings'
@@ -391,6 +410,7 @@ interface OOrgIdRouteRouteChildren {
   OOrgIdImportRoute: typeof OOrgIdImportRoute
   OOrgIdMembersRoute: typeof OOrgIdMembersRoute
   OOrgIdNotificationsRoute: typeof OOrgIdNotificationsRoute
+  OOrgIdRehearsalsRoute: typeof OOrgIdRehearsalsRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
   OOrgIdEventsEventIdRoute: typeof OOrgIdEventsEventIdRoute
@@ -403,6 +423,7 @@ const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
   OOrgIdImportRoute: OOrgIdImportRoute,
   OOrgIdMembersRoute: OOrgIdMembersRoute,
   OOrgIdNotificationsRoute: OOrgIdNotificationsRoute,
+  OOrgIdRehearsalsRoute: OOrgIdRehearsalsRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
   OOrgIdEventsEventIdRoute: OOrgIdEventsEventIdRoute,
