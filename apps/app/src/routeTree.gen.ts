@@ -22,6 +22,9 @@ import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
 import { Route as OOrgIdImportRouteImport } from './routes/o/$orgId/import'
 import { Route as OOrgIdMembersRouteImport } from './routes/o/$orgId/members'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o/$orgId/settings'
+import { Route as OOrgIdEventsIndexRouteImport } from './routes/o/$orgId/events/index'
+import { Route as OOrgIdEventsEventIdRouteImport } from './routes/o/$orgId/events/$eventId'
+import { Route as ApiOrgsOrgIdAttachmentsAttachmentIdRouteImport } from './routes/api/orgs.$orgId.attachments.$attachmentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +91,22 @@ const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
+const OOrgIdEventsIndexRoute = OOrgIdEventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
+const OOrgIdEventsEventIdRoute = OOrgIdEventsEventIdRouteImport.update({
+  id: '/events/$eventId',
+  path: '/events/$eventId',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
+const ApiOrgsOrgIdAttachmentsAttachmentIdRoute =
+  ApiOrgsOrgIdAttachmentsAttachmentIdRouteImport.update({
+    id: '/api/orgs/$orgId/attachments/$attachmentId',
+    path: '/api/orgs/$orgId/attachments/$attachmentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +122,9 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
+  '/o/$orgId/events/': typeof OOrgIdEventsIndexRoute
+  '/api/orgs/$orgId/attachments/$attachmentId': typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,6 +139,9 @@ export interface FileRoutesByTo {
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
+  '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
+  '/o/$orgId/events': typeof OOrgIdEventsIndexRoute
+  '/api/orgs/$orgId/attachments/$attachmentId': typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,6 +158,9 @@ export interface FileRoutesById {
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
+  '/o/$orgId/events/': typeof OOrgIdEventsIndexRoute
+  '/api/orgs/$orgId/attachments/$attachmentId': typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +178,9 @@ export interface FileRouteTypes {
     | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
+    | '/o/$orgId/events/$eventId'
+    | '/o/$orgId/events/'
+    | '/api/orgs/$orgId/attachments/$attachmentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -164,6 +195,9 @@ export interface FileRouteTypes {
     | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId'
+    | '/o/$orgId/events/$eventId'
+    | '/o/$orgId/events'
+    | '/api/orgs/$orgId/attachments/$attachmentId'
   id:
     | '__root__'
     | '/'
@@ -179,6 +213,9 @@ export interface FileRouteTypes {
     | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
+    | '/o/$orgId/events/$eventId'
+    | '/o/$orgId/events/'
+    | '/api/orgs/$orgId/attachments/$attachmentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -190,6 +227,7 @@ export interface RootRouteChildren {
   OOrgIdRouteRoute: typeof OOrgIdRouteRouteWithChildren
   DevOutboxRoute: typeof DevOutboxRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ApiOrgsOrgIdAttachmentsAttachmentIdRoute: typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -285,6 +323,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdSettingsRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
+    '/o/$orgId/events/': {
+      id: '/o/$orgId/events/'
+      path: '/events'
+      fullPath: '/o/$orgId/events/'
+      preLoaderRoute: typeof OOrgIdEventsIndexRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
+    '/o/$orgId/events/$eventId': {
+      id: '/o/$orgId/events/$eventId'
+      path: '/events/$eventId'
+      fullPath: '/o/$orgId/events/$eventId'
+      preLoaderRoute: typeof OOrgIdEventsEventIdRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
+    '/api/orgs/$orgId/attachments/$attachmentId': {
+      id: '/api/orgs/$orgId/attachments/$attachmentId'
+      path: '/api/orgs/$orgId/attachments/$attachmentId'
+      fullPath: '/api/orgs/$orgId/attachments/$attachmentId'
+      preLoaderRoute: typeof ApiOrgsOrgIdAttachmentsAttachmentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -294,6 +353,8 @@ interface OOrgIdRouteRouteChildren {
   OOrgIdMembersRoute: typeof OOrgIdMembersRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
+  OOrgIdEventsEventIdRoute: typeof OOrgIdEventsEventIdRoute
+  OOrgIdEventsIndexRoute: typeof OOrgIdEventsIndexRoute
 }
 
 const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
@@ -302,6 +363,8 @@ const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
   OOrgIdMembersRoute: OOrgIdMembersRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
+  OOrgIdEventsEventIdRoute: OOrgIdEventsEventIdRoute,
+  OOrgIdEventsIndexRoute: OOrgIdEventsIndexRoute,
 }
 
 const OOrgIdRouteRouteWithChildren = OOrgIdRouteRoute._addFileChildren(
@@ -317,6 +380,8 @@ const rootRouteChildren: RootRouteChildren = {
   OOrgIdRouteRoute: OOrgIdRouteRouteWithChildren,
   DevOutboxRoute: DevOutboxRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ApiOrgsOrgIdAttachmentsAttachmentIdRoute:
+    ApiOrgsOrgIdAttachmentsAttachmentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

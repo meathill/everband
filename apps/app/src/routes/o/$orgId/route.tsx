@@ -33,6 +33,15 @@ function OrgLayout() {
           <Link to="/o/$orgId" params={{ orgId: org.id }} className="font-semibold text-foreground">
             {org.name}
           </Link>
+          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link
+              to="/o/$orgId/events"
+              params={{ orgId: org.id }}
+              className="hover:text-foreground"
+            >
+              Events
+            </Link>
+          </nav>
           {isStaff && (
             <nav className="flex items-center gap-4 text-sm text-muted-foreground">
               <Link

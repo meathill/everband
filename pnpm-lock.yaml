@@ -224,6 +224,13 @@ importers:
         version: 0.31.10
 
   packages/domain:
+    dependencies:
+      '@date-fns/tz':
+        specifier: ^1.5.0
+        version: 1.5.0
+      date-fns:
+        specifier: ^4.4.0
+        version: 4.4.0
     devDependencies:
       '@everband/config':
         specifier: workspace:*

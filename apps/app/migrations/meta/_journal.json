@@ -29,6 +29,13 @@
       "when": 1786156013612,
       "tag": "0003_import-jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786158766626,
+      "tag": "0004_events",
+      "breakpoints": true
     }
   ]
 }
