@@ -3,5 +3,6 @@
 export * from "./audit.ts";
 export * from "./auth.ts";
 export * from "./events.ts";
+export * from "./forms.ts";
 export * from "./import.ts";
 export * from "./members.ts";

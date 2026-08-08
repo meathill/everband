@@ -2,6 +2,7 @@ import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { EventFormSection } from "~/components/event-form-section.tsx";
 import { uploadEventAttachment } from "~/server/attachments.ts";
 import {
   createEventUpdate,
@@ -9,11 +10,19 @@ import {
   publishEventUpdate,
   transitionEvent,
 } from "~/server/events.ts";
+import { getEventForm, listFormResults } from "~/server/forms.ts";
 
 export const Route = createFileRoute("/o/$orgId/events/$eventId")({
   loader: async ({ params }) => {
     try {
-      return await getEventDetail({ data: { orgId: params.orgId, eventId: params.eventId } });
+      const input = { data: { orgId: params.orgId, eventId: params.eventId } };
+      const [detail, formData] = await Promise.all([getEventDetail(input), getEventForm(input)]);
+      const isStaff = detail.role === "owner" || detail.role === "staff";
+      const results =
+        isStaff && formData.form
+          ? await listFormResults({ data: { orgId: params.orgId, formId: formData.form.id } })
+          : [];
+      return { ...detail, formData, results };
     } catch {
       throw redirect({ to: "/o/$orgId/events", params: { orgId: params.orgId } });
     }
@@ -22,7 +31,7 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
 });
 
 function EventDetailPage() {
-  const { event, groups, updates, attachments, role } = Route.useLoaderData();
+  const { event, groups, updates, attachments, role, formData, results } = Route.useLoaderData();
   const { orgId } = Route.useParams();
   const router = useRouter();
   const isStaff = role === "owner" || role === "staff";
@@ -79,6 +88,13 @@ function EventDetailPage() {
       </header>
 
       <UpdatesSection updates={updates} isStaff={isStaff} eventId={event.id} />
+      <EventFormSection
+        orgId={orgId}
+        eventId={event.id}
+        isStaff={isStaff}
+        formData={formData}
+        results={results}
+      />
       <AttachmentsSection attachments={attachments} isStaff={isStaff} eventId={event.id} />
     </div>
   );
