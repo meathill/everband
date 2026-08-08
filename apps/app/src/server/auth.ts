@@ -23,6 +23,7 @@ import {
 } from "./auth-core.ts";
 import { getDb } from "./context.ts";
 import { getEmailSender } from "./email.ts";
+import { linkContactsToUser } from "./members-core.ts";
 import { createSession, destroySession, getSessionUser } from "./session.ts";
 
 // 统一的失败信息：不区分"邮箱不存在/代码错误/已过期"，避免枚举探测
@@ -96,6 +97,8 @@ async function finishLogin(
 ): Promise<string> {
   const userId = await ensureUser(db, token.email, now);
   await createSession(db, userId);
+  // parent/联系人：登录即把同邮箱的联系人档案关联到该用户
+  await linkContactsToUser(db, token.email, userId);
   if (token.purpose === "invite" && token.membershipId) {
     const orgId = await activateInvitedMembership(db, token.membershipId, userId, now);
     if (orgId) {

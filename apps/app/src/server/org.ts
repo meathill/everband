@@ -1,13 +1,13 @@
 import { schema } from "@everband/db";
-import { generateId, generateSecret, ID_PREFIXES, sha256Hex, tokenTtlMs } from "@everband/domain";
+import { generateId, ID_PREFIXES } from "@everband/domain";
 import { createOrganizationSchema, inviteStaffSchema, orgIdSchema } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
 import { recordAudit } from "./audit.ts";
 import { getDb } from "./context.ts";
-import { getEmailSender } from "./email.ts";
 import { requireMembership, requireUser, STAFF_ROLES } from "./guards.ts";
+import { createInvite } from "./invites.ts";
 
 export const createOrganization = createServerFn({ method: "POST" })
   .inputValidator(createOrganizationSchema)
@@ -109,70 +109,5 @@ export const inviteStaff = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
-    const now = Date.now();
-
-    // 同组织同邮箱只允许一条非 removed 的 membership
-    const existing = await db
-      .select({ id: schema.memberships.id, status: schema.memberships.status })
-      .from(schema.memberships)
-      .where(
-        and(
-          eq(schema.memberships.organizationId, data.orgId),
-          eq(schema.memberships.invitedEmail, data.email),
-        ),
-      );
-    if (existing.some((m) => m.status === "active" || m.status === "invited")) {
-      return {
-        ok: false as const,
-        error: "This email is already a member or has a pending invite.",
-      };
-    }
-
-    const membershipId = generateId(ID_PREFIXES.membership);
-    const token = generateSecret(32);
-    await db.batch([
-      db.insert(schema.memberships).values({
-        id: membershipId,
-        organizationId: data.orgId,
-        role: "staff",
-        status: "invited",
-        invitedEmail: data.email,
-        invitedByMembershipId: ctx.membershipId,
-        createdAt: now,
-      }),
-      db.insert(schema.authTokens).values({
-        id: generateId(ID_PREFIXES.authToken),
-        email: data.email,
-        tokenHash: await sha256Hex(token),
-        // 邀请只走链接，不发 OTP；占位哈希不可能被 6 位数字命中
-        otpHash: await sha256Hex(`invite:${token}`),
-        purpose: "invite",
-        membershipId,
-        expiresAt: now + tokenTtlMs("invite"),
-        createdAt: now,
-      }),
-    ]);
-    await recordAudit(db, {
-      organizationId: data.orgId,
-      actorMembershipId: ctx.membershipId,
-      action: "membership.invited",
-      objectType: "membership",
-      objectId: membershipId,
-      summary: { email: data.email, role: "staff" },
-    });
-
-    const origin = getRequestUrl().origin;
-    await getEmailSender(db).send({
-      to: data.email,
-      subject: "You're invited to join an organization on Everband",
-      text: [
-        "You've been invited to help run an organization on Everband.",
-        "",
-        `Accept the invite: ${origin}/invite/${token}`,
-        "",
-        "This link expires in 7 days.",
-      ].join("\n"),
-      kind: "invite",
-    });
-    return { ok: true as const };
+    return createInvite(db, ctx, data.email, "staff", getRequestUrl().origin);
   });

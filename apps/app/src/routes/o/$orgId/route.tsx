@@ -36,6 +36,20 @@ function OrgLayout() {
           {isStaff && (
             <nav className="flex items-center gap-4 text-sm text-muted-foreground">
               <Link
+                to="/o/$orgId/members"
+                params={{ orgId: org.id }}
+                className="hover:text-foreground"
+              >
+                Members
+              </Link>
+              <Link
+                to="/o/$orgId/groups"
+                params={{ orgId: org.id }}
+                className="hover:text-foreground"
+              >
+                Groups
+              </Link>
+              <Link
                 to="/o/$orgId/settings"
                 params={{ orgId: org.id }}
                 className="hover:text-foreground"

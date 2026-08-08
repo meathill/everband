@@ -18,6 +18,8 @@ import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OOrgIdRouteRouteImport } from './routes/o/$orgId/route'
 import { Route as OOrgIdIndexRouteImport } from './routes/o/$orgId/index'
+import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
+import { Route as OOrgIdMembersRouteImport } from './routes/o/$orgId/members'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o/$orgId/settings'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +67,16 @@ const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
+const OOrgIdGroupsRoute = OOrgIdGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
+const OOrgIdMembersRoute = OOrgIdMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
 const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -80,6 +92,8 @@ export interface FileRoutesByFullPath {
   '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
   '/dev/outbox': typeof DevOutboxRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/o/$orgId/groups': typeof OOrgIdGroupsRoute
+  '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
 }
@@ -91,6 +105,8 @@ export interface FileRoutesByTo {
   '/verify': typeof VerifyRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/o/$orgId/groups': typeof OOrgIdGroupsRoute
+  '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
 }
@@ -104,6 +120,8 @@ export interface FileRoutesById {
   '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
   '/dev/outbox': typeof DevOutboxRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/o/$orgId/groups': typeof OOrgIdGroupsRoute
+  '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
 }
@@ -118,6 +136,8 @@ export interface FileRouteTypes {
     | '/o/$orgId'
     | '/dev/outbox'
     | '/invite/$token'
+    | '/o/$orgId/groups'
+    | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,6 +149,8 @@ export interface FileRouteTypes {
     | '/verify'
     | '/dev/outbox'
     | '/invite/$token'
+    | '/o/$orgId/groups'
+    | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId'
   id:
@@ -141,6 +163,8 @@ export interface FileRouteTypes {
     | '/o/$orgId'
     | '/dev/outbox'
     | '/invite/$token'
+    | '/o/$orgId/groups'
+    | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
   fileRoutesById: FileRoutesById
@@ -221,6 +245,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdIndexRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
+    '/o/$orgId/groups': {
+      id: '/o/$orgId/groups'
+      path: '/groups'
+      fullPath: '/o/$orgId/groups'
+      preLoaderRoute: typeof OOrgIdGroupsRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
+    '/o/$orgId/members': {
+      id: '/o/$orgId/members'
+      path: '/members'
+      fullPath: '/o/$orgId/members'
+      preLoaderRoute: typeof OOrgIdMembersRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
     '/o/$orgId/settings': {
       id: '/o/$orgId/settings'
       path: '/settings'
@@ -232,11 +270,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface OOrgIdRouteRouteChildren {
+  OOrgIdGroupsRoute: typeof OOrgIdGroupsRoute
+  OOrgIdMembersRoute: typeof OOrgIdMembersRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
 }
 
 const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
+  OOrgIdGroupsRoute: OOrgIdGroupsRoute,
+  OOrgIdMembersRoute: OOrgIdMembersRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,
 }
