@@ -1,3 +1,11 @@
+import {
+  activateInvitedMembership,
+  type ConsumedToken,
+  consumeTokenByHash,
+  ensureUser,
+  linkContactsToUser,
+  verifyOtpCore,
+} from "@everband/core";
 import { schema } from "@everband/db";
 import {
   generateId,
@@ -14,16 +22,8 @@ import { requestLoginSchema, verifyOtpSchema, verifyTokenSchema } from "@everban
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP, getRequestUrl } from "@tanstack/react-start/server";
 import { and, eq, gt, sql } from "drizzle-orm";
-import {
-  activateInvitedMembership,
-  type ConsumedToken,
-  consumeTokenByHash,
-  ensureUser,
-  verifyOtpCore,
-} from "./auth-core.ts";
 import { getDb } from "./context.ts";
 import { getEmailSender } from "./email.ts";
-import { linkContactsToUser } from "./members-core.ts";
 import { createSession, destroySession, getSessionUser } from "./session.ts";
 
 // 统一的失败信息：不区分"邮箱不存在/代码错误/已过期"，避免枚举探测
@@ -44,7 +44,7 @@ async function countRecentTokens(
 }
 
 export const requestLoginCode = createServerFn({ method: "POST" })
-  .inputValidator(requestLoginSchema)
+  .validator(requestLoginSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const now = Date.now();
@@ -109,7 +109,7 @@ async function finishLogin(
 }
 
 export const verifyLoginToken = createServerFn({ method: "POST" })
-  .inputValidator(verifyTokenSchema)
+  .validator(verifyTokenSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const now = Date.now();
@@ -121,7 +121,7 @@ export const verifyLoginToken = createServerFn({ method: "POST" })
   });
 
 export const verifyLoginOtp = createServerFn({ method: "POST" })
-  .inputValidator(verifyOtpSchema)
+  .validator(verifyOtpSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const now = Date.now();

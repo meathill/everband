@@ -43,6 +43,13 @@
 - **cloudflare:workers 的 env 类型**：`src/server/env.d.ts` 手工声明（ambient module 内 import type），不引入 workers-types 全局，避免与 DOM lib 冲突。绑定变更要同步该文件与 wrangler.jsonc。
 - **TanStack Start 细节**：server fn 校验器叫 `.inputValidator()`；cookie/请求助手从 `@tanstack/react-start/server` 导入（getCookie/setCookie/getRequestIP/getRequestUrl）；vite 需显式 `resolve.alias` 配 `~`（vite 7 无 tsconfigPaths 选项）。
 
+## M4 落地的异步任务基建
+
+- **业务核心在 `packages/core`**（@everband/core）：app 与 tasks 共享（members/auth/audit/import），只依赖 db/domain/validation。新的队列消费者逻辑一律写在 core，tasks 只做绑定与消息编排。
+- **本地 Queues 全链路**：apps/app 的 vite `cloudflare({ auxiliaryWorkers: [{ configPath: "../tasks/wrangler.jsonc" }] })` 同时拉起 tasks worker，dev 环境队列投递真实生效。改 tasks 绑定后需重启 dev server。
+- **CSV 导入幂等**：任务级 dedupKey =`orgId:sha256(文件内容)` UNIQUE；行级 UNIQUE(jobId,rowNumber) + onConflictDoUpdate；消费前 claim（queued|processing → processing）。消费者对不可重试错误（文件缺失）ack + 标记失败，可重试错误 retry → DLQ。
+- **server fn 校验器已换回 `.validator()`**：`.inputValidator()` 在当前版本已弃用（d.ts 与运行时警告不一致，以运行时为准）。
+
 ## 工程坑位记录
 
 - **TS7 (tsgo) 的 extends 解析**：`@everband/config/tsconfig.*.json` 必须出现在每个包的 devDependencies 里，否则 extends 静默失败、skipLibCheck 等选项全部丢失，报出一堆 node_modules d.ts 错误。

@@ -1,0 +1,21 @@
+{
+  "name": "@everband/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@everband/db": "workspace:*",
+    "@everband/domain": "workspace:*",
+    "@everband/validation": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@everband/config": "workspace:*"
+  }
+}

@@ -15,7 +15,11 @@ export default defineConfig({
     },
   },
   plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    cloudflare({
+      viteEnvironment: { name: "ssr" },
+      // 本地开发同时拉起 tasks worker，使 Queues 投递在 dev 环境生效
+      auxiliaryWorkers: [{ configPath: "../tasks/wrangler.jsonc" }],
+    }),
     tailwindcss(),
     tanstackStart(),
     react(),

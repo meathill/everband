@@ -1,6 +1,6 @@
+import { findActiveMembership } from "@everband/core";
 import type { Database } from "@everband/db";
 import type { MembershipRole } from "@everband/domain";
-import { findActiveMembership } from "./auth-core.ts";
 import { getSessionUser, type SessionUser } from "./session.ts";
 
 // 鉴权链（PRD §8.4）：session → membership(active) → role。

@@ -23,6 +23,9 @@ importers:
 
   apps/app:
     dependencies:
+      '@everband/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@everband/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -151,6 +154,9 @@ importers:
 
   apps/tasks:
     dependencies:
+      '@everband/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@everband/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -178,6 +184,25 @@ importers:
         version: 4.119.0(@cloudflare/workers-types@5.20260804.1)
 
   packages/config: {}
+
+  packages/core:
+    dependencies:
+      '@everband/db':
+        specifier: workspace:*
+        version: link:../db
+      '@everband/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@everband/validation':
+        specifier: workspace:*
+        version: link:../validation
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@cloudflare/workers-types@5.20260804.1)
+    devDependencies:
+      '@everband/config':
+        specifier: workspace:*
+        version: link:../config
 
   packages/db:
     dependencies:

@@ -19,5 +19,20 @@
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      // 私有 bucket：导入原文件与附件；key 含组织与对象上下文（PRD §8.2）
+      "bucket_name": "everband-files"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "IMPORT_QUEUE",
+        "queue": "everband-import-jobs"
+      }
+    ]
+  }
 }

@@ -19,6 +19,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OOrgIdRouteRouteImport } from './routes/o/$orgId/route'
 import { Route as OOrgIdIndexRouteImport } from './routes/o/$orgId/index'
 import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
+import { Route as OOrgIdImportRouteImport } from './routes/o/$orgId/import'
 import { Route as OOrgIdMembersRouteImport } from './routes/o/$orgId/members'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o/$orgId/settings'
 
@@ -72,6 +73,11 @@ const OOrgIdGroupsRoute = OOrgIdGroupsRouteImport.update({
   path: '/groups',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
+const OOrgIdImportRoute = OOrgIdImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
 const OOrgIdMembersRoute = OOrgIdMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/dev/outbox': typeof DevOutboxRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/dev/outbox': typeof DevOutboxRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/dev/outbox': typeof DevOutboxRoute
   '/invite/$token': typeof InviteTokenRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
+  '/o/$orgId/import': typeof OOrgIdImportRoute
   '/o/$orgId/members': typeof OOrgIdMembersRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/dev/outbox'
     | '/invite/$token'
     | '/o/$orgId/groups'
+    | '/o/$orgId/import'
     | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/dev/outbox'
     | '/invite/$token'
     | '/o/$orgId/groups'
+    | '/o/$orgId/import'
     | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/dev/outbox'
     | '/invite/$token'
     | '/o/$orgId/groups'
+    | '/o/$orgId/import'
     | '/o/$orgId/members'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
@@ -252,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdGroupsRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
+    '/o/$orgId/import': {
+      id: '/o/$orgId/import'
+      path: '/import'
+      fullPath: '/o/$orgId/import'
+      preLoaderRoute: typeof OOrgIdImportRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
     '/o/$orgId/members': {
       id: '/o/$orgId/members'
       path: '/members'
@@ -271,6 +290,7 @@ declare module '@tanstack/react-router' {
 
 interface OOrgIdRouteRouteChildren {
   OOrgIdGroupsRoute: typeof OOrgIdGroupsRoute
+  OOrgIdImportRoute: typeof OOrgIdImportRoute
   OOrgIdMembersRoute: typeof OOrgIdMembersRoute
   OOrgIdSettingsRoute: typeof OOrgIdSettingsRoute
   OOrgIdIndexRoute: typeof OOrgIdIndexRoute
@@ -278,6 +298,7 @@ interface OOrgIdRouteRouteChildren {
 
 const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
   OOrgIdGroupsRoute: OOrgIdGroupsRoute,
+  OOrgIdImportRoute: OOrgIdImportRoute,
   OOrgIdMembersRoute: OOrgIdMembersRoute,
   OOrgIdSettingsRoute: OOrgIdSettingsRoute,
   OOrgIdIndexRoute: OOrgIdIndexRoute,

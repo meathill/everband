@@ -1,3 +1,10 @@
+import {
+  addContactToStudent,
+  createStudentCore,
+  MemberError,
+  recordAudit,
+  updateStudentStatusCore,
+} from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import {
@@ -12,16 +19,9 @@ import {
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { and, asc, eq } from "drizzle-orm";
-import { recordAudit } from "./audit.ts";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
 import { createInvite } from "./invites.ts";
-import {
-  addContactToStudent,
-  createStudentCore,
-  MemberError,
-  updateStudentStatusCore,
-} from "./members-core.ts";
 
 function toError(cause: unknown): { ok: false; error: string } {
   if (cause instanceof MemberError) {
@@ -31,7 +31,7 @@ function toError(cause: unknown): { ok: false; error: string } {
 }
 
 export const listStudents = createServerFn({ method: "GET" })
-  .inputValidator(orgIdSchema)
+  .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -69,7 +69,7 @@ export const listStudents = createServerFn({ method: "GET" })
   });
 
 export const createStudent = createServerFn({ method: "POST" })
-  .inputValidator(createStudentSchema)
+  .validator(createStudentSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -97,7 +97,7 @@ export const createStudent = createServerFn({ method: "POST" })
   });
 
 export const updateStudentStatus = createServerFn({ method: "POST" })
-  .inputValidator(updateStudentStatusSchema)
+  .validator(updateStudentStatusSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -126,7 +126,7 @@ export const updateStudentStatus = createServerFn({ method: "POST" })
   });
 
 export const addStudentContact = createServerFn({ method: "POST" })
-  .inputValidator(addStudentContactSchema)
+  .validator(addStudentContactSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -153,7 +153,7 @@ export const addStudentContact = createServerFn({ method: "POST" })
   });
 
 export const inviteParent = createServerFn({ method: "POST" })
-  .inputValidator(inviteParentSchema)
+  .validator(inviteParentSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -172,7 +172,7 @@ export const inviteParent = createServerFn({ method: "POST" })
   });
 
 export const listGroups = createServerFn({ method: "GET" })
-  .inputValidator(orgIdSchema)
+  .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId);
@@ -184,7 +184,7 @@ export const listGroups = createServerFn({ method: "GET" })
   });
 
 export const createGroup = createServerFn({ method: "POST" })
-  .inputValidator(createGroupSchema)
+  .validator(createGroupSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -212,7 +212,7 @@ export const createGroup = createServerFn({ method: "POST" })
   });
 
 export const listTerms = createServerFn({ method: "GET" })
-  .inputValidator(orgIdSchema)
+  .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -224,7 +224,7 @@ export const listTerms = createServerFn({ method: "GET" })
   });
 
 export const createTerm = createServerFn({ method: "POST" })
-  .inputValidator(createTermSchema)
+  .validator(createTermSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);

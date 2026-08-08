@@ -1,14 +1,14 @@
 import { env } from "cloudflare:test";
-import { createDb, schema } from "@everband/db";
-import { generateId, ID_PREFIXES, MAX_OTP_ATTEMPTS, sha256Hex } from "@everband/domain";
-import { beforeEach, describe, expect, it } from "vitest";
 import {
   activateInvitedMembership,
   consumeTokenByHash,
   ensureUser,
   findActiveMembership,
   verifyOtpCore,
-} from "../src/server/auth-core.ts";
+} from "@everband/core";
+import { createDb, schema } from "@everband/db";
+import { generateId, ID_PREFIXES, MAX_OTP_ATTEMPTS, sha256Hex } from "@everband/domain";
+import { beforeEach, describe, expect, it } from "vitest";
 
 const db = createDb(env.DB);
 const NOW = 1_754_000_000_000;

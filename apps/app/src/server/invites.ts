@@ -1,5 +1,6 @@
 // 邀请通用逻辑：staff 与 parent 邀请共用（membership + invite token + 邮件 + audit）。
 
+import { recordAudit } from "@everband/core";
 import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
 import {
@@ -11,7 +12,6 @@ import {
   tokenTtlMs,
 } from "@everband/domain";
 import { and, eq } from "drizzle-orm";
-import { recordAudit } from "./audit.ts";
 import { getEmailSender } from "./email.ts";
 import type { OrgContext } from "./guards.ts";
 

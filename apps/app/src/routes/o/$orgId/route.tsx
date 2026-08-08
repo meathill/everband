@@ -50,6 +50,13 @@ function OrgLayout() {
                 Groups
               </Link>
               <Link
+                to="/o/$orgId/import"
+                params={{ orgId: org.id }}
+                className="hover:text-foreground"
+              >
+                Import
+              </Link>
+              <Link
                 to="/o/$orgId/settings"
                 params={{ orgId: org.id }}
                 className="hover:text-foreground"

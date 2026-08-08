@@ -1,15 +1,15 @@
 import { env } from "cloudflare:test";
-import { createDb, schema } from "@everband/db";
-import { generateId, ID_PREFIXES } from "@everband/domain";
-import { and, eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
 import {
   addContactToStudent,
   createStudentCore,
   MemberError,
   updateStudentStatusCore,
   upsertContact,
-} from "../src/server/members-core.ts";
+} from "@everband/core";
+import { createDb, schema } from "@everband/db";
+import { generateId, ID_PREFIXES } from "@everband/domain";
+import { and, eq } from "drizzle-orm";
+import { describe, expect, it } from "vitest";
 
 const db = createDb(env.DB);
 const NOW = 1_754_100_000_000;

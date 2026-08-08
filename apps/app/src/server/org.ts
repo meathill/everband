@@ -1,16 +1,16 @@
+import { recordAudit } from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import { createOrganizationSchema, inviteStaffSchema, orgIdSchema } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
-import { recordAudit } from "./audit.ts";
 import { getDb } from "./context.ts";
 import { requireMembership, requireUser, STAFF_ROLES } from "./guards.ts";
 import { createInvite } from "./invites.ts";
 
 export const createOrganization = createServerFn({ method: "POST" })
-  .inputValidator(createOrganizationSchema)
+  .validator(createOrganizationSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const user = await requireUser(db);
@@ -65,7 +65,7 @@ export const listMyOrganizations = createServerFn({ method: "GET" }).handler(asy
 });
 
 export const getOrgContext = createServerFn({ method: "GET" })
-  .inputValidator(orgIdSchema)
+  .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
@@ -87,7 +87,7 @@ export const getOrgContext = createServerFn({ method: "GET" })
   });
 
 export const listOrgMemberships = createServerFn({ method: "GET" })
-  .inputValidator(orgIdSchema)
+  .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -105,7 +105,7 @@ export const listOrgMemberships = createServerFn({ method: "GET" })
   });
 
 export const inviteStaff = createServerFn({ method: "POST" })
-  .inputValidator(inviteStaffSchema)
+  .validator(inviteStaffSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
