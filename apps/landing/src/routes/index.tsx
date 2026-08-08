@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
 // Landing 六板块（PRD §7.1）：Home / How it works / Use cases / Features /
 // Privacy & Safety / Contact。不展示未实现能力（器材/财务/学生账号/公开活动）。
 
-const APP_URL = "http://localhost:3000";
+const APP_URL = import.meta.env.DEV ? "http://localhost:3000" : "https://everband-app.meathill.com";
 
 function Home() {
   return (

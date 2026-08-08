@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "everband-landing",
+  "account_id": "fdc63eeea83ae8f5234357308b9a638b",
+  "routes": [{ "pattern": "everband.meathill.com", "custom_domain": true }],
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",

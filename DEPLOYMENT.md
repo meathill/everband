@@ -3,6 +3,17 @@
 三个 Worker 独立部署：`everband-app`（应用站）、`everband-tasks`（队列消费者）、
 `everband-landing`（产品站）。共享同一个 D1 数据库和 R2 bucket。
 
+## 当前线上环境（2026-08-08 首次部署）
+
+- 账号：Meathill（`fdc63eeea83ae8f5234357308b9a638b`），已写入各 wrangler.jsonc
+- 应用站：<https://everband-app.meathill.com>
+- 产品站：<https://everband.meathill.com>
+- D1：`everband`（`e1759245-2dfc-4bc4-93e5-976215432740`）
+- R2：`everband-files`；Queues：`everband-import-jobs` / `everband-email-sends` / `everband-dlq`
+- 已冒烟：登录（/dev/outbox 取链接）、建组织/分组、CSV 导入队列全链路 succeeded、landing 渲染
+
+日常更新只需：改代码 → （如有新迁移）`migrations apply --remote` → 按顺序 deploy。
+
 ## 当前部署形态：演示模式
 
 代码可以直接上线，但默认配置是**演示模式**，三个外部依赖都是替身：
@@ -53,10 +64,9 @@ pnpm -C apps/app exec wrangler queues create everband-dlq
 ## 二、部署前的代码调整
 
 1. **Landing 的应用站地址**：`apps/landing/src/routes/index.tsx` 顶部的
-   `APP_URL` 目前是 `http://localhost:3000`，改成 app 的线上地址
-   （首次部署后是 `https://everband-app.<你的子域>.workers.dev`）。
-2. （可选）自定义域名：在各 wrangler.jsonc 加 `routes`，或部署后在
-   Cloudflare Dashboard 绑定。
+   `APP_URL`（dev 走 localhost，生产已指向 everband-app.meathill.com；换域名时同步改）。
+2. 自定义域名：各 wrangler.jsonc 的 `routes`（`custom_domain: true`）已配置，
+   换域名直接改 pattern 重新 deploy 即可。
 
 ## 三、应用数据库迁移
 

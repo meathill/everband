@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "everband-app",
+  "account_id": "fdc63eeea83ae8f5234357308b9a638b",
+  "routes": [{ "pattern": "everband-app.meathill.com", "custom_domain": true }],
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
@@ -18,7 +20,7 @@
       "binding": "DB",
       "database_name": "everband",
       // 生产 database_id 部署前用 wrangler d1 create 生成后替换
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "e1759245-2dfc-4bc4-93e5-976215432740",
       "migrations_dir": "migrations"
     }
   ],

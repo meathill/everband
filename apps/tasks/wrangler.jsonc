@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "everband-tasks",
+  "account_id": "fdc63eeea83ae8f5234357308b9a638b",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/index.ts",
@@ -12,7 +13,7 @@
       "binding": "DB",
       "database_name": "everband",
       // 与 apps/app 指向同一个数据库；生产 id 部署前替换
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "e1759245-2dfc-4bc4-93e5-976215432740"
     }
   ],
   "r2_buckets": [
