@@ -73,7 +73,7 @@ export async function createInvite(
     role === "staff"
       ? "You've been invited to help run an organization on Everband."
       : "You've been invited to follow your student's events and rehearsals on Everband.";
-  await getEmailSender(db).send({
+  const sent = await getEmailSender(db).send({
     to: email,
     subject: "You're invited to join an organization on Everband",
     text: [
@@ -85,5 +85,12 @@ export async function createInvite(
     ].join("\n"),
     kind: "invite",
   });
+  if (!sent.ok) {
+    console.error("invite email failed", { error: sent.error });
+    return {
+      ok: false,
+      error: "The invite was created but the email could not be sent. Try inviting again.",
+    };
+  }
   return { ok: true };
 }

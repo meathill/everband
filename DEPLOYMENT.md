@@ -14,17 +14,16 @@
 
 日常更新只需：改代码 → （如有新迁移）`migrations apply --remote` → 按顺序 deploy。
 
-## 当前部署形态：演示模式
+## 当前部署形态
 
-代码可以直接上线，但默认配置是**演示模式**，三个外部依赖都是替身：
-
-| 项 | 当前状态 | 影响 |
+| 项 | 生产 | 本地 dev / CI |
 | --- | --- | --- |
-| 邮件（`EMAIL_MODE=dev`） | 不真发邮件，落库后在 `/dev/outbox` 页面查看 | ⚠️ **`/dev/outbox` 无鉴权**：任何访问者都能看到所有 magic link，等于可登录任何账号。只适合自己私下试用，绝不能在此模式下邀请真实用户 |
-| 二维码（`DYQR_MODE=mock`） | 短链/二维码是内存 mock，下载的是占位 SVG | 二维码不可真实扫码跳转 |
-| Turnstile（测试 key） | 联系表单人机验证恒通过 | 无反滥用保护，仅影响 landing |
+| 邮件 | ✅ **真实发送**（Email Service binding，`Everband <no-reply@meathill.com>`，域名已验证 DKIM/DMARC） | `.dev.vars` 覆盖为 `EMAIL_MODE=dev`，落 `/dev/outbox`（e2e 依赖）；CI 用 mock |
+| 二维码（`DYQR_MODE=mock`） | 内存 mock，下载占位 SVG，不可真实扫码 | 同 mock |
+| Turnstile（测试 key） | 联系表单人机验证恒通过，仅影响 landing | 同测试 key |
 
-转正式模式的路径见文末「生产化差距」，也可参考 [TODO.md](TODO.md)。
+生产模式下 `/dev/outbox` 显示空的 "Not available"、`/dev/reset` 返回 404，
+不泄露任何数据。剩余替身的转正路径见文末「生产化差距」。
 
 ## 前置条件
 
@@ -125,11 +124,8 @@ vite build + wrangler deploy）。
 
 按优先级：
 
-1. **真实邮件发送**（阻塞项）：Cloudflare Email Service 发信域名验证
-   （SPF/DKIM），实现 `CloudflareEmailSender`（接口在
-   `packages/core/src/email-sender.ts`，绑定 `env.EMAIL`），
-   两处 wrangler.jsonc 把 `EMAIL_MODE` 切到 `cloudflare`。
-   完成后 `/dev/outbox`、`/dev/reset` 自动失效（它们只在 dev 模式响应）。
+1. ~~真实邮件发送~~ ✅ 已完成（2026-08-08）：meathill.com 已 onboard Email Sending，
+   `CloudflareEmailSender` 经 `send_email` binding 发送，发送失败会反馈到 UI 并记日志。
 2. **Turnstile 真实 key**：Dashboard 创建 widget，替换
    `apps/landing/src/components/contact-section.tsx` 的 `TURNSTILE_SITE_KEY`
    与 landing wrangler.jsonc 的 `TURNSTILE_SECRET`（生产应改用
@@ -140,11 +136,12 @@ vite build + wrangler deploy）。
 
 ## 环境变量与密钥一览
 
-| 变量 | Worker | 演示值 | 生产值 |
+| 变量 | Worker | 本地（.dev.vars） | 生产（wrangler.jsonc / Secret） |
 | --- | --- | --- | --- |
-| `EMAIL_MODE` | app, tasks | `dev` | `cloudflare` |
-| `DYQR_MODE` | app | `mock` | `dyqr` |
-| `DYQR_TOKEN` | app | 无 | Secret（`wrangler secret put`） |
-| `TURNSTILE_SECRET` | landing | 测试 secret | Secret（`wrangler secret put`） |
+| `EMAIL_MODE` | app, tasks | `dev` | `cloudflare` ✅ |
+| `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME` | app, tasks | — | `no-reply@meathill.com` / `Everband` |
+| `DYQR_MODE` | app | `mock` | 待切 `dyqr` |
+| `DYQR_TOKEN` | app | 无 | 待配 Secret（`wrangler secret put`） |
+| `TURNSTILE_SECRET` | landing | 测试 secret | 待换真实 Secret |
 
 CI 恒为 `EMAIL_MODE=mock`、`DYQR_MODE=mock`，不产生真实外呼（PRD §12.3）。

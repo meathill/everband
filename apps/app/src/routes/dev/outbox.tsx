@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { listDevOutbox } from "~/server/dev.ts";
 
-// dev 专用发件箱：查看 magic link/OTP 邮件（生产模式 server fn 直接拒绝）
+// dev 专用发件箱：查看 magic link/OTP 邮件；生产模式（EMAIL_MODE=cloudflare）
+// server fn 拒绝，页面统一显示不可用
 export const Route = createFileRoute("/dev/outbox")({
   loader: async () => ({ messages: await listDevOutbox() }),
   component: DevOutboxPage,
@@ -9,6 +10,13 @@ export const Route = createFileRoute("/dev/outbox")({
 
 function DevOutboxPage() {
   const { messages } = Route.useLoaderData();
+  if (messages === null) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4">
+        <p className="text-muted-foreground">Not available.</p>
+      </main>
+    );
+  }
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-8">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dev outbox</h1>

@@ -28,10 +28,57 @@ export class DevEmailSender implements EmailSender {
   }
 }
 
-export function chooseEmailSender(db: Database, mode: string | undefined): EmailSender {
+// Cloudflare Email Service 的 send_email binding（结构化最小面，
+// 避免 core 依赖 workers runtime 全局类型）
+export interface SendEmailBinding {
+  send(message: {
+    to: string;
+    from: { email: string; name?: string };
+    subject: string;
+    text: string;
+    html?: string;
+  }): Promise<unknown>;
+}
+
+export interface CloudflareEmailOptions {
+  binding: SendEmailBinding;
+  fromEmail: string;
+  fromName: string;
+}
+
+export class CloudflareEmailSender implements EmailSender {
+  constructor(private readonly options: CloudflareEmailOptions) {}
+
+  async send(message: OutgoingEmail): Promise<SendResult> {
+    try {
+      await this.options.binding.send({
+        to: message.to,
+        from: { email: this.options.fromEmail, name: this.options.fromName },
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+      });
+      return { ok: true };
+    } catch (cause) {
+      // binding 抛 Error 且带 E_* code（如 E_RECIPIENT_SUPPRESSED / E_RATE_LIMIT_EXCEEDED）
+      const code = (cause as { code?: string }).code;
+      const detail = cause instanceof Error ? cause.message : "unknown error";
+      return { ok: false, error: code ? `${code}: ${detail}` : detail };
+    }
+  }
+}
+
+export function chooseEmailSender(
+  db: Database,
+  mode: string | undefined,
+  cloudflare?: CloudflareEmailOptions,
+): EmailSender {
   if (mode === "mock") {
     return new MockEmailSender();
   }
-  // cloudflare 模式接入前一律走 dev outbox
+  if (mode === "cloudflare" && cloudflare) {
+    return new CloudflareEmailSender(cloudflare);
+  }
+  // 其余情况（本地 dev）走 dev outbox
   return new DevEmailSender(db);
 }

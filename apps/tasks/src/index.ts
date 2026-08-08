@@ -1,13 +1,21 @@
 // 后台任务 Worker：Queues 消费者宿主。
 // everband-import-jobs（CSV 导入）+ everband-email-sends（邮件 fan-out）。
 
-import { chooseEmailSender, processEmailSend, processImportJob } from "@everband/core";
+import {
+  chooseEmailSender,
+  processEmailSend,
+  processImportJob,
+  type SendEmailBinding,
+} from "@everband/core";
 import { createDb } from "@everband/db";
 
 interface Env {
   DB: D1Database;
   FILES: R2Bucket;
   EMAIL_MODE?: string;
+  EMAIL?: SendEmailBinding;
+  EMAIL_FROM_ADDRESS?: string;
+  EMAIL_FROM_NAME?: string;
 }
 
 export interface ImportJobMessage {
@@ -31,7 +39,17 @@ export default {
     const db = createDb(env.DB);
 
     if (batch.queue === "everband-email-sends") {
-      const sender = chooseEmailSender(db, env.EMAIL_MODE);
+      const sender = chooseEmailSender(
+        db,
+        env.EMAIL_MODE,
+        env.EMAIL
+          ? {
+              binding: env.EMAIL,
+              fromEmail: env.EMAIL_FROM_ADDRESS ?? "no-reply@meathill.com",
+              fromName: env.EMAIL_FROM_NAME ?? "Everband",
+            }
+          : undefined,
+      );
       for (const message of batch.messages) {
         const { sendId } = message.body as EmailSendMessage;
         try {

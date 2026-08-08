@@ -2,7 +2,7 @@
 
 ## 上线前必办（PRD §14）
 
-- [ ] Cloudflare Email Service 真实发送：发信域名 SPF/DKIM 验证、`CloudflareEmailSender`
+- [x] Cloudflare Email Service 真实发送（2026-08-08 已完成）：`CloudflareEmailSender`
       接入 `env.EMAIL.send()`（接口已留好：packages/core/src/email-sender.ts）、送达率试发
 - [ ] dyqr 平台 token：device flow 获取，入 Secrets Store，`DYQR_MODE=dyqr` 切换；
       核查平台配额与单组织软上限数值（当前代码内 MAX_QR_PER_ORG=5）

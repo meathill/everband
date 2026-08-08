@@ -9,6 +9,8 @@ export default defineConfig({
   // 本地 D1（SQLite）对并行写敏感，套件小，串行换稳定
   workers: 1,
   retries: 0,
+  // vite dev 按需编译，路由首次访问可能超过默认 5s
+  expect: { timeout: 10_000 },
   reporter: [["list"]],
   use: {
     baseURL: "http://localhost:3000",

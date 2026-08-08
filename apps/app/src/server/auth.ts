@@ -73,7 +73,7 @@ export const requestLoginCode = createServerFn({ method: "POST" })
 
     const origin = getRequestUrl().origin;
     const link = `${origin}/verify?token=${token}`;
-    await getEmailSender(db).send({
+    const sent = await getEmailSender(db).send({
       to: data.email,
       subject: `Your Everband sign-in code: ${otp}`,
       text: [
@@ -85,6 +85,13 @@ export const requestLoginCode = createServerFn({ method: "POST" })
       ].join("\n"),
       kind: "magic-link",
     });
+    if (!sent.ok) {
+      console.error("magic link email failed", { error: sent.error });
+      return {
+        ok: false as const,
+        error: "We couldn't send the email. Check the address and try again.",
+      };
+    }
 
     return { ok: true as const };
   });
