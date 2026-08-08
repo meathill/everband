@@ -193,6 +193,9 @@ importers:
       '@everband/domain':
         specifier: workspace:*
         version: link:../domain
+      '@everband/integrations':
+        specifier: workspace:*
+        version: link:../integrations
       '@everband/validation':
         specifier: workspace:*
         version: link:../validation

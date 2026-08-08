@@ -21,6 +21,9 @@
       "bucket_name": "everband-files"
     }
   ],
+  "vars": {
+    "EMAIL_MODE": "dev"
+  },
   "queues": {
     "consumers": [
       {
@@ -28,8 +31,14 @@
         "max_batch_size": 1,
         "max_retries": 3,
         "dead_letter_queue": "everband-dlq"
+      },
+      {
+        "queue": "everband-email-sends",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "dead_letter_queue": "everband-dlq"
       }
     ]
   }
-  // 邮件 fan-out 消费者（M7）与 Workflows（M8）后续接入
+  // Workflows（M8 排练展开）后续接入
 }

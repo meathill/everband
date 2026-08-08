@@ -32,6 +32,10 @@
       {
         "binding": "IMPORT_QUEUE",
         "queue": "everband-import-jobs"
+      },
+      {
+        "binding": "EMAIL_QUEUE",
+        "queue": "everband-email-sends"
       }
     ]
   }

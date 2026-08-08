@@ -11,6 +11,7 @@ import {
   transitionEvent,
 } from "~/server/events.ts";
 import { getEventForm, listFormResults } from "~/server/forms.ts";
+import { sendUpdateEmail } from "~/server/notify.ts";
 
 export const Route = createFileRoute("/o/$orgId/events/$eventId")({
   loader: async ({ params }) => {
@@ -115,6 +116,20 @@ function UpdatesSection({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [sendMessage, setSendMessage] = useState<string | null>(null);
+
+  async function handleSendEmail(updateId: string) {
+    setSendMessage(null);
+    const result = await sendUpdateEmail({ data: { orgId, updateId } });
+    if (!result.ok) {
+      setSendMessage(result.error);
+    } else if (result.deduplicated) {
+      setSendMessage("This version was already emailed — no duplicate sent.");
+    } else {
+      setSendMessage("Email queued. Check Notifications for delivery status.");
+    }
+    await router.invalidate();
+  }
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -182,6 +197,7 @@ function UpdatesSection({
         </form>
       )}
 
+      {sendMessage && <p className="text-sm text-muted-foreground">{sendMessage}</p>}
       {updates.length === 0 ? (
         <p className="text-muted-foreground">No updates yet.</p>
       ) : (
@@ -196,6 +212,11 @@ function UpdatesSection({
                 {isStaff && update.status === "draft" && (
                   <Button size="xs" onClick={() => handlePublish(update.id)}>
                     Publish
+                  </Button>
+                )}
+                {isStaff && update.status === "published" && (
+                  <Button size="xs" variant="outline" onClick={() => handleSendEmail(update.id)}>
+                    Send email
                   </Button>
                 )}
               </div>

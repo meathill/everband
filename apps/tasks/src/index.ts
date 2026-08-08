@@ -1,12 +1,13 @@
 // 后台任务 Worker：Queues 消费者宿主。
-// M4：everband-import-jobs（CSV 导入）。M7 邮件 fan-out、M8 Workflows 后续接入。
+// everband-import-jobs（CSV 导入）+ everband-email-sends（邮件 fan-out）。
 
-import { processImportJob } from "@everband/core";
+import { chooseEmailSender, processEmailSend, processImportJob } from "@everband/core";
 import { createDb } from "@everband/db";
 
 interface Env {
   DB: D1Database;
   FILES: R2Bucket;
+  EMAIL_MODE?: string;
 }
 
 export interface ImportJobMessage {
@@ -14,16 +15,39 @@ export interface ImportJobMessage {
   r2Key: string;
 }
 
+export interface EmailSendMessage {
+  sendId: string;
+}
+
+type TaskMessage = ImportJobMessage | EmailSendMessage;
+
 export default {
   fetch(): Response {
     // 本 Worker 不对外提供 HTTP 服务
     return new Response("everband-tasks", { status: 200 });
   },
 
-  async queue(batch: MessageBatch<ImportJobMessage>, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<TaskMessage>, env: Env): Promise<void> {
     const db = createDb(env.DB);
+
+    if (batch.queue === "everband-email-sends") {
+      const sender = chooseEmailSender(db, env.EMAIL_MODE);
+      for (const message of batch.messages) {
+        const { sendId } = message.body as EmailSendMessage;
+        try {
+          await processEmailSend(db, sender, sendId, Date.now());
+          message.ack();
+        } catch (cause) {
+          console.error("email send failed, will retry", { sendId, cause });
+          message.retry();
+        }
+      }
+      return;
+    }
+
+    // everband-import-jobs
     for (const message of batch.messages) {
-      const { importJobId, r2Key } = message.body;
+      const { importJobId, r2Key } = message.body as ImportJobMessage;
       const object = await env.FILES.get(r2Key);
       if (!object) {
         // 文件缺失属于不可重试错误：标记失败，ack 掉避免死循环
@@ -42,4 +66,4 @@ export default {
       }
     }
   },
-} satisfies ExportedHandler<Env, ImportJobMessage>;
+} satisfies ExportedHandler<Env, TaskMessage>;

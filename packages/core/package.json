@@ -12,6 +12,7 @@
   "dependencies": {
     "@everband/db": "workspace:*",
     "@everband/domain": "workspace:*",
+    "@everband/integrations": "workspace:*",
     "@everband/validation": "workspace:*",
     "drizzle-orm": "^0.45.2"
   },

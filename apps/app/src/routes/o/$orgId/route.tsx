@@ -41,6 +41,20 @@ function OrgLayout() {
             >
               Events
             </Link>
+            <Link
+              to="/o/$orgId/notifications"
+              params={{ orgId: org.id }}
+              className="hover:text-foreground"
+            >
+              Notifications
+            </Link>
+            <Link
+              to="/o/$orgId/account"
+              params={{ orgId: org.id }}
+              className="hover:text-foreground"
+            >
+              Account
+            </Link>
           </nav>
           {isStaff && (
             <nav className="flex items-center gap-4 text-sm text-muted-foreground">
