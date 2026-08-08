@@ -2,17 +2,20 @@ import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { PublicProfileSection } from "~/components/public-profile-section.tsx";
 import { createTerm, listTerms } from "~/server/members.ts";
 import { inviteStaff, listOrgMemberships } from "~/server/org.ts";
+import { getPublicProfileSettings } from "~/server/public.ts";
 
 export const Route = createFileRoute("/o/$orgId/settings")({
   loader: async ({ params }) => {
     try {
-      const [members, terms] = await Promise.all([
+      const [members, terms, publicProfile] = await Promise.all([
         listOrgMemberships({ data: { orgId: params.orgId } }),
         listTerms({ data: { orgId: params.orgId } }),
+        getPublicProfileSettings({ data: { orgId: params.orgId } }),
       ]);
-      return { members, terms };
+      return { members, terms, publicProfile };
     } catch {
       throw redirect({ to: "/o/$orgId", params: { orgId: params.orgId } });
     }
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/o/$orgId/settings")({
 });
 
 function SettingsPage() {
-  const { members, terms } = Route.useLoaderData();
+  const { members, terms, publicProfile } = Route.useLoaderData();
   const { orgId } = Route.useParams();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -87,6 +90,8 @@ function SettingsPage() {
       </section>
 
       <TermsSection terms={terms} />
+
+      <PublicProfileSection orgId={orgId} data={publicProfile} />
     </div>
   );
 }

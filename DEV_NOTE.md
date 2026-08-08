@@ -50,6 +50,21 @@
 - **CSV 导入幂等**：任务级 dedupKey =`orgId:sha256(文件内容)` UNIQUE；行级 UNIQUE(jobId,rowNumber) + onConflictDoUpdate；消费前 claim（queued|processing → processing）。消费者对不可重试错误（文件缺失）ack + 标记失败，可重试错误 retry → DLQ。
 - **server fn 校验器已换回 `.validator()`**：`.inputValidator()` 在当前版本已弃用（d.ts 与运行时警告不一致，以运行时为准）。
 
+## M9 落地的对外集成
+
+- **dyqr 封装**：`packages/integrations/src/dyqr`，`ShortLinkService` 接口 +
+  `DyqrShortLinkService`（@dyqr/sdk 包装，错误统一 ShortLinkError）+ `MockShortLinkService`
+  （dev/CI，内存实现 + 占位 SVG）。`DYQR_MODE=mock|dyqr`，token 只经 env（Secrets Store），
+  所有写操作 everband 侧记 audit。slug 变更先同步 dyqr targetUrl 再落库，dyqr 不可用则
+  放弃变更（保护已打印二维码）。
+- **公开主页安全模式**：`getPublicPage` 只返回展示字段白名单；关闭/不存在统一返回 null →
+  同一"暂未开放"页（与附件统一 404 同风格）。
+- **Turnstile**：dev 用官方测试 key（1x000…AA 恒通过），生产替换 landing 的
+  `TURNSTILE_SITE_KEY` 常量与 wrangler `TURNSTILE_SECRET`。
+- **限流数值**：登录 email 3/10min（主力）、IP 30/10min（NAT 友好；也避免 e2e 自我踩踏）。
+- **移动端触控热区**：coss Button 的 `pointer-coarse:after` 扩展热区会在紧凑布局里相互
+  遮挡（Playwright mobile 点击被拦截）。紧凑按钮组要么留够间距，要么像 e2e 那样用键盘激活。
+
 ## 工程坑位记录
 
 - **TS7 (tsgo) 的 extends 解析**：`@everband/config/tsconfig.*.json` 必须出现在每个包的 devDependencies 里，否则 extends 静默失败、skipLibCheck 等选项全部丢失，报出一堆 node_modules d.ts 错误。

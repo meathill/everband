@@ -6,5 +6,9 @@
   "main": "@tanstack/react-start/server-entry",
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    // dev 用 Turnstile 官方测试 secret（恒通过）；生产替换为真实 secret
+    "TURNSTILE_SECRET": "1x0000000000000000000000000000000AA"
   }
 }

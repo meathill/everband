@@ -1,4 +1,4 @@
 {
   "extends": "@everband/config/tsconfig.base.json",
-  "include": ["src", "test"]
+  "include": ["src", "test", "../domain/src/globals.d.ts"]
 }

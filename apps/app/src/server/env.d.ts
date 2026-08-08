@@ -11,5 +11,8 @@ declare module "cloudflare:workers" {
     EMAIL_QUEUE: Queue<{ sendId: string }>;
     // dev | mock | cloudflare（M7 接入真实发送）
     EMAIL_MODE?: string;
+    // mock | dyqr；dyqr 模式需要 DYQR_TOKEN（Secrets Store）
+    DYQR_MODE?: string;
+    DYQR_TOKEN?: string;
   };
 }

@@ -4,7 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
 // CI 中由 webServer 自行拉起；EMAIL_MODE=dev 保证邮件走 /dev/outbox。
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
+  // 本地 D1（SQLite）对并行写敏感，套件小，串行换稳定
+  workers: 1,
   retries: 0,
   reporter: [["list"]],
   use: {

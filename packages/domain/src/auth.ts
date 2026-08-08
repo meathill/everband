@@ -8,10 +8,12 @@ export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const MAX_OTP_ATTEMPTS = 5;
 
-// 登录请求限流：email 与 IP 双维度滑动窗口
+// 登录请求限流：email 与 IP 双维度滑动窗口。
+// IP 上限放宽到 30：NAT/学校网络下多个家长共享出口 IP 是常态，
+// email 维度（3/10min）才是防骚扰主力。
 export const LOGIN_REQUEST_WINDOW_MS = 10 * 60 * 1000;
 export const MAX_LOGIN_REQUESTS_PER_EMAIL = 3;
-export const MAX_LOGIN_REQUESTS_PER_IP = 10;
+export const MAX_LOGIN_REQUESTS_PER_IP = 30;
 
 const BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 

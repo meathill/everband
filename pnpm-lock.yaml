@@ -117,6 +117,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.8(react@19.2.8)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.13.0
@@ -240,6 +243,10 @@ importers:
         version: link:../config
 
   packages/integrations:
+    dependencies:
+      '@dyqr/sdk':
+        specifier: ^0.1.1
+        version: 0.1.1
     devDependencies:
       '@everband/config':
         specifier: workspace:*
@@ -554,6 +561,9 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@dyqr/sdk@0.1.1':
+    resolution: {integrity: sha512-1NmzGsL878ZqUblSL0stsxwmIawK4bx/dLdLrn9gtshmg32oeBoaudElF+1m1ZgwSjqsAveyfNLQXmcVvhugTg==}
 
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
@@ -3047,6 +3057,8 @@ snapshots:
       '@types/react': 19.2.18
 
   '@drizzle-team/brocli@0.10.2': {}
+
+  '@dyqr/sdk@0.1.1': {}
 
   '@emnapi/runtime@1.11.3':
     dependencies:

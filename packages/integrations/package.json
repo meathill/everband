@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./email": "./src/email/index.ts"
+    "./email": "./src/email/index.ts",
+    "./dyqr": "./src/dyqr/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@everband/config": "workspace:*"
+  },
+  "dependencies": {
+    "@dyqr/sdk": "^0.1.1"
   }
 }

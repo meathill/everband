@@ -15,8 +15,10 @@ import { Route as NewOrgRouteImport } from './routes/new-org'
 import { Route as SelectOrgRouteImport } from './routes/select-org'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
+import { Route as DevResetRouteImport } from './routes/dev/reset'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OOrgIdRouteRouteImport } from './routes/o/$orgId/route'
+import { Route as PPublicSlugRouteImport } from './routes/p/$publicSlug'
 import { Route as OOrgIdIndexRouteImport } from './routes/o/$orgId/index'
 import { Route as OOrgIdAccountRouteImport } from './routes/o/$orgId/account'
 import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
@@ -59,6 +61,11 @@ const DevOutboxRoute = DevOutboxRouteImport.update({
   path: '/dev/outbox',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevResetRoute = DevResetRouteImport.update({
+  id: '/dev/reset',
+  path: '/dev/reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
@@ -67,6 +74,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
 const OOrgIdRouteRoute = OOrgIdRouteRouteImport.update({
   id: '/o/$orgId',
   path: '/o/$orgId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PPublicSlugRoute = PPublicSlugRouteImport.update({
+  id: '/p/$publicSlug',
+  path: '/p/$publicSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
@@ -134,7 +146,9 @@ export interface FileRoutesByFullPath {
   '/verify': typeof VerifyRoute
   '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
   '/dev/outbox': typeof DevOutboxRoute
+  '/dev/reset': typeof DevResetRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -154,7 +168,9 @@ export interface FileRoutesByTo {
   '/select-org': typeof SelectOrgRoute
   '/verify': typeof VerifyRoute
   '/dev/outbox': typeof DevOutboxRoute
+  '/dev/reset': typeof DevResetRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -176,7 +192,9 @@ export interface FileRoutesById {
   '/verify': typeof VerifyRoute
   '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
   '/dev/outbox': typeof DevOutboxRoute
+  '/dev/reset': typeof DevResetRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -199,7 +217,9 @@ export interface FileRouteTypes {
     | '/verify'
     | '/o/$orgId'
     | '/dev/outbox'
+    | '/dev/reset'
     | '/invite/$token'
+    | '/p/$publicSlug'
     | '/o/$orgId/account'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -219,7 +239,9 @@ export interface FileRouteTypes {
     | '/select-org'
     | '/verify'
     | '/dev/outbox'
+    | '/dev/reset'
     | '/invite/$token'
+    | '/p/$publicSlug'
     | '/o/$orgId/account'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -240,7 +262,9 @@ export interface FileRouteTypes {
     | '/verify'
     | '/o/$orgId'
     | '/dev/outbox'
+    | '/dev/reset'
     | '/invite/$token'
+    | '/p/$publicSlug'
     | '/o/$orgId/account'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -262,7 +286,9 @@ export interface RootRouteChildren {
   VerifyRoute: typeof VerifyRoute
   OOrgIdRouteRoute: typeof OOrgIdRouteRouteWithChildren
   DevOutboxRoute: typeof DevOutboxRoute
+  DevResetRoute: typeof DevResetRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  PPublicSlugRoute: typeof PPublicSlugRoute
   ApiOrgsOrgIdAttachmentsAttachmentIdRoute: typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
 }
 
@@ -310,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevOutboxRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev/reset': {
+      id: '/dev/reset'
+      path: '/dev/reset'
+      fullPath: '/dev/reset'
+      preLoaderRoute: typeof DevResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
@@ -322,6 +355,13 @@ declare module '@tanstack/react-router' {
       path: '/o/$orgId'
       fullPath: '/o/$orgId'
       preLoaderRoute: typeof OOrgIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$publicSlug': {
+      id: '/p/$publicSlug'
+      path: '/p/$publicSlug'
+      fullPath: '/p/$publicSlug'
+      preLoaderRoute: typeof PPublicSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/o/$orgId/': {
@@ -442,7 +482,9 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyRoute: VerifyRoute,
   OOrgIdRouteRoute: OOrgIdRouteRouteWithChildren,
   DevOutboxRoute: DevOutboxRoute,
+  DevResetRoute: DevResetRoute,
   InviteTokenRoute: InviteTokenRoute,
+  PPublicSlugRoute: PPublicSlugRoute,
   ApiOrgsOrgIdAttachmentsAttachmentIdRoute:
     ApiOrgsOrgIdAttachmentsAttachmentIdRoute,
 }

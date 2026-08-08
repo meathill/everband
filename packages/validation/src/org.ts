@@ -34,3 +34,22 @@ export const inviteStaffSchema = z.object({
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type InviteStaffInput = z.infer<typeof inviteStaffSchema>;
+
+// 公开主页（PRD §5.1 组织公开主页字段）
+export const publicSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/, "Use 3-48 lowercase letters, numbers and hyphens");
+
+export const updatePublicProfileSchema = z.object({
+  orgId: z.string().min(1),
+  enabled: z.boolean(),
+  publicSlug: publicSlugSchema.optional(),
+  publicDisplayName: z.string().trim().max(80).optional(),
+  publicSummary: z.string().trim().max(200).optional(),
+});
+
+export const publicPageSchema = z.object({
+  slug: publicSlugSchema,
+});
