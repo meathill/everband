@@ -4,12 +4,14 @@
 
 - [x] Cloudflare Email Service 真实发送（2026-08-08 已完成）：`CloudflareEmailSender`
       接入 `env.EMAIL.send()`（接口已留好：packages/core/src/email-sender.ts）、送达率试发
-- [ ] dyqr 平台 token：device flow 获取，入 Secrets Store，`DYQR_MODE=dyqr` 切换；
-      核查平台配额与单组织软上限数值（当前代码内 MAX_QR_PER_ORG=5）
-- [ ] 生产 D1/R2/Queues 资源创建与 wrangler.jsonc database_id 替换（app 与 tasks 同库）
-- [ ] Turnstile 真实 site key/secret（landing contact-section.tsx 与 wrangler vars）
+- [x] dyqr 平台 token（2026-08-09 已完成）：device flow 获取并入 Secret，
+      `DYQR_MODE=dyqr` 已切换、线上验证真实短链跳转
+      - [ ] 仍待核查：平台配额与单组织软上限数值（当前代码内 MAX_QR_PER_ORG=5）
+- [x] 生产 D1/R2/Queues 资源创建与 database_id 配置（2026-08-08 已完成）
+- [x] Turnstile 真实 site key/secret（2026-08-09 已完成，secret 走 Worker Secret）
 - [ ] 隐私声明、数据删除/导出、澳洲未成年人数据法律审查
-- [ ] Cloudflare preview smoke test（Worker 启动、D1 读写、R2 授权下载、队列触发）
+- [x] 线上冒烟：Worker 启动、D1 读写、R2 写入、队列消费、邮件发送、二维码跳转（2026-08-09）
+- [ ] 送达率持续观察（首批真实邀请后检查是否进垃圾箱）
 
 ## 功能补齐
 

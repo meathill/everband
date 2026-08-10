@@ -16,14 +16,15 @@
 
 ## 当前部署形态
 
+全部外部依赖均已接真实服务：
+
 | 项 | 生产 | 本地 dev / CI |
 | --- | --- | --- |
-| 邮件 | ✅ **真实发送**（Email Service binding，`Everband <no-reply@meathill.com>`，域名已验证 DKIM/DMARC） | `.dev.vars` 覆盖为 `EMAIL_MODE=dev`，落 `/dev/outbox`（e2e 依赖）；CI 用 mock |
-| 二维码（`DYQR_MODE=mock`） | 内存 mock，下载占位 SVG，不可真实扫码 | 同 mock |
-| Turnstile（测试 key） | 联系表单人机验证恒通过，仅影响 landing | 同测试 key |
+| 邮件 | ✅ 真实发送（Email Service binding，`Everband <no-reply@meathill.com>`，DKIM/DMARC 已验证） | `.dev.vars` 覆盖为 `EMAIL_MODE=dev`，落 `/dev/outbox`（e2e 依赖）；CI 用 mock |
+| 二维码 | ✅ 真实 dyqr 短链（`DYQR_MODE=dyqr` + `DYQR_TOKEN` Secret；token 缺失时自动回退 mock） | mock（内存实现，零外呼） |
+| Turnstile | ✅ 真实 widget（Invisible 模式，site key 内嵌前端、secret 走 Secret） | 官方测试 key/secret（恒通过） |
 
-生产模式下 `/dev/outbox` 显示空的 "Not available"、`/dev/reset` 返回 404，
-不泄露任何数据。剩余替身的转正路径见文末「生产化差距」。
+生产模式下 `/dev/outbox` 显示空的 "Not available"、`/dev/reset` 返回 404，不泄露任何数据。
 
 ## 前置条件
 
@@ -99,9 +100,10 @@ vite build + wrangler deploy）。
 
 按顺序验证一遍（对应 PRD §12.3 preview smoke test）：
 
-1. 打开 landing URL：六板块渲染、Contact 表单可提交（测试 key 恒通过）。
-2. 打开 app URL `/login`：输入邮箱 → 打开 `/dev/outbox` 取 magic link → 登录成功
-   （验证 Worker 启动 + D1 读写 + 邮件落库）。
+1. 打开 landing URL：六板块渲染、Contact 表单可提交（真实 Turnstile Invisible 模式，
+   页面上看不到验证框是正常的）。
+2. 打开 app URL `/login`：输入邮箱 → **去真实邮箱收登录码/magic link** → 登录成功
+   （验证 Worker 启动 + D1 读写 + Email Service 发送）。
 3. 创建组织 → Settings 建 group/term → Members 加一个学生。
 4. Import 页上传小 CSV → 确认导入 → 刷新看任务 `succeeded`
    （验证 R2 写入 + Queues 投递 + tasks 消费者）。
@@ -122,17 +124,16 @@ vite build + wrangler deploy）。
 
 ## 生产化差距（正式面向用户前必须完成）
 
-按优先级：
+三项外部依赖已全部转正（2026-08-09 线上验证通过）：
 
-1. ~~真实邮件发送~~ ✅ 已完成（2026-08-08）：meathill.com 已 onboard Email Sending，
-   `CloudflareEmailSender` 经 `send_email` binding 发送，发送失败会反馈到 UI 并记日志。
-2. **Turnstile 真实 key**：Dashboard 创建 widget，替换
-   `apps/landing/src/components/contact-section.tsx` 的 `TURNSTILE_SITE_KEY`
-   与 landing wrangler.jsonc 的 `TURNSTILE_SECRET`（生产应改用
-   `wrangler secret put TURNSTILE_SECRET`，不留在 vars 里）。
-3. **dyqr 真实短链**：device flow 获取平台 token →
-   `wrangler secret put DYQR_TOKEN`（只对 app）→ `DYQR_MODE` 切 `dyqr`。
-4. 隐私声明与法律审查、送达率验证（PRD §14）。
+1. ~~真实邮件发送~~ ✅ meathill.com 已 onboard Email Sending，`CloudflareEmailSender`
+   经 `send_email` binding 发送，失败会反馈 UI 并记日志。
+2. ~~Turnstile 真实 key~~ ✅ Invisible 模式 widget，site key 内嵌前端、
+   secret 存 Worker Secret；生产联系表单提交已验证通过 siteverify。
+3. ~~dyqr 真实短链~~ ✅ `DYQR_MODE=dyqr` + `DYQR_TOKEN` Secret；已生成真实短链
+   并验证 302 跳转到公开主页。
+
+剩余：隐私声明与法律审查、送达率持续观察（PRD §14）。
 
 ## 环境变量与密钥一览
 
