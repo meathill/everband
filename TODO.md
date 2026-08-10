@@ -10,6 +10,8 @@
 - [x] 生产 D1/R2/Queues 资源创建与 database_id 配置（2026-08-08 已完成）
 - [x] Turnstile 真实 site key/secret（2026-08-09 已完成，secret 走 Worker Secret）
 - [ ] 隐私声明、数据删除/导出、澳洲未成年人数据法律审查
+      - 2026-08-10：/privacy /terms 英文初稿已上线（issue #3），法律审查后修订文本；
+        自助数据删除/导出仍未实现（政策中如实写 contact us）
 - [x] 线上冒烟：Worker 启动、D1 读写、R2 写入、队列消费、邮件发送、二维码跳转（2026-08-09）
 - [ ] 送达率持续观察（首批真实邀请后检查是否进垃圾箱）
 
@@ -20,8 +22,10 @@
 - [ ] 公开主页 logo 上传（字段已建：publicLogoAttachmentId）
 - [ ] occurrence 单次取消/调整 UI（core 已支持 status=cancelled）
 - [ ] roster 手工替换/锁定 UI（schema 已支持 manual/isLocked）
-- [ ] staff Overview 仪表盘（近期活动、待处理换班、导入任务、发送状态）
-- [ ] Landing 多页面拆分与 SEO 细化（当前单页六板块）
+- [x] staff Overview 仪表盘（2026-08-10 已完成）：四卡聚合 + 导航入口，
+      parent Home 完整内容仍待做
+- [ ] Landing 多页面拆分与 SEO 细化（2026-08-10 部分完成：已抽 SiteHeader/SiteFooter，
+      新增 /privacy /terms；营销板块拆分与 SEO 细化仍留）
 - [ ] Cloudflare Workflows：活动提醒等真正长周期任务（排练展开为幂等同步执行，暂不需要）
 
 ## 近期扩展（PRD §4.3，设计已定稿）

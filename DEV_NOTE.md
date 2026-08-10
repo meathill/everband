@@ -65,6 +65,22 @@
 - **移动端触控热区**：coss Button 的 `pointer-coarse:after` 扩展热区会在紧凑布局里相互
   遮挡（Playwright mobile 点击被拦截）。紧凑按钮组要么留够间距，要么像 e2e 那样用键盘激活。
 
+## 验收修复轮（2026-08-10，issue 1-5 + staff Overview）
+
+- **受控输入的水合竞态**：React 受控 `<input value={state}>` 在水合完成前的键入会被首个
+  受控渲染清空（慢网络真实可复现，Playwright 稳定暴露）。对"落地即填"的关键表单
+  （如 /new-org）用非受控 `name` 属性 + FormData 读值。其他表单遇到同类报错照此改。
+- **登录回跳机制**：`redirectPathSchema`（packages/validation/src/auth.ts）是防开放重定向的
+  单一事实来源（仅站内绝对路径，拒 `//` 与 `/\` 变体）。login/verify 的 validateSearch 用
+  `.optional().catch(undefined)` 静默丢弃非法参数；magic link 邮件链接透传 redirect；
+  invite 链接不带该参数，激活跳 /o/{orgId} 的行为不变（finishLogin 未动）。
+- **404 页**：两站 router.tsx 的 `createRouter({ defaultNotFoundComponent })`。SSR 对未知
+  路径返回 404 状态码但正文由客户端水合渲染（curl 看不到文案，浏览器正常）。
+- **favicon**：`scripts/generate-favicon.ts` 零依赖生成 32x32 ICO（含 OKLCH→sRGB 换算，
+  emerald-600 ≈ #007a43），产物入库放 `apps/*/public/`（Vite publicDir → Workers assets）。
+  改品牌色后重跑脚本并同步两份 favicon.svg。SVG 需含 `<title>`（biome a11y）。
+- **landing 尾斜杠**：Workers assets 对预渲染目录页返回 `/terms → 307 → /terms/`，正常行为。
+
 ## 工程坑位记录
 
 - **TS7 (tsgo) 的 extends 解析**：`@everband/config/tsconfig.*.json` 必须出现在每个包的 devDependencies 里，否则 extends 静默失败、skipLibCheck 等选项全部丢失，报出一堆 node_modules d.ts 错误。
