@@ -1,15 +1,22 @@
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
+import { redirectPathSchema } from "@everband/validation";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { requestLoginCode, verifyLoginOtp } from "~/server/auth.ts";
 
+const LANDING_URL = "https://everband.meathill.com";
+
 export const Route = createFileRoute("/login")({
+  // 非法 redirect 参数静默丢弃（防开放重定向），登录仍可完成
+  validateSearch: z.object({ redirect: redirectPathSchema.optional().catch(undefined) }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -21,7 +28,7 @@ function LoginPage() {
     setError(null);
     setIsBusy(true);
     try {
-      const result = await requestLoginCode({ data: { email } });
+      const result = await requestLoginCode({ data: { email, redirect: search.redirect } });
       if (result.ok) {
         setStep("otp");
       } else {
@@ -39,7 +46,7 @@ function LoginPage() {
     try {
       const result = await verifyLoginOtp({ data: { email, otp } });
       if (result.ok) {
-        await navigate({ to: result.redirectTo });
+        await navigate({ to: search.redirect ?? result.redirectTo });
       } else {
         setError(result.error);
       }
@@ -103,6 +110,24 @@ function LoginPage() {
       )}
 
       {error && <p className="text-sm text-destructive-foreground">{error}</p>}
+
+      <p className="text-xs text-muted-foreground">
+        By signing in you agree to our{" "}
+        <a
+          href={`${LANDING_URL}/terms`}
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a
+          href={`${LANDING_URL}/privacy`}
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Privacy Policy
+        </a>
+        .
+      </p>
     </main>
   );
 }

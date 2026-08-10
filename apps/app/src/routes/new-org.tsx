@@ -1,11 +1,19 @@
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
 import { ORGANIZATION_TYPES } from "@everband/validation";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { getCurrentUser } from "~/server/auth.ts";
 import { createOrganization } from "~/server/org.ts";
 
 export const Route = createFileRoute("/new-org")({
+  // 未登录先去登录，登录后回跳本页（issue #1）
+  loader: async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw redirect({ to: "/login", search: { redirect: "/new-org" } });
+    }
+  },
   component: NewOrgPage,
 });
 
@@ -35,7 +43,13 @@ function NewOrgPage() {
       const result = await createOrganization({ data: { name, type, timezone } });
       await navigate({ to: "/o/$orgId", params: { orgId: result.orgId } });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Something went wrong. Try again.");
+      // loader 已挡未登录；这里兜底 session 中途过期的情形
+      const message = cause instanceof Error ? cause.message : null;
+      setError(
+        message === "unauthenticated"
+          ? "session-expired"
+          : (message ?? "Something went wrong. Try again."),
+      );
     } finally {
       setIsBusy(false);
     }
@@ -98,7 +112,20 @@ function NewOrgPage() {
         </Button>
       </form>
 
-      {error && <p className="text-sm text-destructive-foreground">{error}</p>}
+      {error === "session-expired" ? (
+        <p className="text-sm text-muted-foreground">
+          Your session has expired.{" "}
+          <Link
+            to="/login"
+            search={{ redirect: "/new-org" }}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Sign in to continue
+          </Link>
+        </p>
+      ) : (
+        error && <p className="text-sm text-destructive-foreground">{error}</p>
+      )}
     </main>
   );
 }

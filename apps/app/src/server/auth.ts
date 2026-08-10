@@ -72,7 +72,9 @@ export const requestLoginCode = createServerFn({ method: "POST" })
     });
 
     const origin = getRequestUrl().origin;
-    const link = `${origin}/verify?token=${token}`;
+    // redirect 已过 redirectPathSchema 校验（站内路径），登录后由 /verify 优先跳回
+    const redirectSuffix = data.redirect ? `&redirect=${encodeURIComponent(data.redirect)}` : "";
+    const link = `${origin}/verify?token=${token}${redirectSuffix}`;
     const sent = await getEmailSender(db).send({
       to: data.email,
       subject: `Your Everband sign-in code: ${otp}`,
