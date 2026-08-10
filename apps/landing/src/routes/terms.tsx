@@ -40,10 +40,10 @@ function TermsPage() {
 
         <Section title="The service">
           <p>
-            Everband is a tool for community bands, teams and clubs to manage members and
-            families, publish events with updates and attachments, run rehearsal helper rosters,
-            collect RSVPs and sign-ups, import members from CSV files, and send email updates. By
-            creating an account or using Everband you agree to these terms.
+            Everband is a tool for community bands, teams and clubs to manage members and families,
+            publish events with updates and attachments, run rehearsal helper rosters, collect RSVPs
+            and sign-ups, import members from CSV files, and send email updates. By creating an
+            account or using Everband you agree to these terms.
           </p>
         </Section>
 
@@ -52,26 +52,26 @@ function TermsPage() {
             <li>Accounts are held by adults. You must be 18 or older to hold an account.</li>
             <li>
               You are responsible for the accuracy of the information you add about your
-              organization and its members, and for having the right to add it — including
-              consent from the families whose details you enter.
+              organization and its members, and for having the right to add it — including consent
+              from the families whose details you enter.
             </li>
             <li>
               Sign-in is by one-time codes sent to your email. Keep access to your email account
               secure; anyone with access to your email can sign in as you.
             </li>
             <li>
-              Organization owners control who has staff access. Review staff membership when
-              people leave your organization.
+              Organization owners control who has staff access. Review staff membership when people
+              leave your organization.
             </li>
           </ul>
         </Section>
 
         <Section title="Acceptable use">
           <p>
-            Use Everband only to run your own organization. Do not use it to send unsolicited
-            email, to store or distribute unlawful content, to attempt to access other
-            organizations' data, or to interfere with the operation of the service. We may
-            suspend accounts that violate these rules.
+            Use Everband only to run your own organization. Do not use it to send unsolicited email,
+            to store or distribute unlawful content, to attempt to access other organizations' data,
+            or to interfere with the operation of the service. We may suspend accounts that violate
+            these rules.
           </p>
         </Section>
 
@@ -88,27 +88,27 @@ function TermsPage() {
 
         <Section title="Availability and disclaimer">
           <p>
-            Everband is provided "as is" and "as available", without warranties of any kind. We
-            work to keep the service reliable, but we do not guarantee uninterrupted availability
-            or that emails will always be delivered — email delivery ultimately depends on
-            recipients' mail providers.
+            Everband is provided "as is" and "as available", without warranties of any kind. We work
+            to keep the service reliable, but we do not guarantee uninterrupted availability or that
+            emails will always be delivered — email delivery ultimately depends on recipients' mail
+            providers.
           </p>
         </Section>
 
         <Section title="Limitation of liability">
           <p>
-            To the maximum extent permitted by law, Everband is not liable for indirect,
-            incidental or consequential damages arising from your use of the service. Nothing in
-            these terms excludes rights that cannot be excluded under applicable law, including
-            the Australian Consumer Law.
+            To the maximum extent permitted by law, Everband is not liable for indirect, incidental
+            or consequential damages arising from your use of the service. Nothing in these terms
+            excludes rights that cannot be excluded under applicable law, including the Australian
+            Consumer Law.
           </p>
         </Section>
 
         <Section title="Termination">
           <p>
             You may stop using Everband at any time and ask us to delete your organization's data
-            (see the Privacy Policy). We may suspend or terminate access for breach of these
-            terms, with notice where practical.
+            (see the Privacy Policy). We may suspend or terminate access for breach of these terms,
+            with notice where practical.
           </p>
         </Section>
 

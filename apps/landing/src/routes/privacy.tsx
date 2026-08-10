@@ -41,8 +41,8 @@ function PrivacyPage() {
         <Section title="Who we are">
           <p>
             Everband helps community bands, teams and clubs manage members, events, rehearsals and
-            parent rosters. This policy explains what information we collect, how we use it, and
-            the choices you have. It applies to the Everband website and application.
+            parent rosters. This policy explains what information we collect, how we use it, and the
+            choices you have. It applies to the Everband website and application.
           </p>
         </Section>
 
@@ -50,8 +50,8 @@ function PrivacyPage() {
           <ul className="flex list-disc flex-col gap-2 pl-5">
             <li>
               <strong className="text-foreground">Account information.</strong> Adults hold the
-              accounts. We collect your email address to sign you in and to send you the emails
-              your organization asks us to send.
+              accounts. We collect your email address to sign you in and to send you the emails your
+              organization asks us to send.
             </li>
             <li>
               <strong className="text-foreground">Organization records.</strong> Staff members add
@@ -67,8 +67,7 @@ function PrivacyPage() {
             <li>
               <strong className="text-foreground">Technical information.</strong> We keep limited
               operational logs (such as the IP address of sign-in requests) to protect accounts
-              against abuse. We do not write message contents or other sensitive details into
-              logs.
+              against abuse. We do not write message contents or other sensitive details into logs.
             </li>
           </ul>
         </Section>
@@ -77,43 +76,42 @@ function PrivacyPage() {
           <p>
             We use information only to provide the service: signing you in, showing your
             organization its own records, sending the emails your organization's staff compose
-            (event updates, invitations, rosters), and keeping an audit history of staff actions.
-            We do not sell personal information or use it for advertising.
+            (event updates, invitations, rosters), and keeping an audit history of staff actions. We
+            do not sell personal information or use it for advertising.
           </p>
         </Section>
 
         <Section title="Data isolation">
           <p>
-            Each organization's data is isolated. Staff and parents only see their own
-            organization. Every request is checked on the server against your membership and role
-            before any data is returned.
+            Each organization's data is isolated. Staff and parents only see their own organization.
+            Every request is checked on the server against your membership and role before any data
+            is returned.
           </p>
         </Section>
 
         <Section title="Attachments and files">
           <p>
             Attachments are private. Files are stored in private storage and are never exposed
-            through long-lived public links. Every download is checked against who is allowed to
-            see it. Contact details are never public, and there are no public event pages.
+            through long-lived public links. Every download is checked against who is allowed to see
+            it. Contact details are never public, and there are no public event pages.
           </p>
         </Section>
 
         <Section title="Sign-in security">
           <p>
             We use passwordless sign-in: a one-time code and magic link sent to your email. Codes
-            and links expire after 10 minutes, can only be used once, and requests are
-            rate-limited.
+            and links expire after 10 minutes, can only be used once, and requests are rate-limited.
           </p>
         </Section>
 
         <Section title="Email and unsubscribe">
           <p>
-            Organizations send operational emails through Everband, such as event updates and
-            roster reminders. You can unsubscribe from these at any time using the link in each
-            email. Sign-in and security emails are not affected by unsubscribing, because they are
-            required to access your account. We record who each email was sent to and whether it
-            was delivered, so staff can see delivery status; we do not log the full content of
-            messages alongside recipient details.
+            Organizations send operational emails through Everband, such as event updates and roster
+            reminders. You can unsubscribe from these at any time using the link in each email.
+            Sign-in and security emails are not affected by unsubscribing, because they are required
+            to access your account. We record who each email was sent to and whether it was
+            delivered, so staff can see delivery status; we do not log the full content of messages
+            alongside recipient details.
           </p>
         </Section>
 
@@ -129,8 +127,8 @@ function PrivacyPage() {
           <p>
             Everband is designed so that children do not use it directly. Students never sign in,
             hold no accounts, and cannot be contacted through the platform. Information about
-            students is added and controlled by the adults who run the organization, and we keep
-            it to the minimum needed.
+            students is added and controlled by the adults who run the organization, and we keep it
+            to the minimum needed.
           </p>
         </Section>
 

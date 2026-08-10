@@ -29,18 +29,23 @@ const COMMON_TIMEZONES = [
 
 function NewOrgPage() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [type, setType] = useState<(typeof ORGANIZATION_TYPES)[number]>("band");
-  const [timezone, setTimezone] = useState("Australia/Sydney");
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent) {
+  // 非受控 + FormData 读值：受控输入在水合前的键入会被 state 重置清空（慢网络真实可复现）
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     setError(null);
     setIsBusy(true);
     try {
-      const result = await createOrganization({ data: { name, type, timezone } });
+      const result = await createOrganization({
+        data: {
+          name: String(formData.get("name") ?? ""),
+          type: String(formData.get("type") ?? "band") as (typeof ORGANIZATION_TYPES)[number],
+          timezone: String(formData.get("timezone") ?? "Australia/Sydney"),
+        },
+      });
       await navigate({ to: "/o/$orgId", params: { orgId: result.orgId } });
     } catch (cause) {
       // loader 已挡未登录；这里兜底 session 中途过期的情形
@@ -69,10 +74,9 @@ function NewOrgPage() {
           <span className="text-sm font-medium text-foreground">Organization name</span>
           <Input
             id="org-name"
+            name="name"
             required
             autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
             placeholder="Riverside Community Band"
           />
         </label>
@@ -80,9 +84,9 @@ function NewOrgPage() {
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Type</span>
           <select
+            name="type"
             className="h-9 rounded-md border border-input bg-popover px-3 text-base text-foreground sm:h-8 sm:text-sm"
-            value={type}
-            onChange={(e) => setType(e.target.value as (typeof ORGANIZATION_TYPES)[number])}
+            defaultValue="band"
           >
             {ORGANIZATION_TYPES.map((value) => (
               <option key={value} value={value}>
@@ -95,9 +99,9 @@ function NewOrgPage() {
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-foreground">Timezone</span>
           <select
+            name="timezone"
             className="h-9 rounded-md border border-input bg-popover px-3 text-base text-foreground sm:h-8 sm:text-sm"
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
+            defaultValue="Australia/Sydney"
           >
             {COMMON_TIMEZONES.map((value) => (
               <option key={value} value={value}>

@@ -9,8 +9,8 @@ function NotFoundPage() {
         This page isn't available
       </h1>
       <p className="text-muted-foreground">
-        The page you're looking for doesn't exist or may have moved. Check the address, or head
-        back to the start.
+        The page you're looking for doesn't exist or may have moved. Check the address, or head back
+        to the start.
       </p>
       <a href="/" className="text-primary underline-offset-4 hover:underline">
         Back to home

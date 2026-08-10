@@ -86,7 +86,10 @@ export async function getStaffOverviewData(
           schema.rehearsalOccurrences,
           eq(schema.rosterAssignments.occurrenceId, schema.rehearsalOccurrences.id),
         )
-        .innerJoin(schema.households, eq(schema.rosterAssignments.householdId, schema.households.id))
+        .innerJoin(
+          schema.households,
+          eq(schema.rosterAssignments.householdId, schema.households.id),
+        )
         .where(
           and(
             eq(schema.swapRequests.organizationId, orgId),
