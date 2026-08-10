@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ContactSection } from "~/components/contact-section.tsx";
+import { SiteFooter } from "~/components/site-footer.tsx";
+import { SiteHeader } from "~/components/site-header.tsx";
+import { APP_URL } from "~/lib/config.ts";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -8,39 +11,10 @@ export const Route = createFileRoute("/")({
 // Landing 六板块（PRD §7.1）：Home / How it works / Use cases / Features /
 // Privacy & Safety / Contact。不展示未实现能力（器材/财务/学生账号/公开活动）。
 
-const APP_URL = import.meta.env.DEV ? "http://localhost:3000" : "https://everband-app.meathill.com";
-
 function Home() {
   return (
     <div className="flex flex-col">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <span className="font-semibold text-foreground">Everband</span>
-          <nav className="hidden items-center gap-5 text-sm text-muted-foreground sm:flex">
-            <a href="#how" className="hover:text-foreground">
-              How it works
-            </a>
-            <a href="#use-cases" className="hover:text-foreground">
-              Use cases
-            </a>
-            <a href="#features" className="hover:text-foreground">
-              Features
-            </a>
-            <a href="#privacy" className="hover:text-foreground">
-              Privacy
-            </a>
-            <a href="#contact" className="hover:text-foreground">
-              Contact
-            </a>
-          </nav>
-          <a
-            href={`${APP_URL}/new-org`}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-          >
-            Create organization
-          </a>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main>
         {/* Home */}
@@ -185,12 +159,7 @@ function Home() {
         <ContactSection appUrl={APP_URL} />
       </main>
 
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6 text-sm text-muted-foreground">
-          <span>Everband</span>
-          <span>Built for the people who keep community groups running.</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

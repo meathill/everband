@@ -63,7 +63,7 @@ pnpm -C apps/app exec wrangler queues create everband-dlq
 
 ## 二、部署前的代码调整
 
-1. **Landing 的应用站地址**：`apps/landing/src/routes/index.tsx` 顶部的
+1. **Landing 的应用站地址**：`apps/landing/src/lib/config.ts` 的
    `APP_URL`（dev 走 localhost，生产已指向 everband-app.meathill.com；换域名时同步改）。
 2. 自定义域名：各 wrangler.jsonc 的 `routes`（`custom_domain: true`）已配置，
    换域名直接改 pattern 重新 deploy 即可。
