@@ -1,6 +1,7 @@
+import { formatOrgTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   createRehearsalSeries,
@@ -31,14 +32,17 @@ type Loaded = Awaited<ReturnType<typeof getRehearsalOverview>> &
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+const orgRoute = getRouteApi("/o/$orgId");
+
 function RehearsalsPage() {
   const data = Route.useLoaderData() as Loaded;
+  const { org } = orgRoute.useLoaderData();
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-3xl font-semibold tracking-tight text-foreground">Rehearsals</h1>
       {data.isStaff && <CreateSeriesForm terms={data.terms} groups={data.groups} />}
       {data.isStaff && data.pendingSwaps.length > 0 && <PendingSwaps data={data} />}
-      <OccurrenceList data={data} />
+      <OccurrenceList data={data} timezone={org.timezone} />
     </div>
   );
 }
@@ -263,7 +267,7 @@ function SwapDecisionRow({
   );
 }
 
-function OccurrenceList({ data }: { data: Loaded }) {
+function OccurrenceList({ data, timezone }: { data: Loaded; timezone: string }) {
   const { orgId } = Route.useParams();
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -297,7 +301,7 @@ function OccurrenceList({ data }: { data: Loaded }) {
             >
               <div className="flex items-center justify-between">
                 <p className="font-medium text-foreground num">
-                  {occurrence.localDate} · {new Date(occurrence.startsAtUtc).toLocaleTimeString()}
+                  {occurrence.localDate} · {formatOrgTime(occurrence.startsAtUtc, timezone)}
                   {occurrence.location ? ` · ${occurrence.location}` : ""}
                 </p>
                 {occurrence.status === "cancelled" && (

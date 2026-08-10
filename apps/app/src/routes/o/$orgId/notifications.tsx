@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { formatOrgDateTime } from "@everband/domain";
+import { createFileRoute, getRouteApi, Link, redirect } from "@tanstack/react-router";
 import { listEmailSends, listMyNotifications, markNotificationsRead } from "~/server/notify.ts";
 import { getOrgContext } from "~/server/org.ts";
 
@@ -22,8 +23,11 @@ export const Route = createFileRoute("/o/$orgId/notifications")({
   component: NotificationsPage,
 });
 
+const orgRoute = getRouteApi("/o/$orgId");
+
 function NotificationsPage() {
   const { notifications, sends, isStaff } = Route.useLoaderData();
+  const { org } = orgRoute.useLoaderData();
 
   return (
     <div className="flex flex-col gap-8">
@@ -58,7 +62,7 @@ function NotificationsPage() {
                   )}
                 </div>
                 <span className="text-muted-foreground num">
-                  {new Date(notification.createdAt).toLocaleString()}
+                  {formatOrgDateTime(notification.createdAt, org.timezone)}
                 </span>
               </li>
             ))}
@@ -93,7 +97,7 @@ function NotificationsPage() {
                   {sends.map((send) => (
                     <tr key={send.id} className="border-b border-border num">
                       <td className="py-2 pr-4 text-foreground">
-                        {new Date(send.createdAt).toLocaleString()}
+                        {formatOrgDateTime(send.createdAt, org.timezone)}
                       </td>
                       <td className="py-2 pr-4 text-foreground">{send.subject}</td>
                       <td className="py-2 pr-4">

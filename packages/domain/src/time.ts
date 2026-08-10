@@ -53,3 +53,27 @@ export function toLocalDateString(utcMs: number, timezone: string): string {
   const day = String(local.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// 组织时区下的展示格式化（en-US 风格，与既有 toLocaleString 输出对齐）。
+// 显示端必须使用组织时区而非浏览器本地时区，否则 staff 看到的时间与输入不一致。
+export function formatOrgDateTime(utcMs: number, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(utcMs);
+}
+
+// 组织时区下的时刻显示（仅时间，用于排练 occurrence 等已有本地日期的场景）
+export function formatOrgTime(utcMs: number, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(utcMs);
+}

@@ -1,4 +1,5 @@
 import type { StaffOverviewData } from "@everband/core";
+import { formatOrgDateTime } from "@everband/domain";
 import { createFileRoute, getRouteApi, Link, redirect } from "@tanstack/react-router";
 import { getOrgContext } from "~/server/org.ts";
 import { getStaffOverview } from "~/server/overview.ts";
@@ -52,13 +53,17 @@ function OrgOverview() {
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-semibold tracking-tight text-foreground">{org.name}</h1>
       <div className="grid gap-6 lg:grid-cols-2">
-        <UpcomingEventsCard orgId={org.id} events={overview.upcomingEvents} />
+        <UpcomingEventsCard
+          orgId={org.id}
+          timezone={org.timezone}
+          events={overview.upcomingEvents}
+        />
         <PendingSwapsCard
           orgId={org.id}
           swaps={overview.pendingSwaps}
           count={overview.pendingSwapCount}
         />
-        <ImportJobsCard orgId={org.id} jobs={overview.recentImportJobs} />
+        <ImportJobsCard orgId={org.id} timezone={org.timezone} jobs={overview.recentImportJobs} />
         <EmailSendsCard orgId={org.id} sends={overview.recentEmailSends} />
       </div>
     </div>
@@ -95,9 +100,11 @@ function Card({
 
 function UpcomingEventsCard({
   orgId,
+  timezone,
   events,
 }: {
   orgId: string;
+  timezone: string;
   events: StaffOverviewData["upcomingEvents"];
 }) {
   return (
@@ -116,7 +123,7 @@ function UpcomingEventsCard({
                 {event.title}
               </Link>
               <span className="shrink-0 text-muted-foreground num">
-                {new Date(event.startsAtUtc).toLocaleString()}
+                {formatOrgDateTime(event.startsAtUtc, timezone)}
               </span>
             </li>
           ))}
@@ -160,9 +167,11 @@ function PendingSwapsCard({
 
 function ImportJobsCard({
   orgId,
+  timezone,
   jobs,
 }: {
   orgId: string;
+  timezone: string;
   jobs: StaffOverviewData["recentImportJobs"];
 }) {
   return (
@@ -174,7 +183,7 @@ function ImportJobsCard({
           {jobs.map((job) => (
             <li key={job.id} className="flex items-center justify-between gap-3 text-sm">
               <span className="text-muted-foreground num">
-                {new Date(job.createdAt).toLocaleString()}
+                {formatOrgDateTime(job.createdAt, timezone)}
               </span>
               <span className="flex shrink-0 items-center gap-2">
                 <StatusText status={job.status} />

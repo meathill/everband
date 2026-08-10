@@ -1,6 +1,6 @@
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { PublicProfileSection } from "~/components/public-profile-section.tsx";
 import { createTerm, listTerms } from "~/server/members.ts";
@@ -23,8 +23,11 @@ export const Route = createFileRoute("/o/$orgId/settings")({
   component: SettingsPage,
 });
 
+const orgRoute = getRouteApi("/o/$orgId");
+
 function SettingsPage() {
   const { members, terms, publicProfile } = Route.useLoaderData();
+  const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -91,7 +94,7 @@ function SettingsPage() {
 
       <TermsSection terms={terms} />
 
-      <PublicProfileSection orgId={orgId} data={publicProfile} />
+      <PublicProfileSection orgId={orgId} timezone={org.timezone} data={publicProfile} />
     </div>
   );
 }

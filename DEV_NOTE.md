@@ -81,6 +81,18 @@
   改品牌色后重跑脚本并同步两份 favicon.svg。SVG 需含 `<title>`（biome a11y）。
 - **landing 尾斜杠**：Workers assets 对预渲染目录页返回 `/terms → 307 → /terms/`，正常行为。
 
+## 验收修复轮（2026-08-10，issue 1-5 复验后的第二轮）
+
+- **时间显示必须用组织时区**：输入/存储按组织时区（`localDateTimeToUtcMs`），显示端一律
+  `formatOrgDateTime/formatOrgTime`（`packages/domain/src/time.ts`，Intl + timeZone）。
+  禁止再用 `new Date(utcMs).toLocaleString()`（浏览器本地时区）——实测悉尼组织 + 非悉尼
+  浏览器时，staff 输入 18:00 会显示成 4:00 PM。页面取时区统一走
+  `getRouteApi("/o/$orgId").useLoaderData().org.timezone`。
+- **应用站 header 移动端**：OrgLayout 的 header 用 `flex flex-wrap` 换行而不是固定单行，
+  否则 staff 两组导航（Overview…Account + Members…Settings）在手机宽度下横向溢出
+  （scrollWidth 可达视口 2.3 倍）。对比 landing 的 `hidden sm:flex` 折叠策略，应用站
+  导航项太多且均为运营入口，换行比汉堡菜单改动更小。
+
 ## 工程坑位记录
 
 - **TS7 (tsgo) 的 extends 解析**：`@everband/config/tsconfig.*.json` 必须出现在每个包的 devDependencies 里，否则 extends 静默失败、skipLibCheck 等选项全部丢失，报出一堆 node_modules d.ts 错误。

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { toLocalDateString, upcomingWindow } from "../src/time.ts";
+import {
+  formatOrgDateTime,
+  formatOrgTime,
+  toLocalDateString,
+  upcomingWindow,
+} from "../src/time.ts";
 
 // 悉尼时区：AEST=UTC+10，AEDT=UTC+11（10 月第一个周日 → 4 月第一个周日）
 
@@ -37,5 +42,22 @@ describe("toLocalDateString", () => {
       "2026-08-09",
     );
     expect(toLocalDateString(Date.parse("2026-08-08T15:00:00Z"), "UTC")).toBe("2026-08-08");
+  });
+});
+
+describe("formatOrgDateTime / formatOrgTime（显示端组织时区）", () => {
+  it("按组织时区格式化，不受运行环境本地时区影响", () => {
+    // 2026-08-15T08:00:00Z = 悉尼 2026-08-15 18:00 (AEST)
+    const utcMs = Date.parse("2026-08-15T08:00:00Z");
+    expect(formatOrgDateTime(utcMs, "Australia/Sydney")).toBe("8/15/2026, 6:00 PM");
+    expect(formatOrgTime(utcMs, "Australia/Sydney")).toBe("6:00 PM");
+    // 同一时刻在 UTC 显示不同
+    expect(formatOrgDateTime(utcMs, "UTC")).toBe("8/15/2026, 8:00 AM");
+  });
+
+  it("跨 AEDT（夏令时）仍正确", () => {
+    // 2026-10-07T07:00:00Z = 悉尼 2026-10-07 18:00 (AEDT, UTC+11)
+    const utcMs = Date.parse("2026-10-07T07:00:00Z");
+    expect(formatOrgDateTime(utcMs, "Australia/Sydney")).toBe("10/7/2026, 6:00 PM");
   });
 });

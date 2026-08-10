@@ -1,6 +1,7 @@
+import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { EventFormSection } from "~/components/event-form-section.tsx";
 import { uploadEventAttachment } from "~/server/attachments.ts";
@@ -31,8 +32,11 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
   component: EventDetailPage,
 });
 
+const orgRoute = getRouteApi("/o/$orgId");
+
 function EventDetailPage() {
   const { event, groups, updates, attachments, role, formData, results } = Route.useLoaderData();
+  const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
   const router = useRouter();
   const isStaff = role === "owner" || role === "staff";
@@ -57,8 +61,8 @@ function EventDetailPage() {
           </span>
         </div>
         <p className="text-muted-foreground num">
-          {new Date(event.startsAtUtc).toLocaleString()}
-          {event.endsAtUtc ? ` → ${new Date(event.endsAtUtc).toLocaleString()}` : ""}
+          {formatOrgDateTime(event.startsAtUtc, org.timezone)}
+          {event.endsAtUtc ? ` → ${formatOrgDateTime(event.endsAtUtc, org.timezone)}` : ""}
           {event.location ? ` · ${event.location}` : ""}
         </p>
         <p className="text-sm text-muted-foreground">
@@ -88,9 +92,15 @@ function EventDetailPage() {
         {message && <p className="text-sm text-destructive-foreground">{message}</p>}
       </header>
 
-      <UpdatesSection updates={updates} isStaff={isStaff} eventId={event.id} />
+      <UpdatesSection
+        updates={updates}
+        isStaff={isStaff}
+        eventId={event.id}
+        timezone={org.timezone}
+      />
       <EventFormSection
         orgId={orgId}
+        timezone={org.timezone}
         eventId={event.id}
         isStaff={isStaff}
         formData={formData}
@@ -107,10 +117,12 @@ function UpdatesSection({
   updates,
   isStaff,
   eventId,
+  timezone,
 }: {
   updates: Detail["updates"];
   isStaff: boolean;
   eventId: string;
+  timezone: string;
 }) {
   const { orgId } = Route.useParams();
   const router = useRouter();
@@ -223,10 +235,10 @@ function UpdatesSection({
               <p className="whitespace-pre-wrap text-sm text-foreground">{update.body}</p>
               <p className="text-xs text-muted-foreground">
                 {update.status === "published" && update.publishedAt
-                  ? `Published ${new Date(update.publishedAt).toLocaleString()}`
+                  ? `Published ${formatOrgDateTime(update.publishedAt, timezone)}`
                   : "Draft"}
                 {update.lastEditedAt
-                  ? ` · edited ${new Date(update.lastEditedAt).toLocaleString()}`
+                  ? ` · edited ${formatOrgDateTime(update.lastEditedAt, timezone)}`
                   : ""}
               </p>
             </li>

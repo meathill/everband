@@ -1,3 +1,4 @@
+import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
 import type { FORM_KINDS, FormPayload } from "@everband/validation";
@@ -16,12 +17,14 @@ type Results = Awaited<ReturnType<typeof listFormResults>>;
 
 export function EventFormSection({
   orgId,
+  timezone,
   eventId,
   isStaff,
   formData,
   results,
 }: {
   orgId: string;
+  timezone: string;
   eventId: string;
   isStaff: boolean;
   formData: FormData;
@@ -39,7 +42,14 @@ export function EventFormSection({
       ) : (
         <>
           <ParentFormPanel orgId={orgId} formData={formData} />
-          {isStaff && <StaffResultsPanel orgId={orgId} form={formData.form} results={results} />}
+          {isStaff && (
+            <StaffResultsPanel
+              orgId={orgId}
+              timezone={timezone}
+              form={formData.form}
+              results={results}
+            />
+          )}
         </>
       )}
     </section>
@@ -268,10 +278,12 @@ function ParentFormPanel({ orgId, formData }: { orgId: string; formData: FormDat
 
 function StaffResultsPanel({
   orgId,
+  timezone,
   form,
   results,
 }: {
   orgId: string;
+  timezone: string;
   form: NonNullable<FormData["form"]>;
   results: Results;
 }) {
@@ -327,7 +339,7 @@ function StaffResultsPanel({
                 <td className="py-1.5 pr-4 text-foreground">{row.email}</td>
                 <td className="py-1.5 pr-4 font-mono text-xs text-foreground">{row.payloadJson}</td>
                 <td className="py-1.5 text-muted-foreground num">
-                  {new Date(row.updatedAt).toLocaleString()}
+                  {formatOrgDateTime(row.updatedAt, timezone)}
                 </td>
               </tr>
             ))}

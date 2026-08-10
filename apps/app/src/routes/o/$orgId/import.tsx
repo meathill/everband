@@ -1,6 +1,7 @@
+import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { CSV_TEMPLATE } from "@everband/validation";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { confirmImport, listImportJobs, previewImport } from "~/server/import.ts";
 
@@ -17,8 +18,11 @@ export const Route = createFileRoute("/o/$orgId/import")({
 
 type Preview = Awaited<ReturnType<typeof previewImport>>;
 
+const orgRoute = getRouteApi("/o/$orgId");
+
 function ImportPage() {
   const { jobs } = Route.useLoaderData();
+  const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -163,7 +167,7 @@ function ImportPage() {
                 {jobs.map((job) => (
                   <tr key={job.id} className="border-b border-border num">
                     <td className="py-2 pr-4 text-foreground">
-                      {new Date(job.createdAt).toLocaleString()}
+                      {formatOrgDateTime(job.createdAt, org.timezone)}
                     </td>
                     <td className="py-2 pr-4">
                       <span

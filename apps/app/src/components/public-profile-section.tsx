@@ -1,3 +1,4 @@
+import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
 import { useRouter } from "@tanstack/react-router";
@@ -12,7 +13,15 @@ import {
 
 type Settings = Awaited<ReturnType<typeof getPublicProfileSettings>>;
 
-export function PublicProfileSection({ orgId, data }: { orgId: string; data: Settings }) {
+export function PublicProfileSection({
+  orgId,
+  timezone,
+  data,
+}: {
+  orgId: string;
+  timezone: string;
+  data: Settings;
+}) {
   const router = useRouter();
   const profile = data.profile;
   const [message, setMessage] = useState<string | null>(null);
@@ -169,7 +178,7 @@ export function PublicProfileSection({ orgId, data }: { orgId: string; data: Set
                   <span className="text-xs text-muted-foreground num">
                     {qr.status} · scans: {qr.scanCount ?? "—"}
                     {qr.lastStatsSyncAt
-                      ? ` (updated ${new Date(qr.lastStatsSyncAt).toLocaleString()})`
+                      ? ` (updated ${formatOrgDateTime(qr.lastStatsSyncAt, timezone)})`
                       : " (not synced yet)"}
                   </span>
                 </div>

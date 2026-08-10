@@ -1,6 +1,7 @@
+import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { Input } from "@everband/ui/components/input";
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { createEvent, listMyUpcomingEvents, listOrgEvents } from "~/server/events.ts";
 import { listGroups } from "~/server/members.ts";
@@ -28,18 +29,23 @@ export const Route = createFileRoute("/o/$orgId/events/")({
   component: EventsPage,
 });
 
+const orgRoute = getRouteApi("/o/$orgId");
+
 function EventsPage() {
   const data = Route.useLoaderData();
+  const { org } = orgRoute.useLoaderData();
   return data.mode === "staff" ? (
-    <StaffEvents events={data.events} groups={data.groups} />
+    <StaffEvents timezone={org.timezone} events={data.events} groups={data.groups} />
   ) : (
-    <ParentEvents upcoming={data.upcoming} />
+    <ParentEvents timezone={org.timezone} upcoming={data.upcoming} />
   );
 }
 
 function ParentEvents({
+  timezone,
   upcoming,
 }: {
+  timezone: string;
   upcoming: Awaited<ReturnType<typeof listMyUpcomingEvents>>;
 }) {
   const { orgId } = Route.useParams();
@@ -67,7 +73,7 @@ function ParentEvents({
                     )}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(event.startsAtUtc).toLocaleString()}
+                    {formatOrgDateTime(event.startsAtUtc, timezone)}
                     {event.location ? ` · ${event.location}` : ""}
                   </p>
                 </div>
@@ -81,9 +87,11 @@ function ParentEvents({
 }
 
 function StaffEvents({
+  timezone,
   events,
   groups,
 }: {
+  timezone: string;
   events: Awaited<ReturnType<typeof listOrgEvents>>;
   groups: Awaited<ReturnType<typeof listGroups>>;
 }) {
@@ -230,7 +238,7 @@ function StaffEvents({
                     </Link>
                   </td>
                   <td className="py-2 pr-4 text-foreground num">
-                    {new Date(event.startsAtUtc).toLocaleString()}
+                    {formatOrgDateTime(event.startsAtUtc, timezone)}
                   </td>
                   <td className="py-2 pr-4 text-muted-foreground">
                     {event.isOrgWide ? "Whole organization" : "Selected groups"}

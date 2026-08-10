@@ -28,76 +28,82 @@ function OrgLayout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-6">
-          <Link to="/o/$orgId" params={{ orgId: org.id }} className="font-semibold text-foreground">
-            {org.name}
-          </Link>
-          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link to="/o/$orgId" params={{ orgId: org.id }} className="hover:text-foreground">
-              Overview
-            </Link>
+      <header className="border-b border-border bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
             <Link
-              to="/o/$orgId/events"
+              to="/o/$orgId"
               params={{ orgId: org.id }}
-              className="hover:text-foreground"
+              className="font-semibold text-foreground"
             >
-              Events
+              {org.name}
             </Link>
-            <Link
-              to="/o/$orgId/rehearsals"
-              params={{ orgId: org.id }}
-              className="hover:text-foreground"
-            >
-              Rehearsals
-            </Link>
-            <Link
-              to="/o/$orgId/notifications"
-              params={{ orgId: org.id }}
-              className="hover:text-foreground"
-            >
-              Notifications
-            </Link>
-            <Link
-              to="/o/$orgId/account"
-              params={{ orgId: org.id }}
-              className="hover:text-foreground"
-            >
-              Account
-            </Link>
-          </nav>
-          {isStaff && (
-            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-              <Link
-                to="/o/$orgId/members"
-                params={{ orgId: org.id }}
-                className="hover:text-foreground"
-              >
-                Members
+            <nav className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <Link to="/o/$orgId" params={{ orgId: org.id }} className="hover:text-foreground">
+                Overview
               </Link>
               <Link
-                to="/o/$orgId/groups"
+                to="/o/$orgId/events"
                 params={{ orgId: org.id }}
                 className="hover:text-foreground"
               >
-                Groups
+                Events
               </Link>
               <Link
-                to="/o/$orgId/import"
+                to="/o/$orgId/rehearsals"
                 params={{ orgId: org.id }}
                 className="hover:text-foreground"
               >
-                Import
+                Rehearsals
               </Link>
               <Link
-                to="/o/$orgId/settings"
+                to="/o/$orgId/notifications"
                 params={{ orgId: org.id }}
                 className="hover:text-foreground"
               >
-                Settings
+                Notifications
+              </Link>
+              <Link
+                to="/o/$orgId/account"
+                params={{ orgId: org.id }}
+                className="hover:text-foreground"
+              >
+                Account
               </Link>
             </nav>
-          )}
+            {isStaff && (
+              <nav className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <Link
+                  to="/o/$orgId/members"
+                  params={{ orgId: org.id }}
+                  className="hover:text-foreground"
+                >
+                  Members
+                </Link>
+                <Link
+                  to="/o/$orgId/groups"
+                  params={{ orgId: org.id }}
+                  className="hover:text-foreground"
+                >
+                  Groups
+                </Link>
+                <Link
+                  to="/o/$orgId/import"
+                  params={{ orgId: org.id }}
+                  className="hover:text-foreground"
+                >
+                  Import
+                </Link>
+                <Link
+                  to="/o/$orgId/settings"
+                  params={{ orgId: org.id }}
+                  className="hover:text-foreground"
+                >
+                  Settings
+                </Link>
+              </nav>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
