@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
 // Turnstile 保护的联系表单（PRD §8.2）。
-// dev 用官方测试 sitekey（恒通过）；生产替换为真实 sitekey（见 DEV_NOTE）。
-const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
+// site key 是公开值（嵌入客户端）；dev 用官方测试 key（恒通过），生产用真实 widget。
+// secret 是敏感值，只在 landing Worker 侧（wrangler secret put TURNSTILE_SECRET）。
+const TURNSTILE_SITE_KEY = import.meta.env.DEV
+  ? "1x00000000000000000000AA"
+  : "0x4AAAAAAELrOpqyKsHPTod_";
 
 declare global {
   interface Window {

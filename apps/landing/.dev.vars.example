@@ -1,0 +1,2 @@
+# 本地开发：Turnstile 官方测试 secret（恒通过），生产用真实 secret（wrangler secret put）
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA

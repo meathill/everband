@@ -14,8 +14,8 @@
     "EMAIL_MODE": "cloudflare",
     "EMAIL_FROM_ADDRESS": "no-reply@meathill.com",
     "EMAIL_FROM_NAME": "Everband",
-    // mock | dyqr；生产切 dyqr 并配置 DYQR_TOKEN（Secrets Store，勿入代码/日志）
-    "DYQR_MODE": "mock"
+    // mock | dyqr；dyqr 且 DYQR_TOKEN（Secret）存在时用真实短链，否则回退 mock
+    "DYQR_MODE": "dyqr"
   },
   "send_email": [
     {
