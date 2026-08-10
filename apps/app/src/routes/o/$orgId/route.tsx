@@ -34,6 +34,9 @@ function OrgLayout() {
             {org.name}
           </Link>
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link to="/o/$orgId" params={{ orgId: org.id }} className="hover:text-foreground">
+              Overview
+            </Link>
             <Link
               to="/o/$orgId/events"
               params={{ orgId: org.id }}
