@@ -10,6 +10,7 @@ import {
   DrawerTitle,
 } from "@everband/ui/components/drawer";
 import type React from "react";
+import { useRef, useState } from "react";
 
 export interface FormDrawerProps {
   open: boolean;
@@ -42,6 +43,18 @@ export function FormDrawer({
   onSubmit,
   children,
 }: FormDrawerProps): React.ReactElement {
+  // 关闭动画（450ms）跑完 Portal 才卸载 children。在这之前再次打开——比如"取消"后立刻
+  // 点"New xxx"，或从一行的编辑切到另一行——子树没被卸载过，非受控输入与内部 state 会留着
+  // 上一次的值。这里给每次「关 → 开」换一个 key，强制重挂，让"关闭即重置"始终成立。
+  const [instance, setInstance] = useState(0);
+  const wasOpen = useRef(open);
+  if (wasOpen.current !== open) {
+    wasOpen.current = open;
+    if (open) {
+      setInstance((value) => value + 1);
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onSubmit(new FormData(event.currentTarget));
@@ -59,7 +72,9 @@ export function FormDrawer({
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           {/* popup 是 touch-none，滚动容器要显式 touch-auto 才能在触屏滚动 */}
           <div className="min-h-0 flex-1 touch-auto overflow-y-auto">
-            <DrawerPanel scrollable={false}>{children}</DrawerPanel>
+            <DrawerPanel key={instance} scrollable={false}>
+              {children}
+            </DrawerPanel>
           </div>
 
           {error && (

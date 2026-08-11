@@ -1,57 +1,191 @@
+import type { OrgEventRow } from "@everband/core";
 import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
-import { Input } from "@everband/ui/components/input";
-import { createFileRoute, getRouteApi, Link, redirect, useRouter } from "@tanstack/react-router";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@everband/ui/components/select";
+import type { EventStatusFilter, EventTimeFilter } from "@everband/validation";
+import { EVENT_STATUS_FILTERS, EVENT_TIME_FILTERS, eventsListSchema } from "@everband/validation";
+import { PlusIcon } from "@phosphor-icons/react";
+import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
+import type React from "react";
 import { useState } from "react";
-import { createEvent, listMyUpcomingEvents, listOrgEvents } from "~/server/events.ts";
-import { listGroups } from "~/server/members.ts";
+import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
+import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
+import { useListSearch } from "~/components/data-table/use-list-search.ts";
+import { getEventsPageData } from "~/server/events.ts";
+import { EventFormDrawer } from "./-components/event-form-drawer.tsx";
+import { StaffEventsTable } from "./-components/staff-events-table.tsx";
 
 export const Route = createFileRoute("/o/$orgId/events/")({
-  loader: async ({ params }) => {
-    const orgId = params.orgId;
-    try {
-      // staff：全部活动 + 建活动所需的 groups
-      const [events, groups] = await Promise.all([
-        listOrgEvents({ data: { orgId } }),
-        listGroups({ data: { orgId } }),
-      ]);
-      return { mode: "staff" as const, events, groups, upcoming: [] };
-    } catch {
-      // parent：未来 30 天可见活动
-      try {
-        const upcoming = await listMyUpcomingEvents({ data: { orgId } });
-        return { mode: "parent" as const, events: [], groups: [], upcoming };
-      } catch {
-        throw redirect({ to: "/o/$orgId", params: { orgId } });
-      }
-    }
-  },
+  validateSearch: eventsListSchema,
+  // 漏了 loaderDeps 就会"翻页/排序/搜索点了没反应"：loader 只在 params 变化时重跑
+  loaderDeps: ({ search }) => search,
+  loader: ({ params, deps }) => getEventsPageData({ data: { orgId: params.orgId, ...deps } }),
   component: EventsPage,
 });
 
 const orgRoute = getRouteApi("/o/$orgId");
 
-function EventsPage() {
+const STATUS_LABELS: Record<EventStatusFilter, string> = {
+  all: "All statuses",
+  cancelled: "Cancelled",
+  completed: "Completed",
+  draft: "Draft",
+  published: "Published",
+};
+
+const TIME_LABELS: Record<EventTimeFilter, string> = {
+  all: "Any time",
+  past: "Past",
+  upcoming: "Upcoming",
+};
+
+function EventsPage(): React.ReactElement {
   const data = Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   return data.mode === "staff" ? (
-    <StaffEvents timezone={org.timezone} events={data.events} groups={data.groups} />
+    <StaffEvents groups={data.groups} list={data.list} timezone={org.timezone} />
   ) : (
     <ParentEvents timezone={org.timezone} upcoming={data.upcoming} />
   );
 }
+
+type StaffData = Extract<Awaited<ReturnType<typeof getEventsPageData>>, { mode: "staff" }>;
+
+function StaffEvents({
+  groups,
+  list,
+  timezone,
+}: {
+  groups: StaffData["groups"];
+  list: StaffData["list"];
+  timezone: string;
+}): React.ReactElement {
+  const { orgId } = Route.useParams();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const listSearch = useListSearch({
+    search,
+    onChange: (patch) => navigate({ replace: true, search: (prev) => ({ ...prev, ...patch }) }),
+  });
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState<OrgEventRow | undefined>(undefined);
+
+  function openCreate() {
+    setEditing(undefined);
+    setIsDrawerOpen(true);
+  }
+
+  function openEdit(row: OrgEventRow) {
+    setEditing(row);
+    setIsDrawerOpen(true);
+  }
+
+  const isFiltered = Boolean(search.q) || search.status !== "all" || search.time !== "all";
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="font-semibold text-3xl text-foreground tracking-tight">Events</h1>
+
+      <DataTableToolbar
+        actions={
+          <Button onClick={openCreate}>
+            <PlusIcon />
+            New event
+          </Button>
+        }
+        defaultQuery={search.q}
+        onQueryChange={listSearch.setQuery}
+        searchPlaceholder="Search events"
+      >
+        {/* items 让 SelectValue 显示标签而不是原始值；筛选值是 URL 状态，所以这里是受控的 */}
+        <Select
+          items={STATUS_LABELS}
+          onValueChange={(value: EventStatusFilter | null) =>
+            value && listSearch.setFilter("status", value)
+          }
+          value={search.status}
+        >
+          <SelectTrigger aria-label="Filter by status" className="w-auto min-w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EVENT_STATUS_FILTERS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {STATUS_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          items={TIME_LABELS}
+          onValueChange={(value: EventTimeFilter | null) =>
+            value && listSearch.setFilter("time", value)
+          }
+          value={search.time}
+        >
+          <SelectTrigger aria-label="Filter by time" className="w-auto min-w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EVENT_TIME_FILTERS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {TIME_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </DataTableToolbar>
+
+      <StaffEventsTable
+        isFiltered={isFiltered}
+        onEdit={openEdit}
+        onSortChange={listSearch.setSort}
+        order={search.order}
+        orgId={orgId}
+        rows={list.items}
+        sort={search.sort}
+        timezone={timezone}
+      />
+
+      <DataTablePagination
+        onPageChange={listSearch.setPage}
+        page={list.page}
+        pageSize={list.pageSize}
+        total={list.total}
+      />
+
+      <EventFormDrawer
+        event={editing}
+        groups={groups}
+        onOpenChange={setIsDrawerOpen}
+        open={isDrawerOpen}
+        orgId={orgId}
+        timezone={timezone}
+      />
+    </div>
+  );
+}
+
+type ParentData = Extract<Awaited<ReturnType<typeof getEventsPageData>>, { mode: "parent" }>;
 
 function ParentEvents({
   timezone,
   upcoming,
 }: {
   timezone: string;
-  upcoming: Awaited<ReturnType<typeof listMyUpcomingEvents>>;
-}) {
+  upcoming: ParentData["upcoming"];
+}): React.ReactElement {
   const { orgId } = Route.useParams();
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-semibold tracking-tight text-foreground">Upcoming events</h1>
+      <h1 className="font-semibold text-3xl text-foreground tracking-tight">Upcoming events</h1>
       {upcoming.length === 0 ? (
         <p className="text-muted-foreground">Nothing scheduled in the next 30 days.</p>
       ) : (
@@ -59,20 +193,20 @@ function ParentEvents({
           {upcoming.map((event) => (
             <li key={event.id}>
               <Link
-                to="/o/$orgId/events/$eventId"
-                params={{ orgId, eventId: event.id }}
                 className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 shadow-sm transition-shadow hover:shadow-md"
+                params={{ eventId: event.id, orgId }}
+                to="/o/$orgId/events/$eventId"
               >
                 <div>
                   <p className="font-medium text-foreground">
                     {event.title}
                     {event.status === "cancelled" && (
-                      <span className="ml-2 text-xs font-semibold tracking-wide text-destructive-foreground uppercase">
+                      <span className="ml-2 font-semibold text-destructive-foreground text-xs uppercase tracking-wide">
                         cancelled
                       </span>
                     )}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     {formatOrgDateTime(event.startsAtUtc, timezone)}
                     {event.location ? ` · ${event.location}` : ""}
                   </p>
@@ -81,174 +215,6 @@ function ParentEvents({
             </li>
           ))}
         </ul>
-      )}
-    </div>
-  );
-}
-
-function StaffEvents({
-  timezone,
-  events,
-  groups,
-}: {
-  timezone: string;
-  events: Awaited<ReturnType<typeof listOrgEvents>>;
-  groups: Awaited<ReturnType<typeof listGroups>>;
-}) {
-  const { orgId } = Route.useParams();
-  const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isOrgWide, setIsOrgWide] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setIsBusy(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      const result = await createEvent({
-        data: {
-          orgId,
-          title: String(form.get("title")),
-          type: String(form.get("type") || "event"),
-          description: String(form.get("description") || "") || undefined,
-          startsAtLocal: String(form.get("startsAt")),
-          endsAtLocal: String(form.get("endsAt") || "") || undefined,
-          location: String(form.get("location") || "") || undefined,
-          isOrgWide,
-          groupIds: isOrgWide ? [] : form.getAll("groupIds").map(String),
-        },
-      });
-      if (result.ok) {
-        setIsOpen(false);
-        await router.invalidate();
-      } else {
-        setError(result.error);
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Something went wrong.");
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Events</h1>
-        {!isOpen && <Button onClick={() => setIsOpen(true)}>New event</Button>}
-      </div>
-
-      {isOpen && (
-        <form
-          onSubmit={handleSubmit}
-          className="flex max-w-2xl flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
-        >
-          <h2 className="text-lg font-semibold text-foreground">New event (draft)</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5" htmlFor="event-title">
-              <span className="text-sm font-medium text-foreground">Title</span>
-              <Input id="event-title" name="title" required />
-            </label>
-            <label className="flex flex-col gap-1.5" htmlFor="event-location">
-              <span className="text-sm font-medium text-foreground">Location</span>
-              <Input id="event-location" name="location" />
-            </label>
-            <label className="flex flex-col gap-1.5" htmlFor="event-starts">
-              <span className="text-sm font-medium text-foreground">Starts (org time)</span>
-              <Input id="event-starts" name="startsAt" type="datetime-local" required />
-            </label>
-            <label className="flex flex-col gap-1.5" htmlFor="event-ends">
-              <span className="text-sm font-medium text-foreground">Ends (optional)</span>
-              <Input id="event-ends" name="endsAt" type="datetime-local" />
-            </label>
-          </div>
-          <label className="flex flex-col gap-1.5" htmlFor="event-description">
-            <span className="text-sm font-medium text-foreground">Description</span>
-            <textarea
-              id="event-description"
-              name="description"
-              rows={3}
-              className="rounded-md border border-input bg-popover px-3 py-2 text-base text-foreground sm:text-sm"
-            />
-          </label>
-
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium text-foreground">Audience</legend>
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input
-                type="checkbox"
-                checked={isOrgWide}
-                onChange={(e) => setIsOrgWide(e.target.checked)}
-              />
-              Whole organization
-            </label>
-            {!isOrgWide && (
-              <div className="flex flex-wrap gap-3">
-                {groups.map((group) => (
-                  <label
-                    key={group.id}
-                    className="flex items-center gap-1.5 text-sm text-foreground"
-                  >
-                    <input type="checkbox" name="groupIds" value={group.id} />
-                    {group.name}
-                  </label>
-                ))}
-              </div>
-            )}
-          </fieldset>
-
-          {error && <p className="text-sm text-destructive-foreground">{error}</p>}
-          <div className="flex gap-2">
-            <Button type="submit" loading={isBusy}>
-              Create draft
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {events.length === 0 ? (
-        <p className="text-muted-foreground">No events yet.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full max-w-4xl text-left text-sm">
-            <thead>
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Event</th>
-                <th className="py-2 pr-4 font-medium">Starts</th>
-                <th className="py-2 pr-4 font-medium">Audience</th>
-                <th className="py-2 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event) => (
-                <tr key={event.id} className="border-b border-border">
-                  <td className="py-2 pr-4">
-                    <Link
-                      to="/o/$orgId/events/$eventId"
-                      params={{ orgId, eventId: event.id }}
-                      className="font-medium text-foreground hover:text-primary"
-                    >
-                      {event.title}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-4 text-foreground num">
-                    {formatOrgDateTime(event.startsAtUtc, timezone)}
-                  </td>
-                  <td className="py-2 pr-4 text-muted-foreground">
-                    {event.isOrgWide ? "Whole organization" : "Selected groups"}
-                  </td>
-                  <td className="py-2 text-muted-foreground capitalize">{event.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
     </div>
   );

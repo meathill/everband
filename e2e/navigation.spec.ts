@@ -94,7 +94,8 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
   await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
 
   await page.getByRole("link", { name: "Events" }).click();
-  await expect(page).toHaveURL(/\/events$/);
+  // Events 是列表页，validateSearch 的默认值会被 Link 补进 URL（?page=1&…），所以不能锚 $
+  await expect(page).toHaveURL(/\/events(\?|$)/);
   await openSidebarOnMobile(page);
   await expect(page.getByRole("link", { name: "Events" })).toHaveAttribute("data-active", "true");
   await expect(page.getByRole("link", { name: "Overview" })).toHaveAttribute(

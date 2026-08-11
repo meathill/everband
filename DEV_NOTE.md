@@ -189,6 +189,9 @@ function MembersPage() {
 - 单页（`total ≤ pageSize`）时 `DataTablePagination` 自己返回 null，页面不用判断。
 - 排序列的 `key` 必须落在 `sortFields` 里；表头图标由 DataTable 统一渲染，
   首次点击的方向用列上的 `defaultOrder`（时间列传 `desc`）。
+- `validateSearch` 的默认值会被 `<Link>` 序列化进 URL（`/events` 实际落地是
+  `/events?page=1&...`），e2e 里对列表页 URL 的断言不能用 `$` 锚（写成
+  `/\/events(\?|$)/`），navigation.spec 已按此调整。
 
 ## 表单基建（2026-08-11，UI 改造 P3）
 
@@ -213,6 +216,11 @@ Base UI Drawer 的关键行为（都验证过）：
 - 开场动画 450ms：e2e/手测量位置要等动画结束（~700ms），否则量到 transform 中间态。
 - `ToastProvider` 全站 `position="top-center"`（`__root.tsx`）：默认 bottom-right
   会盖住右侧抽屉的底部操作区（toast z-60 > drawer z-50，点击会被吃掉）。
+- **快速重开的残留 state**：Portal 在关闭动画（450ms）结束后才卸载 children，动画期间
+  再次打开（取消后立刻新建、从一行编辑切到另一行）子树不会重挂。FormDrawer 内部用
+  实例计数 key 强制每次「关 → 开」重挂 `DrawerPanel`，"关闭即重置"因此始终成立，
+  业务侧无需处理。
+- Base UI 的 `FieldDescription` 必须有 `Field` 祖先，否则抛 `FieldRootContext is missing`。
 
 ## e2e 的水合等待（2026-08-11）
 
@@ -243,6 +251,7 @@ Base UI Drawer 的关键行为（都验证过）：
 - `button.tsx`：rounded-md、hover 用 `--brand-hover`、press `scale-0.98`（M1 起）。
 - `pagination.tsx`：3 个 lucide 图标换 phosphor（`CaretLeft`/`CaretRight`/`DotsThree`）。
   组件本身是链接语义（`<a>`），我们的列表分页只用它的 nav/ul/li 与省略号，页码按钮另拼。
+- `select.tsx`：3 个 lucide 图标换 phosphor。
 
 其余组件仍留着 lucide，策略不变：用到哪个改哪个。
 

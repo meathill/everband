@@ -3,6 +3,7 @@
 export * from "./audit.ts";
 export * from "./auth.ts";
 export * from "./email-sender.ts";
+export * from "./event-admin.ts";
 export * from "./events.ts";
 export * from "./forms.ts";
 export * from "./import.ts";

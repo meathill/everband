@@ -1,8 +1,15 @@
-import { canParentAccessEvent, listParentEvents, recordAudit } from "@everband/core";
+import { env } from "cloudflare:workers";
+import {
+  canParentAccessEvent,
+  deleteDraftEventCore,
+  listOrgEventsCore,
+  listParentEvents,
+  recordAudit,
+  updateEventCore,
+} from "@everband/core";
 import { schema } from "@everband/db";
 import {
   canTransitionEvent,
-  canTransitionEventUpdate,
   generateId,
   ID_PREFIXES,
   localDateTimeToUtcMs,
@@ -10,15 +17,15 @@ import {
 } from "@everband/domain";
 import {
   createEventSchema,
-  createEventUpdateSchema,
-  editEventUpdateSchema,
+  deleteDraftEventSchema,
   eventIdSchema,
+  eventsPageSchema,
   orgIdSchema,
-  publishEventUpdateSchema,
   transitionEventSchema,
+  updateEventSchema,
 } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "./context.ts";
 import { AuthError, requireMembership, STAFF_ROLES } from "./guards.ts";
 
@@ -90,6 +97,52 @@ export const createEvent = createServerFn({ method: "POST" })
     return { ok: true as const, eventId };
   });
 
+// 编辑：可改字段按状态收窄，规则在 updateEventCore。空串代表"清空该可选字段"。
+export const updateEvent = createServerFn({ method: "POST" })
+  .validator(updateEventSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const timezone = await getOrgTimezone(db, data.orgId);
+    return updateEventCore(
+      db,
+      data.orgId,
+      data.eventId,
+      {
+        title: data.title,
+        description: data.description === undefined ? undefined : data.description || null,
+        location: data.location === undefined ? undefined : data.location || null,
+        startsAtUtc: data.startsAtLocal
+          ? localDateTimeToUtcMs(data.startsAtLocal, timezone)
+          : undefined,
+        endsAtUtc:
+          data.endsAtLocal === undefined
+            ? undefined
+            : data.endsAtLocal
+              ? localDateTimeToUtcMs(data.endsAtLocal, timezone)
+              : null,
+        isOrgWide: data.isOrgWide,
+        groupIds: data.groupIds,
+      },
+      ctx.membershipId,
+      Date.now(),
+    );
+  });
+
+// 仅草稿可删（硬删 + 清理关联）；R2 对象由这里删，core 只负责 db
+export const deleteDraftEvent = createServerFn({ method: "POST" })
+  .validator(deleteDraftEventSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const result = await deleteDraftEventCore(db, data.orgId, data.eventId, ctx.membershipId);
+    if (!result.ok) {
+      return { ok: false as const, error: result.error };
+    }
+    await Promise.all(result.r2Keys.map((key) => env.FILES.delete(key)));
+    return { ok: true as const };
+  });
+
 export const transitionEvent = createServerFn({ method: "POST" })
   .validator(transitionEventSchema)
   .handler(async ({ data }) => {
@@ -129,17 +182,37 @@ export const transitionEvent = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-export const listOrgEvents = createServerFn({ method: "GET" })
-  .validator(orgIdSchema)
+/**
+ * Events 页的数据入口，按角色分派成判别联合。
+ *
+ * 子路由 loader 拿不到父路由 `/o/$orgId` 的 role，所以角色判断必须由服务端自己做一次。
+ * 早先的写法是"先试 staff 查询，catch 再试 parent 查询"——那会把真实故障也吞成 parent 视图，
+ * 而且多打一趟往返。这里一次 requireMembership 拿到 role 后直接分派。
+ */
+export const getEventsPageData = createServerFn({ method: "GET" })
+  .validator(eventsPageSchema)
   .handler(async ({ data }) => {
     const db = getDb();
-    await requireMembership(db, data.orgId, STAFF_ROLES);
-    return db
-      .select()
-      .from(schema.events)
-      .where(eq(schema.events.organizationId, data.orgId))
-      .orderBy(desc(schema.events.startsAtUtc))
-      .limit(100);
+    const ctx = await requireMembership(db, data.orgId);
+
+    if (ctx.role === "owner" || ctx.role === "staff") {
+      const [list, groups] = await Promise.all([
+        listOrgEventsCore(db, data.orgId, data, Date.now()),
+        db
+          .select({ id: schema.groups.id, name: schema.groups.name })
+          .from(schema.groups)
+          .where(eq(schema.groups.organizationId, data.orgId))
+          .orderBy(asc(schema.groups.name)),
+      ]);
+      return { mode: "staff" as const, list, groups };
+    }
+
+    const timezone = await getOrgTimezone(db, data.orgId);
+    const window = upcomingWindow(Date.now(), timezone);
+    return {
+      mode: "parent" as const,
+      upcoming: await listParentEvents(db, data.orgId, ctx.user.id, window),
+    };
   });
 
 // parent 首页：未来 30 天（组织时区）内自己可见的活动
@@ -178,12 +251,20 @@ export const getEventDetail = createServerFn({ method: "GET" })
       throw new AuthError("forbidden");
     }
 
-    const [groupRows, updates, attachmentRows] = await Promise.all([
+    const [groupRows, allGroups, updates, attachmentRows] = await Promise.all([
       db
         .select({ groupId: schema.eventGroups.groupId, name: schema.groups.name })
         .from(schema.eventGroups)
         .innerJoin(schema.groups, eq(schema.groups.id, schema.eventGroups.groupId))
         .where(eq(schema.eventGroups.eventId, data.eventId)),
+      // 编辑抽屉的受众选项；parent 用不到，但多一次小查询换掉一趟额外往返
+      isStaff
+        ? db
+            .select({ id: schema.groups.id, name: schema.groups.name })
+            .from(schema.groups)
+            .where(eq(schema.groups.organizationId, data.orgId))
+            .orderBy(asc(schema.groups.name))
+        : Promise.resolve([]),
       db
         .select()
         .from(schema.eventUpdates)
@@ -213,97 +294,12 @@ export const getEventDetail = createServerFn({ method: "GET" })
         ),
     ]);
 
-    return { event, groups: groupRows, updates, attachments: attachmentRows, role: ctx.role };
-  });
-
-export const createEventUpdate = createServerFn({ method: "POST" })
-  .validator(createEventUpdateSchema)
-  .handler(async ({ data }) => {
-    const db = getDb();
-    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
-    const now = Date.now();
-    const updateId = generateId(ID_PREFIXES.eventUpdate);
-    await db.insert(schema.eventUpdates).values({
-      id: updateId,
-      organizationId: data.orgId,
-      eventId: data.eventId,
-      title: data.title,
-      body: data.body,
-      status: "draft",
-      createdByMembershipId: ctx.membershipId,
-      createdAt: now,
-    });
-    await recordAudit(db, {
-      organizationId: data.orgId,
-      actorMembershipId: ctx.membershipId,
-      action: "event_update.created",
-      objectType: "event_update",
-      objectId: updateId,
-      summary: { eventId: data.eventId, title: data.title },
-    });
-    return { ok: true as const, updateId };
-  });
-
-export const editEventUpdate = createServerFn({ method: "POST" })
-  .validator(editEventUpdateSchema)
-  .handler(async ({ data }) => {
-    const db = getDb();
-    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
-    const now = Date.now();
-    // 发布后可编辑，但不自动重发邮件（PRD §5.2）
-    const rows = await db
-      .update(schema.eventUpdates)
-      .set({ title: data.title, body: data.body, lastEditedAt: now })
-      .where(
-        and(
-          eq(schema.eventUpdates.id, data.updateId),
-          eq(schema.eventUpdates.organizationId, data.orgId),
-        ),
-      )
-      .returning({ id: schema.eventUpdates.id });
-    if (rows.length === 0) {
-      return { ok: false as const, error: "Update not found." };
-    }
-    await recordAudit(db, {
-      organizationId: data.orgId,
-      actorMembershipId: ctx.membershipId,
-      action: "event_update.edited",
-      objectType: "event_update",
-      objectId: data.updateId,
-    });
-    return { ok: true as const };
-  });
-
-export const publishEventUpdate = createServerFn({ method: "POST" })
-  .validator(publishEventUpdateSchema)
-  .handler(async ({ data }) => {
-    const db = getDb();
-    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
-    const now = Date.now();
-    const rows = await db
-      .select({ status: schema.eventUpdates.status })
-      .from(schema.eventUpdates)
-      .where(
-        and(
-          eq(schema.eventUpdates.id, data.updateId),
-          eq(schema.eventUpdates.organizationId, data.orgId),
-        ),
-      )
-      .limit(1);
-    const current = rows[0];
-    if (!current || !canTransitionEventUpdate(current.status, "published")) {
-      return { ok: false as const, error: "This update is already published." };
-    }
-    await db
-      .update(schema.eventUpdates)
-      .set({ status: "published", publishedAt: now })
-      .where(eq(schema.eventUpdates.id, data.updateId));
-    await recordAudit(db, {
-      organizationId: data.orgId,
-      actorMembershipId: ctx.membershipId,
-      action: "event_update.published",
-      objectType: "event_update",
-      objectId: data.updateId,
-    });
-    return { ok: true as const };
+    return {
+      event,
+      groups: groupRows,
+      allGroups,
+      updates,
+      attachments: attachmentRows,
+      role: ctx.role,
+    };
   });

@@ -1,32 +1,38 @@
+import type { EventStatus } from "@everband/domain";
 import { formatOrgDateTime } from "@everband/domain";
+import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
-import { Input } from "@everband/ui/components/input";
-import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
-import { EventFormSection } from "~/components/event-form-section.tsx";
-import { uploadEventAttachment } from "~/server/attachments.ts";
+import { toastManager } from "@everband/ui/components/toast";
 import {
-  createEventUpdate,
-  getEventDetail,
-  publishEventUpdate,
-  transitionEvent,
-} from "~/server/events.ts";
+  CheckCircleIcon,
+  PaperPlaneTiltIcon,
+  PencilSimpleIcon,
+  ProhibitIcon,
+} from "@phosphor-icons/react";
+import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/react-router";
+import type React from "react";
+import { useState } from "react";
+import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
+import { EventFormSection } from "~/components/event-form-section.tsx";
+import { getEventDetail, transitionEvent } from "~/server/events.ts";
 import { getEventForm, listFormResults } from "~/server/forms.ts";
-import { sendUpdateEmail } from "~/server/notify.ts";
+import { EventAttachmentsSection } from "./-components/event-attachments-section.tsx";
+import { EventFormDrawer } from "./-components/event-form-drawer.tsx";
+import { EventUpdatesSection } from "./-components/event-updates-section.tsx";
 
 export const Route = createFileRoute("/o/$orgId/events/$eventId")({
   loader: async ({ params }) => {
     try {
-      const input = { data: { orgId: params.orgId, eventId: params.eventId } };
+      const input = { data: { eventId: params.eventId, orgId: params.orgId } };
       const [detail, formData] = await Promise.all([getEventDetail(input), getEventForm(input)]);
       const isStaff = detail.role === "owner" || detail.role === "staff";
       const results =
         isStaff && formData.form
-          ? await listFormResults({ data: { orgId: params.orgId, formId: formData.form.id } })
+          ? await listFormResults({ data: { formId: formData.form.id, orgId: params.orgId } })
           : [];
       return { ...detail, formData, results };
     } catch {
-      throw redirect({ to: "/o/$orgId/events", params: { orgId: params.orgId } });
+      throw redirect({ params: { orgId: params.orgId }, to: "/o/$orgId/events" });
     }
   },
   component: EventDetailPage,
@@ -34,38 +40,29 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
 
 const orgRoute = getRouteApi("/o/$orgId");
 
-function EventDetailPage() {
-  const { event, groups, updates, attachments, role, formData, results } = Route.useLoaderData();
+function EventDetailPage(): React.ReactElement {
+  const { event, groups, allGroups, updates, attachments, role, formData, results } =
+    Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
-  const router = useRouter();
   const isStaff = role === "owner" || role === "staff";
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function handleTransition(status: "published" | "cancelled" | "completed") {
-    setMessage(null);
-    const result = await transitionEvent({ data: { orgId, eventId: event.id, status } });
-    if (!result.ok) {
-      setMessage(result.error);
-    }
-    await router.invalidate();
-  }
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">{event.title}</h1>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-semibold text-3xl text-foreground tracking-tight">{event.title}</h1>
+          <Badge className="capitalize" variant="outline">
             {event.status}
-          </span>
+          </Badge>
         </div>
-        <p className="text-muted-foreground num">
+        <p className="text-muted-foreground tabular-nums">
           {formatOrgDateTime(event.startsAtUtc, org.timezone)}
           {event.endsAtUtc ? ` → ${formatOrgDateTime(event.endsAtUtc, org.timezone)}` : ""}
           {event.location ? ` · ${event.location}` : ""}
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Audience:{" "}
           {event.isOrgWide
             ? "whole organization"
@@ -73,268 +70,145 @@ function EventDetailPage() {
         </p>
         {event.description && <p className="max-w-2xl text-foreground">{event.description}</p>}
         {isStaff && (
-          <div className="flex gap-2 pt-2">
-            {event.status === "draft" && (
-              <Button onClick={() => handleTransition("published")}>Publish</Button>
-            )}
-            {event.status === "published" && (
-              <>
-                <Button variant="outline" onClick={() => handleTransition("completed")}>
-                  Mark completed
-                </Button>
-                <Button variant="destructive-outline" onClick={() => handleTransition("cancelled")}>
-                  Cancel event
-                </Button>
-              </>
-            )}
-          </div>
+          <StatusActions
+            eventId={event.id}
+            onEdit={() => setIsDrawerOpen(true)}
+            orgId={orgId}
+            status={event.status}
+            title={event.title}
+          />
         )}
-        {message && <p className="text-sm text-destructive-foreground">{message}</p>}
       </header>
 
-      <UpdatesSection
-        updates={updates}
-        isStaff={isStaff}
+      <EventUpdatesSection
         eventId={event.id}
-        timezone={org.timezone}
-      />
-      <EventFormSection
+        isStaff={isStaff}
         orgId={orgId}
         timezone={org.timezone}
+        updates={updates}
+      />
+      <EventFormSection
+        eventId={event.id}
+        formData={formData}
+        isStaff={isStaff}
+        orgId={orgId}
+        results={results}
+        timezone={org.timezone}
+      />
+      <EventAttachmentsSection
+        attachments={attachments}
         eventId={event.id}
         isStaff={isStaff}
-        formData={formData}
-        results={results}
+        orgId={orgId}
       />
-      <AttachmentsSection attachments={attachments} isStaff={isStaff} eventId={event.id} />
+
+      {isStaff && (
+        <EventFormDrawer
+          event={{
+            description: event.description,
+            endsAtUtc: event.endsAtUtc,
+            groupIds: groups.map((group) => group.groupId),
+            id: event.id,
+            isOrgWide: event.isOrgWide,
+            location: event.location,
+            startsAtUtc: event.startsAtUtc,
+            status: event.status,
+            title: event.title,
+          }}
+          groups={allGroups}
+          onOpenChange={setIsDrawerOpen}
+          open={isDrawerOpen}
+          orgId={orgId}
+          timezone={org.timezone}
+        />
+      )}
     </div>
   );
 }
 
-type Detail = Awaited<ReturnType<typeof getEventDetail>>;
-
-function UpdatesSection({
-  updates,
-  isStaff,
+function StatusActions({
   eventId,
-  timezone,
+  orgId,
+  status,
+  title,
+  onEdit,
 }: {
-  updates: Detail["updates"];
-  isStaff: boolean;
   eventId: string;
-  timezone: string;
-}) {
-  const { orgId } = Route.useParams();
+  orgId: string;
+  status: EventStatus;
+  title: string;
+  onEdit: () => void;
+}): React.ReactElement {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isBusy, setIsBusy] = useState(false);
-  const [sendMessage, setSendMessage] = useState<string | null>(null);
 
-  async function handleSendEmail(updateId: string) {
-    setSendMessage(null);
-    const result = await sendUpdateEmail({ data: { orgId, updateId } });
+  async function run(
+    target: "published" | "cancelled" | "completed",
+    successMessage: string,
+  ): Promise<boolean> {
+    const result = await transitionEvent({ data: { eventId, orgId, status: target } });
     if (!result.ok) {
-      setSendMessage(result.error);
-    } else if (result.deduplicated) {
-      setSendMessage("This version was already emailed — no duplicate sent.");
-    } else {
-      setSendMessage("Email queued. Check Notifications for delivery status.");
+      toastManager.add({ title: result.error, type: "error" });
+      return false;
     }
     await router.invalidate();
+    toastManager.add({ title: successMessage, type: "success" });
+    return true;
   }
 
-  async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsBusy(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      await createEventUpdate({
-        data: {
-          orgId,
-          eventId,
-          title: String(form.get("title")),
-          body: String(form.get("body")),
-        },
-      });
-      setIsOpen(false);
-      await router.invalidate();
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function handlePublish(updateId: string) {
-    await publishEventUpdate({ data: { orgId, updateId } });
-    await router.invalidate();
-  }
+  const isEditable = status === "draft" || status === "published";
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground">Updates</h2>
-        {isStaff && !isOpen && (
-          <Button variant="outline" onClick={() => setIsOpen(true)}>
-            New update
-          </Button>
-        )}
-      </div>
-
-      {isOpen && (
-        <form
-          onSubmit={handleCreate}
-          className="flex max-w-2xl flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
-        >
-          <label className="flex flex-col gap-1.5" htmlFor="update-title">
-            <span className="text-sm font-medium text-foreground">Title</span>
-            <Input id="update-title" name="title" required />
-          </label>
-          <label className="flex flex-col gap-1.5" htmlFor="update-body">
-            <span className="text-sm font-medium text-foreground">Message</span>
-            <textarea
-              id="update-body"
-              name="body"
-              rows={4}
-              required
-              className="rounded-md border border-input bg-popover px-3 py-2 text-base text-foreground sm:text-sm"
-            />
-          </label>
-          <div className="flex gap-2">
-            <Button type="submit" loading={isBusy}>
-              Save draft
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
+    <div className="flex flex-wrap gap-2 pt-2">
+      {isEditable && (
+        <Button onClick={onEdit} variant="outline">
+          <PencilSimpleIcon />
+          Edit
+        </Button>
       )}
-
-      {sendMessage && <p className="text-sm text-muted-foreground">{sendMessage}</p>}
-      {updates.length === 0 ? (
-        <p className="text-muted-foreground">No updates yet.</p>
-      ) : (
-        <ul className="flex max-w-2xl flex-col gap-3">
-          {updates.map((update) => (
-            <li
-              key={update.id}
-              className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">{update.title}</h3>
-                {isStaff && update.status === "draft" && (
-                  <Button size="xs" onClick={() => handlePublish(update.id)}>
-                    Publish
-                  </Button>
-                )}
-                {isStaff && update.status === "published" && (
-                  <Button size="xs" variant="outline" onClick={() => handleSendEmail(update.id)}>
-                    Send email
-                  </Button>
-                )}
-              </div>
-              <p className="whitespace-pre-wrap text-sm text-foreground">{update.body}</p>
-              <p className="text-xs text-muted-foreground">
-                {update.status === "published" && update.publishedAt
-                  ? `Published ${formatOrgDateTime(update.publishedAt, timezone)}`
-                  : "Draft"}
-                {update.lastEditedAt
-                  ? ` · edited ${formatOrgDateTime(update.lastEditedAt, timezone)}`
-                  : ""}
-              </p>
-            </li>
-          ))}
-        </ul>
+      {status === "draft" && (
+        // 发布不可逆且立刻对家长可见，所以走二次确认
+        <ConfirmDialog
+          confirmLabel="Publish"
+          description="Families in the audience will see this event right away. A published event cannot go back to draft."
+          onConfirm={() => run("published", "Event published")}
+          title={`Publish ${title}?`}
+          trigger={
+            <Button>
+              <PaperPlaneTiltIcon />
+              Publish
+            </Button>
+          }
+        />
       )}
-    </section>
-  );
-}
-
-function AttachmentsSection({
-  attachments,
-  isStaff,
-  eventId,
-}: {
-  attachments: Detail["attachments"];
-  isStaff: boolean;
-  eventId: string;
-}) {
-  const { orgId } = Route.useParams();
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
-
-  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-    setError(null);
-    setIsBusy(true);
-    try {
-      const buffer = await file.arrayBuffer();
-      let binary = "";
-      const bytes = new Uint8Array(buffer);
-      for (const byte of bytes) {
-        binary += String.fromCharCode(byte);
-      }
-      const result = await uploadEventAttachment({
-        data: {
-          orgId,
-          eventId,
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
-          dataBase64: btoa(binary),
-        },
-      });
-      if (!result.ok) {
-        setError(result.error);
-      }
-      await router.invalidate();
-    } finally {
-      setIsBusy(false);
-      event.target.value = "";
-    }
-  }
-
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold text-foreground">Attachments</h2>
-      {isStaff && (
-        <label className="flex max-w-md flex-col gap-1.5" htmlFor="attachment-file">
-          <span className="text-sm font-medium text-foreground">
-            Upload file (max 5 MB) {isBusy && "…"}
-          </span>
-          <input
-            id="attachment-file"
-            type="file"
-            onChange={handleFileChange}
-            className="text-sm text-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-popover file:px-3 file:py-1.5 file:text-sm file:text-foreground"
+      {status === "published" && (
+        <>
+          <ConfirmDialog
+            confirmLabel="Mark completed"
+            description="Completed events stay visible in the history but can no longer change."
+            onConfirm={() => run("completed", "Event completed")}
+            title={`Mark ${title} as completed?`}
+            trigger={
+              <Button variant="outline">
+                <CheckCircleIcon />
+                Mark completed
+              </Button>
+            }
           />
-        </label>
+          <ConfirmDialog
+            confirmLabel="Cancel event"
+            description="Families keep seeing the event, marked as cancelled. This cannot be undone."
+            destructive
+            onConfirm={() => run("cancelled", "Event cancelled")}
+            title={`Cancel ${title}?`}
+            trigger={
+              <Button variant="destructive-outline">
+                <ProhibitIcon />
+                Cancel event
+              </Button>
+            }
+          />
+        </>
       )}
-      {error && <p className="text-sm text-destructive-foreground">{error}</p>}
-      {attachments.length === 0 ? (
-        <p className="text-muted-foreground">No attachments.</p>
-      ) : (
-        <ul className="flex max-w-2xl flex-col gap-2">
-          {attachments.map((attachment) => (
-            <li
-              key={attachment.id}
-              className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2 text-sm shadow-sm"
-            >
-              <a
-                href={`/api/orgs/${orgId}/attachments/${attachment.id}`}
-                className="font-medium text-primary hover:underline"
-              >
-                {attachment.fileName}
-              </a>
-              <span className="text-muted-foreground num">
-                {attachment.contentType} · {(attachment.sizeBytes / 1024).toFixed(1)} KB
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    </div>
   );
 }

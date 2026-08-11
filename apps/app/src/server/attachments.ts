@@ -2,7 +2,11 @@ import { env } from "cloudflare:workers";
 import { recordAudit } from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
-import { MAX_ATTACHMENT_BYTES, uploadAttachmentSchema } from "@everband/validation";
+import {
+  deleteAttachmentSchema,
+  MAX_ATTACHMENT_BYTES,
+  uploadAttachmentSchema,
+} from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "./context.ts";
@@ -65,4 +69,36 @@ export const uploadEventAttachment = createServerFn({ method: "POST" })
       summary: { eventId: data.eventId, fileName: data.fileName, sizeBytes: bytes.byteLength },
     });
     return { ok: true as const, attachmentId };
+  });
+
+// 与上传对称：先删行拿到 r2Key（保证归属校验通过），再清 R2 对象。
+// 顺序反过来的话，R2 删成功而 db 失败会留下指向空对象的下载链接。
+export const deleteAttachment = createServerFn({ method: "POST" })
+  .validator(deleteAttachmentSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const rows = await db
+      .delete(schema.attachments)
+      .where(
+        and(
+          eq(schema.attachments.id, data.attachmentId),
+          eq(schema.attachments.organizationId, data.orgId),
+        ),
+      )
+      .returning({ r2Key: schema.attachments.r2Key, fileName: schema.attachments.fileName });
+    const deleted = rows[0];
+    if (!deleted) {
+      return { ok: false as const, error: "Attachment not found." };
+    }
+    await env.FILES.delete(deleted.r2Key);
+    await recordAudit(db, {
+      organizationId: data.orgId,
+      actorMembershipId: ctx.membershipId,
+      action: "attachment.deleted",
+      objectType: "attachment",
+      objectId: data.attachmentId,
+      summary: { fileName: deleted.fileName },
+    });
+    return { ok: true as const };
   });
