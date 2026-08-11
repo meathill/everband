@@ -9,6 +9,8 @@ test("magic link 登录后进入组织选择页", async ({ page }) => {
 
   await page.goto("/login");
   await requestMagicLink(page, email);
+  await expect(page.locator('[data-slot="otp-field"]')).toBeVisible();
+  await expect(page.locator('[data-slot="otp-field-input"]')).toHaveCount(6);
 
   const body = await readLatestMagicLink(page, email);
   const match = body.match(/http:\/\/[^\s]+\/verify\?token=[^\s]+/);

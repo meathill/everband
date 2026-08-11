@@ -32,10 +32,10 @@ function SelectOrgPage() {
       </div>
 
       {orgs.length > 0 && (
-        <Frame>
+        <Frame className="gap-2 p-2">
           {orgs.map((org) => (
             <Link key={org.orgId} to="/o/$orgId" params={{ orgId: org.orgId }}>
-              <FramePanel className="flex flex-row items-center gap-3 transition-colors hover:bg-accent/40">
+              <FramePanel className="flex flex-row items-center gap-3 border-0 transition-colors hover:bg-accent/40">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
                   <BuildingsIcon />
                 </span>
