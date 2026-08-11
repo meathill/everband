@@ -238,6 +238,22 @@ Base UI Drawer 的关键行为（都验证过）：
 （见上文验收修复轮）。`apps/app/src/routes/login.tsx` 目前仍是受控 email 输入，
 是同类 bug 的存量点。
 
+## UI 改造 P7/P8 收尾（2026-08-11）
+
+- **长尾列表也必须走统一协议**：通知返回 `items/total/page/pageSize/unreadCount`，导入历史
+  返回标准 `ListResult`；即使列表只支持一种排序，也保留 `validateSearch + loaderDeps`，让分页
+  URL 可刷新、可复制。通知的已读写操作只接受当前 membership，导入历史只允许 staff/owner。
+- **设置页权限不是隐藏按钮代替鉴权**：组织名称/时区由 `OWNER_ROLES` 在 server fn 强制校验；
+  staff 页面只读。学期改删仍是 staff/owner，删除前由 core 检查 rehearsal series 引用并写 audit。
+- **时区选项用固定短表**：不要在 SSR/浏览器两侧调用 `Intl.supportedValuesOf("timeZone")`，
+  workerd 与浏览器 ICU 版本不同会造成 hydration mismatch。当前组织时区不在短表时动态补入。
+- **页面主任务与辅助创建分开**：CSV 上传、组织设置保留页内 Frame；邀请 staff、创建/编辑学期
+  使用 FormDrawer。Account、New Org、Select Org 也使用同一 Frame/Field 视觉语法。
+- **P8 回归数据优先走真实业务链路**：成员分页用 CSV → R2 → Queue → tasks Worker 导入，parent
+  卡片回归用 contact 邀请链接激活 membership；不要从测试直接写 D1，才能覆盖真实权限与异步链。
+- **可访问名可能包含子内容**：parent 活动卡片的 link accessible name 同时包含标题与日期，
+  Playwright 应按标题做非 exact 匹配；文件上传也要先 `waitForHydration` 再 `setInputFiles`。
+
 ## vendored 组件的本地修改清单
 
 `packages/ui/src/components/**` 来自 coss/shadcn，同步上游时以下改动必须保留

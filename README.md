@@ -43,5 +43,6 @@ pnpm -C apps/app exec wrangler d1 migrations apply everband --local
 pnpm run format      # biome check --write
 pnpm run typecheck
 pnpm run test
+pnpm run test:e2e
 pnpm run build
 ```
