@@ -5,8 +5,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <a href="/" className="font-semibold text-foreground">
-          Everband
+        <a href="/" aria-label="Everband" className="flex items-center">
+          <img src="/brand/band-lockup.png" alt="band" className="h-8 w-auto" />
         </a>
         <nav className="hidden items-center gap-5 text-sm text-muted-foreground sm:flex">
           <a href="/#how" className="hover:text-foreground">

@@ -120,12 +120,16 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
   );
 });
 
-test("favicon 返回 200 且为图片（issue #4）", async ({ page }) => {
+test("favicon 和 band 品牌资源返回有效图片", async ({ page }) => {
   const ico = await page.request.get("/favicon.ico");
   expect(ico.status()).toBe(200);
   expect(ico.headers()["content-type"] ?? "").not.toContain("text/html");
 
-  const svg = await page.request.get("/favicon.svg");
-  expect(svg.status()).toBe(200);
-  expect(svg.headers()["content-type"] ?? "").toContain("svg");
+  const png = await page.request.get("/favicon.png");
+  expect(png.status()).toBe(200);
+  expect(png.headers()["content-type"] ?? "").toContain("image/png");
+
+  const lockup = await page.request.get("/brand/band-lockup.png");
+  expect(lockup.status()).toBe(200);
+  expect(lockup.headers()["content-type"] ?? "").toContain("image/png");
 });
