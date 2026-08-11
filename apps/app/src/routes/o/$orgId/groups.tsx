@@ -1,7 +1,12 @@
 import { Button } from "@everband/ui/components/button";
+import { Field, FieldDescription, FieldLabel } from "@everband/ui/components/field";
+import { Frame, FrameHeader, FramePanel, FrameTitle } from "@everband/ui/components/frame";
 import { Input } from "@everband/ui/components/input";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { PlusIcon } from "@phosphor-icons/react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { FormDrawer } from "~/components/form-drawer.tsx";
+import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import { createGroup, listGroups } from "~/server/members.ts";
 
 export const Route = createFileRoute("/o/$orgId/groups")({
@@ -18,45 +23,34 @@ export const Route = createFileRoute("/o/$orgId/groups")({
 function GroupsPage() {
   const { groups } = Route.useLoaderData();
   const { orgId } = Route.useParams();
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const { error, isBusy, submit, reset } = useServerFormAction({
+    action: createGroup,
+    successMessage: "Group created",
+    onSuccess: () => setIsOpen(false),
+  });
 
-  async function handleCreate(event: React.FormEvent) {
-    event.preventDefault();
-    setError(null);
-    setIsBusy(true);
-    try {
-      const result = await createGroup({ data: { orgId, name } });
-      if (result.ok) {
-        setName("");
-        await router.invalidate();
-      } else {
-        setError(result.error);
-      }
-    } finally {
-      setIsBusy(false);
+  function handleOpenChange(open: boolean) {
+    setIsOpen(open);
+    if (!open) {
+      reset();
     }
+  }
+
+  // 非受控输入：受控输入在水合前的键入会被首个受控渲染清空
+  async function handleSubmit(formData: FormData) {
+    await submit({ orgId, name: String(formData.get("name") ?? "") });
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-semibold tracking-tight text-foreground">Groups</h1>
-
-      <form onSubmit={handleCreate} className="flex max-w-md gap-2">
-        <Input
-          aria-label="Group name"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Senior band"
-        />
-        <Button type="submit" loading={isBusy}>
-          Create group
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Groups</h1>
+        <Button onClick={() => handleOpenChange(true)}>
+          <PlusIcon />
+          New group
         </Button>
-      </form>
-      {error && <p className="text-sm text-destructive-foreground">{error}</p>}
+      </div>
 
       {groups.length === 0 ? (
         <p className="text-muted-foreground">No groups yet. Active students must belong to one.</p>
@@ -73,6 +67,30 @@ function GroupsPage() {
           ))}
         </ul>
       )}
+
+      <FormDrawer
+        error={error}
+        isBusy={isBusy}
+        onOpenChange={handleOpenChange}
+        onSubmit={handleSubmit}
+        open={isOpen}
+        submitLabel="Create group"
+        title="New group"
+        description="Groups organize students by band, section or class."
+      >
+        <Frame>
+          <FramePanel>
+            <FrameHeader className="px-0 pt-0">
+              <FrameTitle>Group details</FrameTitle>
+            </FrameHeader>
+            <Field>
+              <FieldLabel htmlFor="group-name">Name</FieldLabel>
+              <Input id="group-name" name="name" required autoFocus placeholder="Senior band" />
+              <FieldDescription>Up to 60 characters. Must be unique.</FieldDescription>
+            </Field>
+          </FramePanel>
+        </Frame>
+      </FormDrawer>
     </div>
   );
 }

@@ -34,8 +34,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
-        {/* ToastProvider 自带 viewport（Toasts），全站共用 toastManager。 */}
-        <ToastProvider>{children}</ToastProvider>
+        {/* ToastProvider 自带 viewport（Toasts），全站共用 toastManager。
+            top-center：默认 bottom-right 会盖住右侧 FormDrawer 的底部操作区。 */}
+        <ToastProvider position="top-center">{children}</ToastProvider>
         <Scripts />
       </body>
     </html>
