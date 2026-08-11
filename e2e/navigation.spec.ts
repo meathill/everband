@@ -52,6 +52,22 @@ test("未登录访问 /new-org 引导登录，magic link 登录后回跳（issue
   await expect(page.getByRole("heading", { name: "Create an organization" })).toBeVisible();
 });
 
+test("已有组织时通用入口进入组织首页，不再打开创建表单", async ({ page }) => {
+  await loginViaMagicLink(page, navEmail());
+  await page.goto("/new-org?intent=create");
+  await fillField(page.locator("#org-name"), "Existing Organization Test");
+  await pressButton(page, "Create organization");
+  await expect(page.getByRole("heading", { name: "Existing Organization Test" })).toBeVisible();
+
+  const orgId = new URL(page.url()).pathname.split("/")[2];
+  expect(orgId).toBeTruthy();
+
+  await page.goto("/new-org");
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}$`));
+  await expect(page.getByRole("heading", { name: "Existing Organization Test" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create an organization" })).not.toBeVisible();
+});
+
 test("恶意 redirect 参数被丢弃，登录后落默认页（防开放重定向）", async ({ page }) => {
   const email = navEmail();
 

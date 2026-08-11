@@ -72,7 +72,7 @@ export function ContactSection({ appUrl }: { appUrl: string }) {
         <p className="text-muted-foreground">
           Ready to try it?{" "}
           <a href={`${appUrl}/new-org`} className="text-primary underline-offset-4 hover:underline">
-            Create your organization
+            Get started
           </a>{" "}
           — or send us a question below.
         </p>

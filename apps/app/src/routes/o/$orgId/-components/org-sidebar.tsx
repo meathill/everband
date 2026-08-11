@@ -199,7 +199,10 @@ function OrgSwitcher({
               </MenuLinkItem>
             ))}
             {orgs.length > 0 && <MenuSeparator />}
-            <MenuLinkItem onClick={dismiss} render={<Link to="/new-org" />}>
+            <MenuLinkItem
+              onClick={dismiss}
+              render={<Link to="/new-org" search={{ intent: "create" }} />}
+            >
               <PlusIcon />
               <span>Create organization</span>
             </MenuLinkItem>

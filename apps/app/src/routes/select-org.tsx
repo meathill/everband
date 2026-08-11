@@ -53,7 +53,9 @@ function SelectOrgPage() {
         </Frame>
       )}
 
-      <Button render={<Link to="/new-org" />}>Create an organization</Button>
+      <Button render={<Link to="/new-org" search={{ intent: "create" }} />}>
+        Create an organization
+      </Button>
     </main>
   );
 }
