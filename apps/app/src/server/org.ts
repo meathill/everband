@@ -3,7 +3,7 @@ import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import { createOrganizationSchema, inviteStaffSchema, orgIdSchema } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestUrl } from "@tanstack/react-start/server";
+import { getCookie, getRequestUrl } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "./context.ts";
 import { requireMembership, requireUser, STAFF_ROLES } from "./guards.ts";
@@ -62,6 +62,12 @@ export const listMyOrganizations = createServerFn({ method: "GET" }).handler(asy
     .from(schema.memberships)
     .innerJoin(schema.organizations, eq(schema.memberships.organizationId, schema.organizations.id))
     .where(and(eq(schema.memberships.userId, user.id), eq(schema.memberships.status, "active")));
+});
+
+// 侧边栏展开状态存在 sidebar_state cookie（由 ui 的 SidebarProvider 写入）。
+// 布局 loader 读它作为 defaultOpen，保证 SSR 首屏与用户上次选择一致，不会闪一下。
+export const getSidebarOpen = createServerFn({ method: "GET" }).handler(() => {
+  return getCookie("sidebar_state") !== "false";
 });
 
 export const getOrgContext = createServerFn({ method: "GET" })

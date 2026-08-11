@@ -88,10 +88,60 @@
   禁止再用 `new Date(utcMs).toLocaleString()`（浏览器本地时区）——实测悉尼组织 + 非悉尼
   浏览器时，staff 输入 18:00 会显示成 4:00 PM。页面取时区统一走
   `getRouteApi("/o/$orgId").useLoaderData().org.timezone`。
-- **应用站 header 移动端**：OrgLayout 的 header 用 `flex flex-wrap` 换行而不是固定单行，
-  否则 staff 两组导航（Overview…Account + Members…Settings）在手机宽度下横向溢出
-  （scrollWidth 可达视口 2.3 倍）。对比 landing 的 `hidden sm:flex` 折叠策略，应用站
-  导航项太多且均为运营入口，换行比汉堡菜单改动更小。
+- ~~应用站 header 移动端 flex-wrap~~：已被 2026-08-11 的侧边栏布局取代，见下节。
+
+## 应用站侧边栏布局（2026-08-11，UI 改造 P1）
+
+- **布局**：`OrgLayout` = `SidebarProvider > Sidebar(collapsible="icon") + SidebarInset`。
+  顶部两组 nav 全部下沉到侧边栏（主导航 + staff 才有的 Manage 分组），Account 与 Sign out
+  进底部用户菜单，org 切换器进顶部。移动端由 sidebar.tsx 自动降级成 Sheet 浮层
+  （`useMediaQuery("max-md")`），不再需要 header 换行来防溢出。
+- **移动端必须自己收起**：Sheet 是浮层，导航后不自动关闭会盖住新页面。侧边栏内所有
+  Link 都挂 `useDismissOnNavigate()`（`isMobile && setOpenMobile(false)`）。
+- **激活态用 `useMatchRoute`**：Overview 是父路径，必须 `fuzzy: false`，否则任何子页面
+  都会让它高亮。`to` 用窄字符串联合类型（`OrgNavPath`），用 `LinkProps["to"]` 那种宽联合
+  会让 `params` 推不出来而报 TS2353。
+- **SSR 首屏不闪**：`sidebar_state` cookie 由 `getSidebarOpen` server fn 读出，与
+  `getOrgContext`/`listMyOrganizations` 在 loader 里 `Promise.all` 并行。cookie 只能在
+  `~/server/*.ts` 的 server fn 里读，不要在 route loader 直接 import
+  `@tanstack/react-start/server`（loader 也会跑在客户端）。
+- **loader 返回结构是契约**：`{ org, role }` 两个字段名被 7 个子路由的
+  `getRouteApi("/o/$orgId").useLoaderData()` 依赖，只可新增不可改名。
+- **两个 "Toggle Sidebar"**：`SidebarRail`（装饰性拖拽条，`sm:flex`）和 `SidebarTrigger`
+  的可访问名相同，按角色名定位在 ≥640px 会 strict mode 撞车。测试里用
+  `[data-slot="sidebar-trigger"]` 定位。
+- **别用 `SidebarMenuButton` 的 outline 变体**：它的 shadow 写的是老式
+  `hsl(var(--sidebar-border))`，我们的 token 是 oklch，渲染不出来。默认变体没问题。
+
+## e2e 的水合等待（2026-08-11）
+
+侧边栏让应用主包变大后，dev server 下"页面刚出现就操作"的 flake 明显变多，症状有两种：
+
+- 受控输入（login 的 email）在水合前 `fill`，被首个受控渲染清空 → 提交无反应；
+- 表单在水合前提交走浏览器原生 GET → URL 变成 `?slug=...&summary=...`，请求根本没到
+  server fn。
+
+因此 e2e 一律走 `e2e/helpers.ts` 的 `fillField` / `pressButton`，它们先用
+`waitForHydration` 轮询目标元素上的 `__reactProps$`（React 19 水合后才挂）再操作。
+新写 e2e 不要直接 `locator.fill` / `button.click` 首屏元素。
+
+注意这是测试侧兜底；产品侧的根治办法仍是"落地即填的表单用非受控 + FormData"
+（见上文验收修复轮）。`apps/app/src/routes/login.tsx` 目前仍是受控 email 输入，
+是同类 bug 的存量点。
+
+## vendored 组件的本地修改清单
+
+`packages/ui/src/components/**` 来自 coss/shadcn，同步上游时以下改动必须保留
+（每处都有中文注释标记）：
+
+- `sidebar.tsx`：图标换 `SidebarSimpleIcon`（phosphor）；`setOpen` 里 `cookieStore`
+  做特性检测并降级 `document.cookie`（Firefox/Safari 未实现 Cookie Store API，
+  上游直接 await 会抛未捕获 rejection）。
+- `toast.tsx`：5 个 lucide 图标换 phosphor（`WarningCircle`/`Info`/`CircleNotch`/
+  `CheckCircle`/`Warning`）。该文件挂在 `__root`，不换会把 lucide 拖进全站主包。
+- `button.tsx`：rounded-md、hover 用 `--brand-hover`、press `scale-0.98`（M1 起）。
+
+其余组件仍留着 lucide，策略不变：用到哪个改哪个。
 
 ## 工程坑位记录
 

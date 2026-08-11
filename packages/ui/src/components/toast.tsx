@@ -4,20 +4,24 @@ import { Toast } from "@base-ui/react/toast";
 import { buttonVariants } from "@everband/ui/components/button";
 import { cn } from "@everband/ui/lib/utils";
 import {
-  CircleAlertIcon,
-  CircleCheckIcon,
+  CheckCircleIcon,
+  CircleNotchIcon,
   InfoIcon,
-  LoaderCircleIcon,
-  TriangleAlertIcon,
-} from "lucide-react";
+  WarningCircleIcon,
+  WarningIcon,
+} from "@phosphor-icons/react";
 import type React from "react";
 
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+// 已做等价替换（CircleAlert→WarningCircle、LoaderCircle→CircleNotch、CircleCheck→CheckCircle、
+// TriangleAlert→Warning）。toast.tsx 挂在 __root，换掉可避免 lucide 进入全站主包。
+// 同步上游版本时请保留这段。
 const TOAST_ICONS = {
-  error: CircleAlertIcon,
+  error: WarningCircleIcon,
   info: InfoIcon,
-  loading: LoaderCircleIcon,
-  success: CircleCheckIcon,
-  warning: TriangleAlertIcon,
+  loading: CircleNotchIcon,
+  success: CheckCircleIcon,
+  warning: WarningIcon,
 } as const;
 
 type SwipeDirection = "up" | "down" | "left" | "right";

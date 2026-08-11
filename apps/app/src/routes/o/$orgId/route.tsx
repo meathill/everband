@@ -1,14 +1,20 @@
-import { Button } from "@everband/ui/components/button";
-import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { logout } from "~/server/auth.ts";
-import { getOrgContext } from "~/server/org.ts";
+import { Separator } from "@everband/ui/components/separator";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@everband/ui/components/sidebar";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { getOrgContext, getSidebarOpen, listMyOrganizations } from "~/server/org.ts";
+import { OrgSidebar } from "./-components/org-sidebar.tsx";
 
 // 组织布局：进入即校验 membership（服务端），失败回登录页。
-// 子路由通过 Route.useLoaderData 拿 org/role。
+// 子路由通过 Route.useLoaderData 拿 org/role（字段名不可改，多个子路由依赖）。
 export const Route = createFileRoute("/o/$orgId")({
   loader: async ({ params }) => {
     try {
-      return await getOrgContext({ data: { orgId: params.orgId } });
+      const [ctx, orgs, sidebarOpen] = await Promise.all([
+        getOrgContext({ data: { orgId: params.orgId } }),
+        listMyOrganizations(),
+        getSidebarOpen(),
+      ]);
+      return { ...ctx, orgs, sidebarOpen };
     } catch {
       throw redirect({ to: "/login" });
     }
@@ -17,106 +23,21 @@ export const Route = createFileRoute("/o/$orgId")({
 });
 
 function OrgLayout() {
-  const { org, role } = Route.useLoaderData();
-  const navigate = useNavigate();
-  const isStaff = role === "owner" || role === "staff";
-
-  async function handleLogout() {
-    await logout();
-    await navigate({ to: "/login" });
-  }
+  const { org, role, email, orgs, sidebarOpen } = Route.useLoaderData();
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-border bg-card px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
-            <Link
-              to="/o/$orgId"
-              params={{ orgId: org.id }}
-              className="font-semibold text-foreground"
-            >
-              {org.name}
-            </Link>
-            <nav className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <Link to="/o/$orgId" params={{ orgId: org.id }} className="hover:text-foreground">
-                Overview
-              </Link>
-              <Link
-                to="/o/$orgId/events"
-                params={{ orgId: org.id }}
-                className="hover:text-foreground"
-              >
-                Events
-              </Link>
-              <Link
-                to="/o/$orgId/rehearsals"
-                params={{ orgId: org.id }}
-                className="hover:text-foreground"
-              >
-                Rehearsals
-              </Link>
-              <Link
-                to="/o/$orgId/notifications"
-                params={{ orgId: org.id }}
-                className="hover:text-foreground"
-              >
-                Notifications
-              </Link>
-              <Link
-                to="/o/$orgId/account"
-                params={{ orgId: org.id }}
-                className="hover:text-foreground"
-              >
-                Account
-              </Link>
-            </nav>
-            {isStaff && (
-              <nav className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <Link
-                  to="/o/$orgId/members"
-                  params={{ orgId: org.id }}
-                  className="hover:text-foreground"
-                >
-                  Members
-                </Link>
-                <Link
-                  to="/o/$orgId/groups"
-                  params={{ orgId: org.id }}
-                  className="hover:text-foreground"
-                >
-                  Groups
-                </Link>
-                <Link
-                  to="/o/$orgId/import"
-                  params={{ orgId: org.id }}
-                  className="hover:text-foreground"
-                >
-                  Import
-                </Link>
-                <Link
-                  to="/o/$orgId/settings"
-                  params={{ orgId: org.id }}
-                  className="hover:text-foreground"
-                >
-                  Settings
-                </Link>
-              </nav>
-            )}
-          </div>
+    <SidebarProvider defaultOpen={sidebarOpen}>
+      <OrgSidebar org={org} role={role} email={email} orgs={orgs} />
+      <SidebarInset>
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+          <SidebarTrigger />
+          <Separator className="h-4" orientation="vertical" />
+          <span className="truncate font-medium text-foreground text-sm">{org.name}</span>
+        </header>
+        <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+          <Outlet />
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {role}
-          </span>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            Sign out
-          </Button>
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <Outlet />
-      </main>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

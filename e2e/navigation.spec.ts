@@ -1,9 +1,29 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import {
+  fillField,
+  loginViaMagicLink,
+  pressButton,
+  readLatestMagicLink,
+  requestMagicLink,
+  uniqueEmail,
+} from "./helpers.ts";
 
 // 验收 issue #1/#2/#4/#5 的固化用例：首页导航、未登录回跳、404、favicon。
+// 另含 P1 侧边栏布局的导航用例（应用站左侧边栏替代顶部 header）。
 
-function uniqueEmail(): string {
-  return `e2e-nav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.local`;
+function navEmail(): string {
+  return uniqueEmail("e2e-nav");
+}
+
+// 移动端（<768px）侧边栏降级成 Sheet，需要先按触发器
+async function openSidebarOnMobile(page: Page) {
+  if ((page.viewportSize()?.width ?? 0) >= 768) return;
+  const sheet = page.getByRole("dialog", { name: "Sidebar" });
+  if (await sheet.isVisible()) return;
+  // 用 data-slot 定位：SidebarRail 也叫 "Toggle Sidebar"，按角色名会撞车
+  await page.locator('[data-slot="sidebar-trigger"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(sheet).toBeVisible();
 }
 
 test("首页 Get started / Sign in 按钮可导航（issue #2）", async ({ page }) => {
@@ -18,18 +38,13 @@ test("首页 Get started / Sign in 按钮可导航（issue #2）", async ({ page
 });
 
 test("未登录访问 /new-org 引导登录，magic link 登录后回跳（issue #1）", async ({ page }) => {
-  const email = uniqueEmail();
+  const email = navEmail();
 
   await page.goto("/new-org");
   await expect(page).toHaveURL(/\/login\?redirect=%2Fnew-org/);
+  await requestMagicLink(page, email);
 
-  await page.getByPlaceholder("you@example.com").fill(email);
-  await page.getByRole("button", { name: "Send code" }).click();
-  await expect(page.getByText("We sent a 6-digit code")).toBeVisible();
-
-  await page.goto("/dev/outbox");
-  const card = page.locator(`article[data-kind="magic-link"]`, { hasText: email }).first();
-  const body = await card.locator("pre").innerText();
+  const body = await readLatestMagicLink(page, email);
   const link = body.match(/http:\/\/[^\s]+\/verify\?token=[^\s]+/)?.[0] ?? "";
   expect(link).toContain("redirect=%2Fnew-org");
 
@@ -38,16 +53,12 @@ test("未登录访问 /new-org 引导登录，magic link 登录后回跳（issue
 });
 
 test("恶意 redirect 参数被丢弃，登录后落默认页（防开放重定向）", async ({ page }) => {
-  const email = uniqueEmail();
+  const email = navEmail();
 
   await page.goto("/login?redirect=https%3A%2F%2Fevil.com");
-  await page.getByPlaceholder("you@example.com").fill(email);
-  await page.getByRole("button", { name: "Send code" }).click();
-  await expect(page.getByText("We sent a 6-digit code")).toBeVisible();
+  await requestMagicLink(page, email);
 
-  await page.goto("/dev/outbox");
-  const card = page.locator(`article[data-kind="magic-link"]`, { hasText: email }).first();
-  const body = await card.locator("pre").innerText();
+  const body = await readLatestMagicLink(page, email);
   const link = body.match(/http:\/\/[^\s]+\/verify\?token=[^\s]+/)?.[0] ?? "";
   expect(link).not.toContain("evil.com");
 
@@ -60,6 +71,36 @@ test("未知路径显示降级 404 并可返回首页（issue #5）", async ({ p
   await expect(page.getByRole("heading", { name: "This page isn't available" })).toBeVisible();
   await page.getByRole("link", { name: "Back to home" }).click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不横向溢出", async ({ page }) => {
+  await loginViaMagicLink(page, navEmail());
+  await page.goto("/new-org");
+  await fillField(page.locator("#org-name"), "Sidebar Test Band");
+  await pressButton(page, "Create organization");
+  await expect(page.getByRole("heading", { name: "Sidebar Test Band" })).toBeVisible();
+
+  // 旧的顶部导航已移除，正文区不应再横向溢出（原 header flex-wrap 决策的替代验证）
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+
+  await openSidebarOnMobile(page);
+
+  // Overview 是父路径，必须精确匹配，否则任何子页面都会让它高亮
+  await expect(page.getByRole("link", { name: "Overview" })).toHaveAttribute("data-active", "true");
+  // owner 才有的 Manage 分组
+  await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Events" }).click();
+  await expect(page).toHaveURL(/\/events$/);
+  await openSidebarOnMobile(page);
+  await expect(page.getByRole("link", { name: "Events" })).toHaveAttribute("data-active", "true");
+  await expect(page.getByRole("link", { name: "Overview" })).toHaveAttribute(
+    "data-active",
+    "false",
+  );
 });
 
 test("favicon 返回 200 且为图片（issue #4）", async ({ page }) => {

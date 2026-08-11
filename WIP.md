@@ -9,8 +9,8 @@
 已确认决策：软删为主（draft/无引用才硬删）；Account 挪侧边栏底部用户菜单；
 org 切换器进侧边栏顶部；搜索用提交式（非受控红线）。
 
-- [ ] P0 UI 包地基（--sidebar* token、去 lucide、cookieStore 降级、ToastProvider）
-- [ ] P1 侧边栏布局（OrgLayout 重写 + org-sidebar + e2e 修绿）
+- [x] P0 UI 包地基（--sidebar* token、去 lucide、cookieStore 降级、ToastProvider）
+- [x] P1 侧边栏布局（OrgLayout 重写 + org-sidebar + toast 去 lucide + e2e 补用例）
 - [ ] P2 列表基建（listQuerySchema + DataTable 组件族）
 - [ ] P3 表单基建（FormDrawer + useServerFormAction + ConfirmDialog + groups 落地）
 - [ ] P4 Events 样板页（列表参数全链路 + 编辑/删除 + 集成测试）
@@ -36,5 +36,11 @@ org 切换器进侧边栏顶部；搜索用提交式（非受控红线）。
 - 验收修复轮（2026-08-10）：issue 1-5（登录回跳/首页按钮/隐私条款页/favicon/404 页）+
   staff Overview 四卡仪表盘，全部部署生产并冒烟验证
 
-验收状态：`pnpm run format/typecheck/test/build/test:e2e` 全绿
-（单测 44 + Worker 集成 44 + e2e 8 场景 16 例）。
+验收状态：`pnpm run format/typecheck/build/test:e2e` 全绿
+（单测 46 + e2e 9 场景 18 例）。
+
+⚠️ **Worker 集成测试（apps/app 的 44 例）当前全部无法启动**，报
+`Vitest failed to find the current suite`——`@cloudflare/vitest-pool-workers@0.20.2`
+与根 vitest 4.1.10 之间存在重复实例（node_modules 里有 5 份 vitest，分别绑 vite 7.3.6
+和 vite 8.2.0）。在 P1 改动之前就已存在（已用 stash + `--frozen-lockfile` 复验），
+与 UI 改造无关，需单独排一次依赖收敛。

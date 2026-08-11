@@ -1,24 +1,16 @@
 import { expect, test } from "@playwright/test";
+import { readLatestMagicLink, requestMagicLink, uniqueEmail } from "./helpers.ts";
 
 // M2 骨架用例：magic link 登录闭环（PRD §12.2 场景 2 的最小切片）。
 // 邮件经 DevEmailSender 落到 /dev/outbox，从页面提取链接完成登录。
-
-function uniqueEmail(): string {
-  return `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.local`;
-}
 
 test("magic link 登录后进入组织选择页", async ({ page }) => {
   const email = uniqueEmail();
 
   await page.goto("/login");
-  await page.getByPlaceholder("you@example.com").fill(email);
-  await page.getByRole("button", { name: "Send code" }).click();
-  await expect(page.getByText("We sent a 6-digit code")).toBeVisible();
+  await requestMagicLink(page, email);
 
-  await page.goto("/dev/outbox");
-  const card = page.locator(`article[data-kind="magic-link"]`, { hasText: email }).first();
-  await expect(card).toBeVisible();
-  const body = await card.locator("pre").innerText();
+  const body = await readLatestMagicLink(page, email);
   const match = body.match(/http:\/\/[^\s]+\/verify\?token=[^\s]+/);
   expect(match).not.toBeNull();
 
@@ -30,13 +22,9 @@ test("magic link 只能使用一次", async ({ page }) => {
   const email = uniqueEmail();
 
   await page.goto("/login");
-  await page.getByPlaceholder("you@example.com").fill(email);
-  await page.getByRole("button", { name: "Send code" }).click();
-  await expect(page.getByText("We sent a 6-digit code")).toBeVisible();
+  await requestMagicLink(page, email);
 
-  await page.goto("/dev/outbox");
-  const card = page.locator(`article[data-kind="magic-link"]`, { hasText: email }).first();
-  const body = await card.locator("pre").innerText();
+  const body = await readLatestMagicLink(page, email);
   const link = body.match(/http:\/\/[^\s]+\/verify\?token=[^\s]+/)?.[0] ?? "";
 
   await page.goto(link);
