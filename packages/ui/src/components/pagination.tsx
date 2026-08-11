@@ -4,7 +4,8 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { type Button, buttonVariants } from "@everband/ui/components/button";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretLeftIcon, CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react";
 import type * as React from "react";
 
 export function Pagination({
@@ -83,7 +84,7 @@ export function PaginationPrevious({
       size="default"
       {...props}
     >
-      <ChevronLeftIcon className="sm:-ms-1" />
+      <CaretLeftIcon className="sm:-ms-1" />
       <span className="max-sm:hidden">Previous</span>
     </PaginationLink>
   );
@@ -101,7 +102,7 @@ export function PaginationNext({
       {...props}
     >
       <span className="max-sm:hidden">Next</span>
-      <ChevronRightIcon className="sm:-me-1" />
+      <CaretRightIcon className="sm:-me-1" />
     </PaginationLink>
   );
 }
@@ -117,7 +118,7 @@ export function PaginationEllipsis({
       data-slot="pagination-ellipsis"
       {...props}
     >
-      <MoreHorizontalIcon className="size-5 sm:size-4" />
+      <DotsThreeIcon className="size-5 sm:size-4" />
       <span className="sr-only">More pages</span>
     </span>
   );

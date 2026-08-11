@@ -113,6 +113,107 @@
 - **别用 `SidebarMenuButton` 的 outline 变体**：它的 shadow 写的是老式
   `hsl(var(--sidebar-border))`，我们的 token 是 oklch，渲染不出来。默认变体没问题。
 
+## 列表页样板（2026-08-11，UI 改造 P2）
+
+分页/排序/搜索的基建：`packages/validation/src/list.ts`（`createListQuerySchema` /
+`ListResult` / `toOffset`）+ `apps/app/src/components/data-table/`（`DataTable` /
+`DataTableToolbar` / `DataTablePagination` / `useListSearch`）。新列表页照抄下面骨架，
+不要再手写 `<table>` 和全量 loader。
+
+```tsx
+const listSearchSchema = createListQuerySchema({
+  sortFields: ["name", "createdAt"],
+  defaultSort: "createdAt",
+  defaultOrder: "desc",
+}).extend({ status: z.enum(["all", "active", "left"]).default("all").catch("all") });
+
+export const Route = createFileRoute("/o/$orgId/members")({
+  validateSearch: listSearchSchema,
+  // ⚠️ 最大的坑：漏了 loaderDeps，search 变化不会触发 loader，翻页/排序/搜索全部"点了没反应"
+  loaderDeps: ({ search }) => search,
+  loader: ({ params, deps }) => listStudents({ data: { orgId: params.orgId, ...deps } }),
+  component: MembersPage,
+});
+
+function MembersPage() {
+  const { items, total } = Route.useLoaderData(); // ListResult<Student>
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const list = useListSearch({
+    search,
+    onChange: (patch) => navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true }),
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <DataTableToolbar
+        searchPlaceholder="Search members"
+        defaultQuery={search.q}
+        onQueryChange={list.setQuery}
+        actions={<Button onClick={openDrawer}>New member</Button>}
+      >
+        <Select value={search.status} onValueChange={(v) => list.setFilter("status", v)} />
+      </DataTableToolbar>
+      <DataTable
+        columns={columns}
+        rows={items}
+        rowKey={(row) => row.id}
+        sort={search.sort}
+        order={search.order}
+        onSortChange={list.setSort}
+      />
+      <DataTablePagination
+        page={search.page}
+        pageSize={search.pageSize}
+        total={total}
+        onPageChange={list.setPage}
+      />
+    </div>
+  );
+}
+```
+
+要点：
+
+- **`loaderDeps: ({ search }) => search` 必须写**。没有它 loader 只在 params 变化时重跑，
+  URL 变了但数据不变，表现为"翻页无效"。
+- schema 每个字段是 `.default(x).catch(x)`：`default` 让**输入侧**的键可选（否则
+  `<Link to="/o/$orgId/members">` 这类不带 search 的跳转过不了类型），`catch` 让用户手改的
+  非法参数静默回落而不是抛错。extend 出来的筛选字段照此写。
+- server fn 用同一个 schema 校验入参；db 查询返回 `ListResult<T>`（items + total + page +
+  pageSize），offset 用 `toOffset(page, pageSize)`，count 与 rows 用 `Promise.all` 并行。
+- 工具条搜索框是**非受控**（`defaultValue` + 提交读 FormData + 回车即搜），没有 debounce；
+  外部要重置关键词就给 `DataTableToolbar` 挂 `key={search.q ?? ""}`。
+- `setQuery` / `setFilter` / `setSort` 都会把 `page` 复位到 1（排序变了还停在第 7 页没有意义）；
+  navigate 一律 `replace: true`，列表状态不该塞满前进/后退历史。
+- 单页（`total ≤ pageSize`）时 `DataTablePagination` 自己返回 null，页面不用判断。
+- 排序列的 `key` 必须落在 `sortFields` 里；表头图标由 DataTable 统一渲染，
+  首次点击的方向用列上的 `defaultOrder`（时间列传 `desc`）。
+
+## 表单基建（2026-08-11，UI 改造 P3）
+
+写表单统一走 `~/hooks/use-server-form-action.ts` + `~/components/form-drawer.tsx`，
+二次确认走 `~/components/confirm-dialog.tsx`。模式（样板见 `groups.tsx`）：
+
+- 非受控输入（`defaultValue`，无 `value`）→ FormDrawer 内 `preventDefault` + FormData →
+  调用方组装 server fn 入参 → `submit(...)`；失败错误显示在抽屉内，成功先
+  `router.invalidate()` 再 toast + `onSuccess` 关抽屉（列表刷新完才关，避免闪旧数据）。
+- drawer 内表单主体用 Frame 分区：每个逻辑区一个 `FramePanel`
+  （`FrameHeader > FrameTitle` + 字段），字段配 `field.tsx`。
+
+Base UI Drawer 的关键行为（都验证过）：
+
+- Portal `keepMounted` 默认 false，关闭即卸载 children，非受控表单天然重置——
+  这是"非受控 + FormData"红线在 drawer 场景可行的前提。
+- `<Drawer position="right">` 即右侧弹出；`DrawerPopup` 已内含 Portal/Backdrop/Viewport。
+  默认宽 `max-w-md`，业务侧统一 `className="w-full sm:max-w-lg"` 覆盖。
+- popup 自带 `touch-none`：自建滚动容器必须显式 `touch-auto`，否则触屏滚不动；
+  `DrawerPanel` 内置 ScrollArea 在 flex 列里撑不开，用 `scrollable={false}` +
+  `min-h-0 flex-1 overflow-y-auto` 自己套。
+- 开场动画 450ms：e2e/手测量位置要等动画结束（~700ms），否则量到 transform 中间态。
+- `ToastProvider` 全站 `position="top-center"`（`__root.tsx`）：默认 bottom-right
+  会盖住右侧抽屉的底部操作区（toast z-60 > drawer z-50，点击会被吃掉）。
+
 ## e2e 的水合等待（2026-08-11）
 
 侧边栏让应用主包变大后，dev server 下"页面刚出现就操作"的 flake 明显变多，症状有两种：
@@ -140,6 +241,8 @@
 - `toast.tsx`：5 个 lucide 图标换 phosphor（`WarningCircle`/`Info`/`CircleNotch`/
   `CheckCircle`/`Warning`）。该文件挂在 `__root`，不换会把 lucide 拖进全站主包。
 - `button.tsx`：rounded-md、hover 用 `--brand-hover`、press `scale-0.98`（M1 起）。
+- `pagination.tsx`：3 个 lucide 图标换 phosphor（`CaretLeft`/`CaretRight`/`DotsThree`）。
+  组件本身是链接语义（`<a>`），我们的列表分页只用它的 nav/ul/li 与省略号，页码按钮另拼。
 
 其余组件仍留着 lucide，策略不变：用到哪个改哪个。
 
