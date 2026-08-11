@@ -289,12 +289,36 @@
   --chart-3: var(--gold-500);
   --chart-4: var(--danger);
   --chart-5: var(--emerald-300);
+
+  /* Sidebar — coss/shadcn 侧边栏专用槽位。
+     全部用 var() 间接引用主题槽位，因此 amber / midnight / dark
+     只需覆盖需要偏离的那一两个值（与 --primary/--accent 的处理一致）。
+     侧边栏底色取 --bg-sunken（== --muted），比内容区 --bg 略沉。 */
+  --sidebar: var(--bg-sunken);
+  --sidebar-foreground: var(--fg);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--fg-on-brand);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  /* 注意：DYQR 的 --ring 是带 alpha 的光晕颜色，这里要的是实色描边，
+     所以对齐 coss 的 --ring-color（= --brand）。 */
+  --sidebar-ring: var(--ring-color);
 }
 
 :root[data-theme="dark"],
 .dark {
   --secondary-foreground: var(--ink-50);
   --accent-foreground: var(--ink-50);
+
+  /* 深色下 --bg-sunken 比 --bg 还暗，侧边栏会糊成一片；
+     改用抬升面（== --card），侧边栏比内容区略亮，符合 shadcn 惯例。 */
+  --sidebar: var(--bg-elevated);
+}
+
+:root[data-theme="amber"] {
+  /* 暖色主题：侧边栏底色跟着走暖，避免与 parchment 内容区撞出冷灰。 */
+  --sidebar: oklch(0.965 0.012 80);
 }
 
 :root[data-theme="midnight"] {
@@ -303,6 +327,9 @@
   --accent: oklch(0.965 0.03 85);
   --accent-foreground: var(--gold-700);
   --chart-3: var(--gold-500);
+
+  /* 侧边栏底色跟随 midnight 的蓝调，比 --bg 略沉。 */
+  --sidebar: oklch(0.955 0.012 250);
 }
 
 /* ============================================================

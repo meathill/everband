@@ -1,7 +1,25 @@
 # WIP
 
-无进行中任务。上一轮（2026-08-10）：验收 issue 1-5 全部修复并上线，
-staff Overview 仪表盘完成。长期事项见 [TODO.md](TODO.md)。
+## 进行中：应用 UI 框架改造（2026-08-11 启动）
+
+顶部菜单 → 左侧边栏布局；New XXX 迁右侧 drawer；补齐编辑/删除；
+所有列表加快捷操作 + 排序/筛选/搜索/翻页；表单 Frame 分区化。
+完整计划见 `~/.claude/plans/app-ui-concurrent-duckling.md`。
+
+已确认决策：软删为主（draft/无引用才硬删）；Account 挪侧边栏底部用户菜单；
+org 切换器进侧边栏顶部；搜索用提交式（非受控红线）。
+
+- [ ] P0 UI 包地基（--sidebar* token、去 lucide、cookieStore 降级、ToastProvider）
+- [ ] P1 侧边栏布局（OrgLayout 重写 + org-sidebar + e2e 修绿）
+- [ ] P2 列表基建（listQuerySchema + DataTable 组件族）
+- [ ] P3 表单基建（FormDrawer + useServerFormAction + ConfirmDialog + groups 落地）
+- [ ] P4 Events 样板页（列表参数全链路 + 编辑/删除 + 集成测试）
+- [ ] P5 Members + Groups
+- [ ] P6 Rehearsals（series 可见性 + end/cancel）
+- [ ] P7 长尾页面（notifications/import/settings/account/new-org/select-org）
+- [ ] P8 e2e 补齐 + 文档收尾
+
+每阶段 format/typecheck/test 绿后单独提交。
 
 ## 里程碑归档
 

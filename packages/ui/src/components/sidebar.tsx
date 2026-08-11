@@ -17,8 +17,8 @@ import { Skeleton } from "@everband/ui/components/skeleton";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@everband/ui/components/tooltip";
 import { useMediaQuery } from "@everband/ui/hooks/use-media-query";
 import { cn } from "@everband/ui/lib/utils";
+import { SidebarSimpleIcon } from "@phosphor-icons/react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 
 const SIDEBAR_COOKIE_NAME: string = "sidebar_state";
@@ -102,12 +102,19 @@ export function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
-      await cookieStore.set({
-        expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
-        name: SIDEBAR_COOKIE_NAME,
-        path: "/",
-        value: String(openState),
-      });
+      // 本地修改（vendored 组件）：上游直接 await cookieStore.set，而 Cookie Store API
+      // 在 Firefox / Safari 尚未实现，会抛未捕获的 rejection。此处做特性检测并降级到
+      // document.cookie。同步上游版本时请保留这段。
+      if (typeof cookieStore !== "undefined") {
+        await cookieStore.set({
+          expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
+          name: SIDEBAR_COOKIE_NAME,
+          path: "/",
+          value: String(openState),
+        });
+      } else {
+        document.cookie = `${SIDEBAR_COOKIE_NAME}=${String(openState)}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      }
     },
     [setOpenProp, open],
   );
@@ -292,7 +299,7 @@ export function SidebarTrigger({
       variant="ghost"
       {...props}
     >
-      <PanelLeftIcon />
+      <SidebarSimpleIcon />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

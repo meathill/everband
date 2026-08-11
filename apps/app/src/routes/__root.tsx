@@ -1,3 +1,4 @@
+import { ToastProvider } from "@everband/ui/components/toast";
 import appCss from "@everband/ui/styles/globals.css?url";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -33,7 +34,8 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        {/* ToastProvider 自带 viewport（Toasts），全站共用 toastManager。 */}
+        <ToastProvider>{children}</ToastProvider>
         <Scripts />
       </body>
     </html>
