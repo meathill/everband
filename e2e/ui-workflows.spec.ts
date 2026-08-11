@@ -175,6 +175,7 @@ test("Overview 月历在桌面展示溢出 Popover，在移动端展示选中日
     await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();
   } else {
     const overflow = page.getByRole("button", { name: "+1 more" });
+    await waitForHydration(overflow);
     await overflow.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();

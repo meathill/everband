@@ -1,6 +1,7 @@
 import { Separator } from "@everband/ui/components/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@everband/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { getRouteAuthErrorCode } from "~/lib/route-auth-error.ts";
 import { getUnreadNotificationCount } from "~/server/notify.ts";
 import { getOrgContext, getSidebarOpen, listMyOrganizations } from "~/server/org.ts";
 import { OrgSidebar } from "./-components/org-sidebar.tsx";
@@ -17,8 +18,11 @@ export const Route = createFileRoute("/o/$orgId")({
         getUnreadNotificationCount({ data: { orgId: params.orgId } }),
       ]);
       return { ...ctx, orgs, sidebarOpen, unreadCount };
-    } catch {
-      throw redirect({ to: "/login" });
+    } catch (cause) {
+      const authError = getRouteAuthErrorCode(cause);
+      if (authError === "unauthenticated") throw redirect({ to: "/login" });
+      if (authError === "forbidden") throw redirect({ to: "/select-org" });
+      throw cause;
     }
   },
   component: OrgLayout,

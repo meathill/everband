@@ -52,6 +52,11 @@ test("未登录访问 /new-org 引导登录，magic link 登录后回跳（issue
   await expect(page.getByRole("heading", { name: "Create an organization" })).toBeVisible();
 });
 
+test("未登录访问组织页才会被送到登录页", async ({ page }) => {
+  await page.goto("/o/org_missing");
+  await expect(page).toHaveURL(/\/login$/);
+});
+
 test("已有组织时通用入口进入组织首页，不再打开创建表单", async ({ page }) => {
   await loginViaMagicLink(page, navEmail());
   await page.goto("/new-org?intent=create");
@@ -65,6 +70,30 @@ test("已有组织时通用入口进入组织首页，不再打开创建表单",
   await expect(page).toHaveURL(new RegExp(`/o/${orgId}$`));
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create an organization" })).not.toBeVisible();
+});
+
+test("拥有多个组织时可以从选择页进入任一组织", async ({ page }) => {
+  await loginViaMagicLink(page, navEmail());
+  const firstName = `First Band ${Date.now()}`;
+  const secondName = `Second Band ${Date.now()}`;
+
+  await page.goto("/new-org?intent=create");
+  await fillField(page.locator("#org-name"), firstName);
+  await pressButton(page, "Create organization");
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  const firstOrgId = new URL(page.url()).pathname.split("/")[2];
+  expect(firstOrgId).toBeTruthy();
+
+  await page.goto("/new-org?intent=create");
+  await fillField(page.locator("#org-name"), secondName);
+  await pressButton(page, "Create organization");
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await page.goto("/select-org");
+  await expect(page.getByRole("heading", { name: "Your organizations" })).toBeVisible();
+  await page.getByRole("link", { name: new RegExp(firstName) }).click();
+  await expect(page).toHaveURL(new RegExp(`/o/${firstOrgId}$`));
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });
 
 test("恶意 redirect 参数被丢弃，登录后落默认页（防开放重定向）", async ({ page }) => {

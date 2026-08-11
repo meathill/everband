@@ -124,6 +124,11 @@
   income/expense、编辑和 void。void 保留记录且不计入余额，每次写入都必须产生 audit。
 - **Settings 是运营工具归宿**：Import jobs 位于 Data import，邮件发送记录位于 Email
   delivery；Notifications 只保留站内通知。旧 `/import`、`/groups` 只做兼容重定向。
+- **组织 loader 不能 catch-all 后跳 Login**：只把明确的 `unauthenticated` 重定向到登录页，
+  `forbidden` 回组织选择页；D1 schema、网络和其他服务端异常必须继续抛出。否则迁移遗漏会被伪装成
+  session 失效，用户重复登录也无法恢复。
+- **涉及新 schema 的发布顺序**：先应用向后兼容的 D1 migration，再部署读取新字段/表的 Worker，
+  最后执行已登录组织页 smoke test。`wrangler d1 migrations list --remote` 必须无待应用项。
 
 ## 列表页样板（2026-08-11，UI 改造 P2）
 
