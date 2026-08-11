@@ -8,4 +8,5 @@ export * from "./list.ts";
 export * from "./member.ts";
 export * from "./notification.ts";
 export * from "./org.ts";
+export * from "./rehearsal.ts";
 export * from "./term.ts";

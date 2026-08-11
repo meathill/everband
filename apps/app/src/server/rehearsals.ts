@@ -1,34 +1,35 @@
 import {
+  cancelOccurrenceCore,
+  cancelSwapRequestCore,
   createNotifications,
   decideSwapCore,
   eligibleHouseholdIds,
+  endRehearsalSeriesCore,
   expandSeries,
   householdsOfUser,
+  listRehearsalSeriesCore,
   RehearsalError,
   recordAudit,
 } from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
-import { orgIdSchema } from "@everband/validation";
+import {
+  cancelOccurrenceSchema,
+  cancelSwapRequestSchema,
+  createRehearsalSeriesSchema,
+  decideSwapSchema,
+  endRehearsalSeriesSchema,
+  listRehearsalSeriesSchema,
+  orgIdSchema,
+  requestSwapSchema,
+} from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
-import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
 
-const createSeriesSchema = z.object({
-  orgId: z.string().min(1),
-  termId: z.string().min(1),
-  groupId: z.string().min(1).optional(),
-  weekday: z.number().int().min(0).max(6),
-  startTimeLocal: z.string().regex(/^\d{2}:\d{2}$/),
-  endTimeLocal: z.string().regex(/^\d{2}:\d{2}$/),
-  location: z.string().trim().max(200).optional(),
-  helpersNeeded: z.number().int().min(1).max(10),
-});
-
 export const createRehearsalSeries = createServerFn({ method: "POST" })
-  .validator(createSeriesSchema)
+  .validator(createRehearsalSeriesSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -171,13 +172,7 @@ export const getRehearsalOverview = createServerFn({ method: "GET" })
   });
 
 export const requestSwap = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      orgId: z.string().min(1),
-      assignmentId: z.string().min(1),
-      note: z.string().trim().max(500).optional(),
-    }),
-  )
+  .validator(requestSwapSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
@@ -225,14 +220,7 @@ export const requestSwap = createServerFn({ method: "POST" })
   });
 
 export const decideSwap = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      orgId: z.string().min(1),
-      swapId: z.string().min(1),
-      decision: z.enum(["approved", "declined"]),
-      replacementHouseholdId: z.string().min(1).optional(),
-    }),
-  )
+  .validator(decideSwapSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
@@ -277,6 +265,40 @@ export const decideSwap = createServerFn({ method: "POST" })
       summary: { replacementHouseholdId: data.replacementHouseholdId ?? null },
     });
     return { ok: true as const };
+  });
+
+// 申请人自己撤回 pending 换班：不是 staff 操作，所以不限角色，归属校验在 core 里
+export const cancelSwapRequest = createServerFn({ method: "POST" })
+  .validator(cancelSwapRequestSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId);
+    return cancelSwapRequestCore(db, data.orgId, data.swapId, ctx.membershipId, Date.now());
+  });
+
+// staff：series 一览（含未来场次数与 active/ended 状态）
+export const listRehearsalSeries = createServerFn({ method: "GET" })
+  .validator(listRehearsalSeriesSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    await requireMembership(db, data.orgId, STAFF_ROLES);
+    return listRehearsalSeriesCore(db, data.orgId, { groupId: data.groupId }, Date.now());
+  });
+
+export const endRehearsalSeries = createServerFn({ method: "POST" })
+  .validator(endRehearsalSeriesSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    return endRehearsalSeriesCore(db, data.orgId, data.seriesId, ctx.membershipId, Date.now());
+  });
+
+export const cancelRehearsalOccurrence = createServerFn({ method: "POST" })
+  .validator(cancelOccurrenceSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    return cancelOccurrenceCore(db, data.orgId, data.occurrenceId, ctx.membershipId);
   });
 
 export const listSeriesInputs = createServerFn({ method: "GET" })
