@@ -11,6 +11,33 @@ export interface TimeWindow {
   endUtcMs: number;
 }
 
+export interface MonthWindow extends TimeWindow {
+  month: string;
+}
+
+const MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
+
+export function currentMonthInTimezone(nowUtcMs: number, timezone: string): string {
+  const local = new TZDate(nowUtcMs, timezone);
+  return `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** 组织时区下月份的 UTC 半开区间 `[start, end)`，适合直接用于数据库范围查询。 */
+export function monthWindow(month: string, timezone: string): MonthWindow {
+  const match = MONTH_PATTERN.exec(month);
+  if (!match) {
+    throw new Error(`Invalid month value: ${month}`);
+  }
+  const year = Number(match[1]);
+  const monthNumber = Number(match[2]);
+  if (monthNumber < 1 || monthNumber > 12) {
+    throw new Error(`Invalid month value: ${month}`);
+  }
+  const start = new TZDate(year, monthNumber - 1, 1, 0, 0, 0, 0, timezone);
+  const end = new TZDate(year, monthNumber, 1, 0, 0, 0, 0, timezone);
+  return { month, startUtcMs: start.getTime(), endUtcMs: end.getTime() };
+}
+
 // [现在, 组织时区下 30 天后的当日 23:59:59.999]
 export function upcomingWindow(nowUtcMs: number, timezone: string): TimeWindow {
   const localNow = new TZDate(nowUtcMs, timezone);

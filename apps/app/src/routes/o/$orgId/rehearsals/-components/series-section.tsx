@@ -16,16 +16,10 @@ export interface SeriesSectionProps {
   orgId: string;
   series: RehearsalSeriesRow[];
   terms: SeriesFormOption[];
-  groups: SeriesFormOption[];
 }
 
 /** staff 的 series 一览：谁、每周什么时候、还剩几场，以及结束整条 series。 */
-export function SeriesSection({
-  orgId,
-  series,
-  terms,
-  groups,
-}: SeriesSectionProps): React.ReactElement {
+export function SeriesSection({ orgId, series, terms }: SeriesSectionProps): React.ReactElement {
   const router = useRouter();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const hasTerm = terms.length > 0;
@@ -49,10 +43,12 @@ export function SeriesSection({
 
   const columns: DataTableColumn<RehearsalSeriesRow>[] = [
     {
-      header: "Group",
-      key: "group",
+      header: "Audience",
+      key: "audience",
       render: (row) => (
-        <span className="font-medium text-foreground">{row.groupName ?? "Whole organization"}</span>
+        <span className="font-medium text-foreground">
+          {row.groupId ? "Restricted legacy audience" : "Whole organization"}
+        </span>
       ),
     },
     {
@@ -137,7 +133,6 @@ export function SeriesSection({
       />
 
       <SeriesFormDrawer
-        groups={groups}
         onOpenChange={setIsDrawerOpen}
         open={isDrawerOpen}
         orgId={orgId}

@@ -41,8 +41,7 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
 const orgRoute = getRouteApi("/o/$orgId");
 
 function EventDetailPage(): React.ReactElement {
-  const { event, groups, allGroups, updates, attachments, role, formData, results } =
-    Route.useLoaderData();
+  const { event, updates, attachments, role, formData, results } = Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
   const isStaff = role === "owner" || role === "staff";
@@ -63,10 +62,7 @@ function EventDetailPage(): React.ReactElement {
           {event.location ? ` · ${event.location}` : ""}
         </p>
         <p className="text-muted-foreground text-sm">
-          Audience:{" "}
-          {event.isOrgWide
-            ? "whole organization"
-            : groups.map((group) => group.name).join(", ") || "no groups"}
+          Audience: {event.isOrgWide ? "whole organization" : "restricted legacy audience"}
         </p>
         {event.description && <p className="max-w-2xl text-foreground">{event.description}</p>}
         {isStaff && (
@@ -107,7 +103,7 @@ function EventDetailPage(): React.ReactElement {
           event={{
             description: event.description,
             endsAtUtc: event.endsAtUtc,
-            groupIds: groups.map((group) => group.groupId),
+            groupIds: [],
             id: event.id,
             isOrgWide: event.isOrgWide,
             location: event.location,
@@ -115,7 +111,6 @@ function EventDetailPage(): React.ReactElement {
             status: event.status,
             title: event.title,
           }}
-          groups={allGroups}
           onOpenChange={setIsDrawerOpen}
           open={isDrawerOpen}
           orgId={orgId}

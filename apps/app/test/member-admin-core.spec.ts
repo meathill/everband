@@ -293,19 +293,19 @@ describe("updateStudentCore", () => {
     expect(await auditActions(seeded.orgId, studentId)).toContain("student.updated");
   });
 
-  it("active 学生不能被移出分组，非 active 可以", async () => {
+  it("Group 暂停后 active 与非 active 学生都可以移出分组", async () => {
     const seeded = await seed();
     const activeStudent = await seedStudent(seeded, { status: "active" });
     const interested = await seedStudent(seeded, { status: "interested" });
 
-    const blocked = await updateStudentCore(
+    const activeResult = await updateStudentCore(
       db,
       seeded.orgId,
       activeStudent,
       { groupId: null },
       seeded.membershipId,
     );
-    expect(blocked.ok).toBe(false);
+    expect(activeResult.ok).toBe(true);
 
     const allowed = await updateStudentCore(
       db,

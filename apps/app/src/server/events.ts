@@ -25,7 +25,7 @@ import {
   updateEventSchema,
 } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "./context.ts";
 import { AuthError, requireMembership, STAFF_ROLES } from "./guards.ts";
 
@@ -46,21 +46,6 @@ export const createEvent = createServerFn({ method: "POST" })
     const now = Date.now();
     const timezone = await getOrgTimezone(db, data.orgId);
 
-    if (!data.isOrgWide && data.groupIds.length > 0) {
-      const owned = await db
-        .select({ id: schema.groups.id })
-        .from(schema.groups)
-        .where(
-          and(
-            eq(schema.groups.organizationId, data.orgId),
-            inArray(schema.groups.id, data.groupIds),
-          ),
-        );
-      if (owned.length !== data.groupIds.length) {
-        return { ok: false as const, error: "One of the selected groups does not exist." };
-      }
-    }
-
     const eventId = generateId(ID_PREFIXES.event);
     await db.insert(schema.events).values({
       id: eventId,
@@ -71,28 +56,19 @@ export const createEvent = createServerFn({ method: "POST" })
       startsAtUtc: localDateTimeToUtcMs(data.startsAtLocal, timezone),
       endsAtUtc: data.endsAtLocal ? localDateTimeToUtcMs(data.endsAtLocal, timezone) : null,
       location: data.location ?? null,
-      isOrgWide: data.isOrgWide,
+      isOrgWide: true,
       status: "draft",
       createdByMembershipId: ctx.membershipId,
       createdAt: now,
       updatedAt: now,
     });
-    if (!data.isOrgWide && data.groupIds.length > 0) {
-      await db.insert(schema.eventGroups).values(
-        data.groupIds.map((groupId) => ({
-          organizationId: data.orgId,
-          eventId,
-          groupId,
-        })),
-      );
-    }
     await recordAudit(db, {
       organizationId: data.orgId,
       actorMembershipId: ctx.membershipId,
       action: "event.created",
       objectType: "event",
       objectId: eventId,
-      summary: { title: data.title, isOrgWide: data.isOrgWide, groupIds: data.groupIds },
+      summary: { title: data.title, isOrgWide: true, groupIds: [] },
     });
     return { ok: true as const, eventId };
   });
@@ -121,8 +97,7 @@ export const updateEvent = createServerFn({ method: "POST" })
             : data.endsAtLocal
               ? localDateTimeToUtcMs(data.endsAtLocal, timezone)
               : null,
-        isOrgWide: data.isOrgWide,
-        groupIds: data.groupIds,
+        // Group 暂停期间编辑旧活动不改变既有受众关系。
       },
       ctx.membershipId,
       Date.now(),
@@ -196,21 +171,8 @@ export const getEventsPageData = createServerFn({ method: "GET" })
     const ctx = await requireMembership(db, data.orgId);
 
     if (ctx.role === "owner" || ctx.role === "staff") {
-      const [list, groups] = await Promise.all([
-        listOrgEventsCore(db, data.orgId, data, Date.now()),
-        // 受众选择器只列 active 分组；归档分组在 updateGroupCore 里就被禁止留下活动引用
-        db
-          .select({ id: schema.groups.id, name: schema.groups.name })
-          .from(schema.groups)
-          .where(
-            and(
-              eq(schema.groups.organizationId, data.orgId),
-              eq(schema.groups.status, "active" as const),
-            ),
-          )
-          .orderBy(asc(schema.groups.name)),
-      ]);
-      return { mode: "staff" as const, list, groups };
+      const list = await listOrgEventsCore(db, data.orgId, data, Date.now());
+      return { mode: "staff" as const, list };
     }
 
     const timezone = await getOrgTimezone(db, data.orgId);
@@ -257,25 +219,7 @@ export const getEventDetail = createServerFn({ method: "GET" })
       throw new AuthError("forbidden");
     }
 
-    const [groupRows, allGroups, updates, attachmentRows] = await Promise.all([
-      db
-        .select({ groupId: schema.eventGroups.groupId, name: schema.groups.name })
-        .from(schema.eventGroups)
-        .innerJoin(schema.groups, eq(schema.groups.id, schema.eventGroups.groupId))
-        .where(eq(schema.eventGroups.eventId, data.eventId)),
-      // 编辑抽屉的受众选项（只列 active 分组）；parent 用不到，但多一次小查询换掉一趟额外往返
-      isStaff
-        ? db
-            .select({ id: schema.groups.id, name: schema.groups.name })
-            .from(schema.groups)
-            .where(
-              and(
-                eq(schema.groups.organizationId, data.orgId),
-                eq(schema.groups.status, "active" as const),
-              ),
-            )
-            .orderBy(asc(schema.groups.name))
-        : Promise.resolve([]),
+    const [updates, attachmentRows] = await Promise.all([
       db
         .select()
         .from(schema.eventUpdates)
@@ -307,8 +251,6 @@ export const getEventDetail = createServerFn({ method: "GET" })
 
     return {
       event,
-      groups: groupRows,
-      allGroups,
       updates,
       attachments: attachmentRows,
       role: ctx.role,

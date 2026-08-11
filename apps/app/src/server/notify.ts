@@ -13,7 +13,7 @@ import { schema } from "@everband/db";
 import { notificationIdSchema, notificationsPageSchema, orgIdSchema } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
@@ -142,6 +142,23 @@ export const listMyNotifications = createServerFn({ method: "GET" })
       pageSize: data.pageSize,
       filter: data.filter,
     });
+  });
+
+export const getUnreadNotificationCount = createServerFn({ method: "GET" })
+  .validator(orgIdSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId);
+    const rows = await db
+      .select({ value: count() })
+      .from(schema.notifications)
+      .where(
+        and(
+          eq(schema.notifications.membershipId, ctx.membershipId),
+          isNull(schema.notifications.readAt),
+        ),
+      );
+    return rows[0]?.value ?? 0;
   });
 
 export const markNotificationRead = createServerFn({ method: "POST" })

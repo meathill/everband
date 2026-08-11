@@ -14,6 +14,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -31,10 +32,9 @@ import {
   PlusIcon,
   SignOutIcon,
   SquaresFourIcon,
-  UploadSimpleIcon,
   UserCircleIcon,
   UsersIcon,
-  UsersThreeIcon,
+  WalletIcon,
 } from "@phosphor-icons/react";
 import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import type React from "react";
@@ -47,8 +47,7 @@ type OrgNavPath =
   | "/o/$orgId/rehearsals"
   | "/o/$orgId/notifications"
   | "/o/$orgId/members"
-  | "/o/$orgId/groups"
-  | "/o/$orgId/import"
+  | "/o/$orgId/finance"
   | "/o/$orgId/settings";
 
 type NavItem = {
@@ -63,13 +62,12 @@ const MAIN_ITEMS: NavItem[] = [
   { to: "/o/$orgId", label: "Overview", icon: SquaresFourIcon, exact: true },
   { to: "/o/$orgId/events", label: "Events", icon: CalendarBlankIcon },
   { to: "/o/$orgId/rehearsals", label: "Rehearsals", icon: MusicNotesIcon },
-  { to: "/o/$orgId/notifications", label: "Notifications", icon: BellIcon },
+  { to: "/o/$orgId/members", label: "Members", icon: UsersIcon },
+  { to: "/o/$orgId/finance", label: "Finance", icon: WalletIcon },
 ];
 
-const MANAGE_ITEMS: NavItem[] = [
-  { to: "/o/$orgId/members", label: "Members", icon: UsersIcon },
-  { to: "/o/$orgId/groups", label: "Groups", icon: UsersThreeIcon },
-  { to: "/o/$orgId/import", label: "Import", icon: UploadSimpleIcon },
+const UTILITY_ITEMS: NavItem[] = [
+  { to: "/o/$orgId/notifications", label: "Notifications", icon: BellIcon },
   { to: "/o/$orgId/settings", label: "Settings", icon: GearIcon },
 ];
 
@@ -85,6 +83,7 @@ export type OrgSidebarProps = {
   role: string;
   email: string;
   orgs: OrgSummary[];
+  unreadCount: number;
 };
 
 // 移动端侧边栏是 Sheet 浮层，导航后必须自己收起，否则新页面被浮层盖住
@@ -97,7 +96,13 @@ function useDismissOnNavigate(): () => void {
   };
 }
 
-export function OrgSidebar({ org, role, email, orgs }: OrgSidebarProps): React.ReactElement {
+export function OrgSidebar({
+  org,
+  role,
+  email,
+  orgs,
+  unreadCount,
+}: OrgSidebarProps): React.ReactElement {
   const isStaff = role === "owner" || role === "staff";
 
   return (
@@ -107,16 +112,16 @@ export function OrgSidebar({ org, role, email, orgs }: OrgSidebarProps): React.R
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <NavMenu items={MAIN_ITEMS} orgId={org.id} />
+          <SidebarGroupLabel>Daily operations</SidebarGroupLabel>
+          <NavMenu items={isStaff ? MAIN_ITEMS : MAIN_ITEMS.slice(0, 3)} orgId={org.id} />
         </SidebarGroup>
-        {isStaff && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Manage</SidebarGroupLabel>
-            <NavMenu items={MANAGE_ITEMS} orgId={org.id} />
-          </SidebarGroup>
-        )}
       </SidebarContent>
       <SidebarFooter>
+        <NavMenu
+          items={isStaff ? UTILITY_ITEMS : UTILITY_ITEMS.slice(0, 1)}
+          orgId={org.id}
+          unreadCount={unreadCount}
+        />
         <UserMenu email={email} orgId={org.id} role={role} />
       </SidebarFooter>
       <SidebarRail />
@@ -124,7 +129,15 @@ export function OrgSidebar({ org, role, email, orgs }: OrgSidebarProps): React.R
   );
 }
 
-function NavMenu({ items, orgId }: { items: NavItem[]; orgId: string }): React.ReactElement {
+function NavMenu({
+  items,
+  orgId,
+  unreadCount = 0,
+}: {
+  items: NavItem[];
+  orgId: string;
+  unreadCount?: number;
+}): React.ReactElement {
   const matchRoute = useMatchRoute();
   const dismiss = useDismissOnNavigate();
 
@@ -145,6 +158,9 @@ function NavMenu({ items, orgId }: { items: NavItem[]; orgId: string }): React.R
               <item.icon />
               <span>{item.label}</span>
             </SidebarMenuButton>
+            {item.label === "Notifications" && unreadCount > 0 && (
+              <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
+            )}
           </SidebarMenuItem>
         );
       })}

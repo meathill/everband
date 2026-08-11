@@ -32,6 +32,7 @@ export const ID_PREFIXES = {
   importJobRow: "row",
   auditEntry: "aud",
   qrCode: "qr",
+  ledgerEntry: "led",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

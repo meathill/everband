@@ -1,17 +1,17 @@
 import { env } from "cloudflare:test";
-import { getStaffOverviewData } from "@everband/core";
+import { getParentOverviewData, getStaffOverviewData } from "@everband/core";
 import { createDb, schema } from "@everband/db";
-import { generateId, ID_PREFIXES } from "@everband/domain";
+import { generateId, ID_PREFIXES, monthWindow } from "@everband/domain";
 import { describe, expect, it } from "vitest";
 
 const db = createDb(env.DB);
-// 与其他 spec 错开的独立时间基准（测试库不清空，靠唯一数据隔离）
-const NOW = 1_754_900_000_000;
+const NOW = Date.parse("2026-08-11T08:00:00Z");
+const AUGUST = monthWindow("2026-08", "Australia/Sydney");
 
-let seq = 0;
+let sequence = 0;
 function unique(prefix: string): string {
-  seq += 1;
-  return `${prefix}-${NOW}-${seq}-${Math.random().toString(36).slice(2, 6)}`;
+  sequence += 1;
+  return `${prefix}-${NOW}-${sequence}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 async function seedOrg(): Promise<{ orgId: string; membershipId: string }> {
@@ -22,6 +22,7 @@ async function seedOrg(): Promise<{ orgId: string; membershipId: string }> {
     name: unique("Org"),
     type: "band",
     timezone: "Australia/Sydney",
+    currencyCode: "AUD",
     createdAt: NOW,
   });
   await db.insert(schema.memberships).values({
@@ -29,43 +30,112 @@ async function seedOrg(): Promise<{ orgId: string; membershipId: string }> {
     organizationId: orgId,
     role: "owner",
     status: "active",
-    invitedEmail: `${unique("o")}@test.local`,
+    invitedEmail: `${unique("owner")}@test.local`,
     createdAt: NOW,
   });
   return { orgId, membershipId };
 }
 
+async function seedStudent(
+  orgId: string,
+  membershipId: string,
+  status: "interested" | "active" | "withdrawn" | "archived",
+  groupId: string | null = null,
+): Promise<{ userId: string; membershipId: string }> {
+  const userId = generateId(ID_PREFIXES.user);
+  const parentMembershipId = generateId(ID_PREFIXES.membership);
+  const householdId = generateId(ID_PREFIXES.household);
+  const contactId = generateId(ID_PREFIXES.contact);
+  const studentId = generateId(ID_PREFIXES.student);
+  const email = `${unique("parent")}@test.local`;
+  await db.insert(schema.users).values({ id: userId, email, createdAt: NOW });
+  await db.insert(schema.memberships).values({
+    id: parentMembershipId,
+    organizationId: orgId,
+    userId,
+    role: "parent",
+    status: "active",
+    invitedEmail: email,
+    acceptedAt: NOW,
+    createdAt: NOW,
+  });
+  await db.insert(schema.households).values({
+    id: householdId,
+    organizationId: orgId,
+    name: unique("Household"),
+    createdAt: NOW,
+  });
+  await db.insert(schema.contacts).values({
+    id: contactId,
+    organizationId: orgId,
+    householdId,
+    name: "Parent",
+    email,
+    userId,
+    createdAt: NOW,
+  });
+  await db.insert(schema.students).values({
+    id: studentId,
+    organizationId: orgId,
+    householdId,
+    name: unique("Student"),
+    status,
+    groupId,
+    statusChangedAt: NOW,
+    statusChangedByMembershipId: membershipId,
+    createdAt: NOW,
+  });
+  await db.insert(schema.studentContacts).values({
+    organizationId: orgId,
+    studentId,
+    contactId,
+    relationship: "parent",
+  });
+  return { userId, membershipId: parentMembershipId };
+}
+
 async function seedEvent(
   orgId: string,
   membershipId: string,
-  input: { title: string; startsAtUtc: number; status: "draft" | "published" | "cancelled" },
+  input: {
+    title: string;
+    startsAtUtc: number;
+    endsAtUtc?: number;
+    status: "draft" | "published" | "cancelled" | "completed";
+    isOrgWide?: boolean;
+    groupId?: string;
+  },
 ): Promise<string> {
-  const id = generateId(ID_PREFIXES.event);
+  const eventId = generateId(ID_PREFIXES.event);
   await db.insert(schema.events).values({
-    id,
+    id: eventId,
     organizationId: orgId,
     title: input.title,
     startsAtUtc: input.startsAtUtc,
+    endsAtUtc: input.endsAtUtc ?? null,
     status: input.status,
+    isOrgWide: input.isOrgWide ?? true,
     createdByMembershipId: membershipId,
     createdAt: NOW,
     updatedAt: NOW,
   });
-  return id;
+  if (input.groupId) {
+    await db.insert(schema.eventGroups).values({
+      organizationId: orgId,
+      eventId,
+      groupId: input.groupId,
+    });
+  }
+  return eventId;
 }
 
-// 换班请求依赖链：term → series → occurrence → household → assignment → swap
-async function seedSwap(
+async function seedRehearsal(
   orgId: string,
-  membershipId: string,
-  input: {
-    status: "requested" | "approved";
-    householdName: string;
-    localDate: string;
-    createdAt: number;
-  },
+  input: { startsAtUtc: number; status: "scheduled" | "cancelled"; groupId?: string },
 ): Promise<string> {
   const termId = generateId(ID_PREFIXES.term);
+  const seriesId = generateId(ID_PREFIXES.rehearsalSeries);
+  const occurrenceId = generateId(ID_PREFIXES.rehearsalOccurrence);
   await db.insert(schema.terms).values({
     id: termId,
     organizationId: orgId,
@@ -74,186 +144,150 @@ async function seedSwap(
     endDate: "2026-12-01",
     createdAt: NOW,
   });
-  const seriesId = generateId(ID_PREFIXES.rehearsalSeries);
   await db.insert(schema.rehearsalSeries).values({
     id: seriesId,
     organizationId: orgId,
     termId,
+    groupId: input.groupId ?? null,
     weekday: 3,
     startTimeLocal: "18:00",
     endTimeLocal: "20:00",
+    location: "Band room",
     createdAt: NOW,
   });
-  const occurrenceId = generateId(ID_PREFIXES.rehearsalOccurrence);
   await db.insert(schema.rehearsalOccurrences).values({
     id: occurrenceId,
     organizationId: orgId,
     seriesId,
-    localDate: input.localDate,
-    startsAtUtc: NOW,
-    endsAtUtc: NOW + 7_200_000,
-    status: "scheduled",
-    createdAt: NOW,
-  });
-  const householdId = generateId(ID_PREFIXES.household);
-  await db.insert(schema.households).values({
-    id: householdId,
-    organizationId: orgId,
-    name: input.householdName,
-    createdAt: NOW,
-  });
-  const assignmentId = generateId(ID_PREFIXES.rosterAssignment);
-  await db.insert(schema.rosterAssignments).values({
-    id: assignmentId,
-    organizationId: orgId,
-    occurrenceId,
-    householdId,
-    source: "auto",
-    createdAt: NOW,
-  });
-  const swapId = generateId(ID_PREFIXES.swapRequest);
-  await db.insert(schema.swapRequests).values({
-    id: swapId,
-    organizationId: orgId,
-    assignmentId,
-    requestedByMembershipId: membershipId,
+    localDate: "2026-08-19",
+    startsAtUtc: input.startsAtUtc,
+    endsAtUtc: input.startsAtUtc + 7_200_000,
     status: input.status,
-    createdAt: input.createdAt,
+    createdAt: NOW,
   });
-  return swapId;
+  return occurrenceId;
 }
 
-describe("getStaffOverviewData（staff Overview 聚合）", () => {
-  it("近期活动只含未来的 published，按开始时间升序", async () => {
-    const { orgId, membershipId } = await seedOrg();
-    await seedEvent(orgId, membershipId, {
-      title: "Past concert",
-      startsAtUtc: NOW - 86_400_000,
-      status: "published",
-    });
-    await seedEvent(orgId, membershipId, {
-      title: "Future draft",
-      startsAtUtc: NOW + 86_400_000,
+describe("Overview 月历与统计", () => {
+  it("staff 看到当月全部状态日程、全部学生口径和账本摘要", async () => {
+    const seeded = await seedOrg();
+    await seedStudent(seeded.orgId, seeded.membershipId, "active");
+    await seedStudent(seeded.orgId, seeded.membershipId, "archived");
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Draft concert",
+      startsAtUtc: Date.parse("2026-08-05T08:00:00Z"),
       status: "draft",
     });
-    await seedEvent(orgId, membershipId, {
-      title: "Future cancelled",
-      startsAtUtc: NOW + 86_400_000,
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Cross-month camp",
+      startsAtUtc: Date.parse("2026-07-30T08:00:00Z"),
+      endsAtUtc: Date.parse("2026-08-02T08:00:00Z"),
+      status: "completed",
+    });
+    await seedRehearsal(seeded.orgId, {
+      startsAtUtc: Date.parse("2026-08-19T08:00:00Z"),
       status: "cancelled",
     });
-    await seedEvent(orgId, membershipId, {
-      title: "Later",
-      startsAtUtc: NOW + 172_800_000,
-      status: "published",
-    });
-    await seedEvent(orgId, membershipId, {
-      title: "Sooner",
-      startsAtUtc: NOW + 3_600_000,
-      status: "published",
-    });
-
-    const data = await getStaffOverviewData(db, orgId, NOW);
-    expect(data.upcomingEvents.map((e) => e.title)).toEqual(["Sooner", "Later"]);
-  });
-
-  it("近期活动最多返回 5 条", async () => {
-    const { orgId, membershipId } = await seedOrg();
-    for (let i = 1; i <= 7; i += 1) {
-      await seedEvent(orgId, membershipId, {
-        title: `Event ${i}`,
-        startsAtUtc: NOW + i * 3_600_000,
-        status: "published",
-      });
-    }
-    const data = await getStaffOverviewData(db, orgId, NOW);
-    expect(data.upcomingEvents).toHaveLength(5);
-    expect(data.upcomingEvents[0].title).toBe("Event 1");
-  });
-
-  it("换班只含 requested，join 出 household 名与排练日期，count 正确", async () => {
-    const { orgId, membershipId } = await seedOrg();
-    await seedSwap(orgId, membershipId, {
-      status: "requested",
-      householdName: "The Smiths",
-      localDate: "2026-09-02",
-      createdAt: NOW - 2000,
-    });
-    await seedSwap(orgId, membershipId, {
-      status: "approved",
-      householdName: "The Approved",
-      localDate: "2026-09-09",
-      createdAt: NOW - 1000,
-    });
-
-    const data = await getStaffOverviewData(db, orgId, NOW);
-    expect(data.pendingSwaps).toHaveLength(1);
-    expect(data.pendingSwaps[0].householdName).toBe("The Smiths");
-    expect(data.pendingSwaps[0].occurrenceDate).toBe("2026-09-02");
-    expect(data.pendingSwapCount).toBe(1);
-  });
-
-  it("导入任务与邮件发送按创建时间倒序，邮件状态原样返回不折叠（PRD §10.2）", async () => {
-    const { orgId, membershipId } = await seedOrg();
-    const sendStatuses = ["queued", "processing", "succeeded", "partial", "failed"] as const;
-    for (const [index, status] of sendStatuses.entries()) {
-      await db.insert(schema.emailSends).values({
-        id: generateId(ID_PREFIXES.emailSend),
-        organizationId: orgId,
-        kind: "event-update",
-        subject: `Send ${status}`,
-        body: "B",
-        objectType: "event_update",
-        objectId: unique("upd"),
-        requestedByMembershipId: membershipId,
-        dedupKey: unique("dk"),
-        status,
-        createdAt: NOW + index * 1000,
-      });
-    }
-    for (const [index, status] of (["succeeded", "failed"] as const).entries()) {
-      await db.insert(schema.importJobs).values({
-        id: generateId(ID_PREFIXES.importJob),
-        organizationId: orgId,
-        r2Key: unique("r2"),
-        dedupKey: unique("dk"),
-        status,
-        totalRows: 10,
-        requestedByMembershipId: membershipId,
-        createdAt: NOW + index * 1000,
-      });
-    }
-
-    const data = await getStaffOverviewData(db, orgId, NOW);
-    expect(data.recentEmailSends.map((s) => s.status)).toEqual([
-      "failed",
-      "partial",
-      "succeeded",
-      "processing",
-      "queued",
+    await db.insert(schema.ledgerEntries).values([
+      {
+        id: generateId(ID_PREFIXES.ledgerEntry),
+        organizationId: seeded.orgId,
+        direction: "income",
+        amountMinor: 100_00,
+        occurredOn: "2026-08-01",
+        category: "Donation",
+        status: "posted",
+        createdByMembershipId: seeded.membershipId,
+        updatedByMembershipId: seeded.membershipId,
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
+      {
+        id: generateId(ID_PREFIXES.ledgerEntry),
+        organizationId: seeded.orgId,
+        direction: "expense",
+        amountMinor: 20_00,
+        occurredOn: "2026-08-02",
+        category: "Supplies",
+        status: "posted",
+        createdByMembershipId: seeded.membershipId,
+        updatedByMembershipId: seeded.membershipId,
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
     ]);
-    expect(data.recentImportJobs.map((j) => j.status)).toEqual(["failed", "succeeded"]);
+
+    const data = await getStaffOverviewData(db, seeded.orgId, AUGUST, "Australia/Sydney");
+    expect(data.stats).toMatchObject({
+      studentCount: 2,
+      activeStudentCount: 1,
+      eventCount: 2,
+      ledgerBalanceMinor: 80_00,
+      ledgerMonthNetMinor: 80_00,
+      currencyCode: "AUD",
+    });
+    expect(data.calendarItems.map((item) => [item.kind, item.status, item.title])).toEqual([
+      ["event", "completed", "Cross-month camp"],
+      ["event", "draft", "Draft concert"],
+      ["rehearsal", "cancelled", "Rehearsal"],
+    ]);
   });
 
-  it("组织隔离：不返回其他组织的数据", async () => {
-    const a = await seedOrg();
-    const b = await seedOrg();
-    await seedEvent(b.orgId, b.membershipId, {
-      title: "Other org event",
-      startsAtUtc: NOW + 3_600_000,
+  it("parent 不看到 draft，只看到全组织和自己旧分组范围内的日程", async () => {
+    const seeded = await seedOrg();
+    const ownGroup = generateId(ID_PREFIXES.group);
+    const otherGroup = generateId(ID_PREFIXES.group);
+    await db.insert(schema.groups).values([
+      { id: ownGroup, organizationId: seeded.orgId, name: unique("Own"), createdAt: NOW },
+      { id: otherGroup, organizationId: seeded.orgId, name: unique("Other"), createdAt: NOW },
+    ]);
+    const parent = await seedStudent(seeded.orgId, seeded.membershipId, "active", ownGroup);
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Whole organization",
+      startsAtUtc: Date.parse("2026-08-03T08:00:00Z"),
       status: "published",
     });
-    await seedSwap(b.orgId, b.membershipId, {
-      status: "requested",
-      householdName: "Other org household",
-      localDate: "2026-09-16",
-      createdAt: NOW,
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Own legacy audience",
+      startsAtUtc: Date.parse("2026-08-04T08:00:00Z"),
+      status: "published",
+      isOrgWide: false,
+      groupId: ownGroup,
+    });
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Other legacy audience",
+      startsAtUtc: Date.parse("2026-08-05T08:00:00Z"),
+      status: "published",
+      isOrgWide: false,
+      groupId: otherGroup,
+    });
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Staff draft",
+      startsAtUtc: Date.parse("2026-08-06T08:00:00Z"),
+      status: "draft",
+    });
+    await seedRehearsal(seeded.orgId, {
+      startsAtUtc: Date.parse("2026-08-19T08:00:00Z"),
+      status: "scheduled",
+      groupId: ownGroup,
+    });
+    await seedRehearsal(seeded.orgId, {
+      startsAtUtc: Date.parse("2026-08-20T08:00:00Z"),
+      status: "scheduled",
+      groupId: otherGroup,
     });
 
-    const data = await getStaffOverviewData(db, a.orgId, NOW);
-    expect(data.upcomingEvents).toHaveLength(0);
-    expect(data.pendingSwaps).toHaveLength(0);
-    expect(data.pendingSwapCount).toBe(0);
-    expect(data.recentImportJobs).toHaveLength(0);
-    expect(data.recentEmailSends).toHaveLength(0);
+    const data = await getParentOverviewData(
+      db,
+      seeded.orgId,
+      parent.userId,
+      AUGUST,
+      "Australia/Sydney",
+    );
+    expect(data.calendarItems.map((item) => item.title)).toEqual([
+      "Whole organization",
+      "Own legacy audience",
+      "Rehearsal",
+    ]);
   });
 });

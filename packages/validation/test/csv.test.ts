@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CSV_HEADERS, CSV_TEMPLATE, parseCsv, validateImportCsv } from "../src/csv.ts";
+import {
+  CSV_HEADERS,
+  CSV_TEMPLATE,
+  LEGACY_CSV_HEADERS,
+  parseCsv,
+  validateImportCsv,
+} from "../src/csv.ts";
 
 describe("parseCsv", () => {
   it("解析基本行与引号字段", () => {
@@ -27,6 +33,13 @@ describe("validateImportCsv", () => {
     expect(result.headerError).toBeUndefined();
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]?.ok).toBe(true);
+  });
+
+  it("新模板不含 groupName，旧模板仍兼容", () => {
+    expect(CSV_HEADERS).not.toContain("groupName");
+    const legacy = `${LEGACY_CSV_HEADERS.join(",")}\nKid,Parent,p@x.com,parent,Senior band,active\n`;
+    const result = validateImportCsv(legacy);
+    expect(result.rows[0]?.data?.groupName).toBe("Senior band");
   });
 
   it("缺少必需列时报表头错误", () => {

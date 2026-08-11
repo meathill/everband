@@ -86,6 +86,7 @@ export const getOrgContext = createServerFn({ method: "GET" })
         name: schema.organizations.name,
         type: schema.organizations.type,
         timezone: schema.organizations.timezone,
+        currencyCode: schema.organizations.currencyCode,
       })
       .from(schema.organizations)
       .where(eq(schema.organizations.id, ctx.organizationId))

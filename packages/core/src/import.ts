@@ -80,10 +80,6 @@ async function processRow(
     }
     groupId = found;
   }
-  if (row.status === "active" && !groupId) {
-    return { outcome: "failed", error: "Active students must have a groupName" };
-  }
-
   const contact = await upsertContact(
     db,
     orgId,

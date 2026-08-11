@@ -19,13 +19,11 @@ import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx
 import { useListSearch } from "~/components/data-table/use-list-search.ts";
 import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import {
-  listEmailSends,
   listMyNotifications,
   markAllNotificationsRead,
   markNotificationRead,
 } from "~/server/notify.ts";
 import { getOrgContext } from "~/server/org.ts";
-import { EmailSendsTable } from "./-components/email-sends-table.tsx";
 
 export const Route = createFileRoute("/o/$orgId/notifications")({
   validateSearch: notificationsListSchema,
@@ -33,15 +31,11 @@ export const Route = createFileRoute("/o/$orgId/notifications")({
   loader: async ({ params, deps }) => {
     const orgId = params.orgId;
     try {
-      const ctx = await getOrgContext({ data: { orgId } });
-      const isStaff = ctx.role === "owner" || ctx.role === "staff";
-      const [list, sends] = await Promise.all([
-        listMyNotifications({ data: { orgId, ...deps } }),
-        isStaff ? listEmailSends({ data: { orgId } }) : Promise.resolve([]),
-      ]);
+      await getOrgContext({ data: { orgId } });
+      const list = await listMyNotifications({ data: { orgId, ...deps } });
       // 这里刻意不再"进页面即全部标记已读"：那样 unread 筛选永远是空的，
       // 未读也就不再是一个用户能管理的状态。改为显式的行内 Mark read / 顶部 Mark all read。
-      return { list, sends, isStaff };
+      return { list };
     } catch {
       throw redirect({ to: "/o/$orgId", params: { orgId } });
     }
@@ -57,7 +51,7 @@ const FILTER_LABELS: Record<NotificationFilter, string> = {
 };
 
 function NotificationsPage(): React.ReactElement {
-  const { list, sends, isStaff } = Route.useLoaderData();
+  const { list } = Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
   const search = Route.useSearch();
@@ -194,8 +188,6 @@ function NotificationsPage(): React.ReactElement {
           </p>
         )}
       </section>
-
-      {isStaff && <EmailSendsTable rows={sends} timezone={org.timezone} />}
     </div>
   );
 }

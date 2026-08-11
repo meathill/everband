@@ -39,7 +39,7 @@ export const createRehearsalSeries = createServerFn({ method: "POST" })
       id: seriesId,
       organizationId: data.orgId,
       termId: data.termId,
-      groupId: data.groupId ?? null,
+      groupId: null,
       weekday: data.weekday,
       startTimeLocal: data.startTimeLocal,
       endTimeLocal: data.endTimeLocal,
@@ -306,9 +306,9 @@ export const listSeriesInputs = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
-    const [termRows, groupRows] = await Promise.all([
-      db.select().from(schema.terms).where(eq(schema.terms.organizationId, data.orgId)),
-      db.select().from(schema.groups).where(eq(schema.groups.organizationId, data.orgId)),
-    ]);
-    return { terms: termRows, groups: groupRows };
+    const terms = await db
+      .select()
+      .from(schema.terms)
+      .where(eq(schema.terms.organizationId, data.orgId));
+    return { terms };
   });

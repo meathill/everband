@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  currentMonthInTimezone,
   formatOrgDateTime,
   formatOrgTime,
+  monthWindow,
   toLocalDateString,
   upcomingWindow,
 } from "../src/time.ts";
@@ -42,6 +44,20 @@ describe("toLocalDateString", () => {
       "2026-08-09",
     );
     expect(toLocalDateString(Date.parse("2026-08-08T15:00:00Z"), "UTC")).toBe("2026-08-08");
+  });
+});
+
+describe("monthWindow（组织时区）", () => {
+  it("悉尼月份边界转换为准确的 UTC 半开区间", () => {
+    const window = monthWindow("2026-08", "Australia/Sydney");
+    expect(new Date(window.startUtcMs).toISOString()).toBe("2026-07-31T14:00:00.000Z");
+    expect(new Date(window.endUtcMs).toISOString()).toBe("2026-08-31T14:00:00.000Z");
+  });
+
+  it("当前月份使用组织时区，而不是运行环境时区", () => {
+    const utcLateNight = Date.parse("2026-08-31T15:00:00Z");
+    expect(currentMonthInTimezone(utcLateNight, "Australia/Sydney")).toBe("2026-09");
+    expect(currentMonthInTimezone(utcLateNight, "UTC")).toBe("2026-08");
   });
 });
 

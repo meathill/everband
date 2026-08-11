@@ -42,7 +42,7 @@ export const listStudents = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
-    return listStudentsCore(db, data.orgId, data);
+    return listStudentsCore(db, data.orgId, { ...data, group: "all" });
   });
 
 export const createStudent = createServerFn({ method: "POST" })
@@ -55,7 +55,7 @@ export const createStudent = createServerFn({ method: "POST" })
       const result = await createStudentCore(
         db,
         data.orgId,
-        { name: data.name, status: data.status, groupId: data.groupId, contact: data.contact },
+        { name: data.name, status: data.status, contact: data.contact },
         ctx.membershipId,
         now,
       );
@@ -65,7 +65,7 @@ export const createStudent = createServerFn({ method: "POST" })
         action: "student.created",
         objectType: "student",
         objectId: result.studentId,
-        summary: { name: data.name, status: data.status, groupId: data.groupId ?? null },
+        summary: { name: data.name, status: data.status, groupId: null },
       });
       return { ok: true as const, ...result };
     } catch (cause) {

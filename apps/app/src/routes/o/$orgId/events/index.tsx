@@ -49,7 +49,7 @@ function EventsPage(): React.ReactElement {
   const data = Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   return data.mode === "staff" ? (
-    <StaffEvents groups={data.groups} list={data.list} timezone={org.timezone} />
+    <StaffEvents list={data.list} timezone={org.timezone} />
   ) : (
     <ParentEvents timezone={org.timezone} upcoming={data.upcoming} />
   );
@@ -58,11 +58,9 @@ function EventsPage(): React.ReactElement {
 type StaffData = Extract<Awaited<ReturnType<typeof getEventsPageData>>, { mode: "staff" }>;
 
 function StaffEvents({
-  groups,
   list,
   timezone,
 }: {
-  groups: StaffData["groups"];
   list: StaffData["list"];
   timezone: string;
 }): React.ReactElement {
@@ -163,7 +161,6 @@ function StaffEvents({
 
       <EventFormDrawer
         event={editing}
-        groups={groups}
         onOpenChange={setIsDrawerOpen}
         open={isDrawerOpen}
         orgId={orgId}

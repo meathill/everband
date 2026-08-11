@@ -79,20 +79,21 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 
 1. 组织创建、组织设置和角色管理。
 2. 家庭、成人联系人、学生和学生生命周期管理。
-3. Group 创建、学生分组和 CSV 导入。
-4. 活动、活动更新、日历列表、附件和固定场景表单。
+3. 学生 CSV 导入；Group 数据保留兼容，但管理 UI 暂停。
+4. 活动、活动更新、Overview 月历、附件和固定场景表单。
 5. 站内通知、未读状态、事务邮件和发送审计。
 6. 按 school term 运行的重复排练。
 7. 家长 helper roster 自动轮换、手工调整和换班申请。
 8. 移动端和桌面端均可使用的响应式 Web 应用。
 9. 面向产品推广的静态 Landing page。
 10. 组织公开主页（只读展示信息）与动态二维码入口，用于线下物料引流。
+11. 只记录收入/支出、编辑、作废和审计的轻量公费账本。
 
 ### 4.2 MVP 不包含
 
 - 器材借还流程（check-out/check-in）、维修历史记录和责任人变更审批（只读的器材信息与当前持有人展示见 §4.3 近期扩展）。
 - Tutor/导师名册。
-- Band fee、invoice、收款或其他财务流程。
+- Invoice、在线支付、会费应收、订阅、报销审批和完整财务报表。
 - 通用表单设计器、复杂条件逻辑和自定义字段平台。
 - 学生独立登录、学生端社交功能或聊天。
 - 即时群聊、原生移动端推送和短信。
@@ -128,7 +129,7 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 | Membership | User 与 Organization 的关系 | 保存 `owner / staff / parent` 角色和状态 |
 | Household | 一个家庭或照护关系集合 | 可关联多个成人联系人和多个学生 |
 | Student | 组织管理的学生/队员记录 | 可关联多个家庭联系人 |
-| Group | 组织内的训练组、演出组或球队分组 | active 学生必须属于一个 group |
+| Group | 历史训练组或演出组关系 | 底层数据和旧受众关系保留，当前 UI 不提供管理或新建关系 |
 | Term | 组织使用的 school term 时间段 | 由组织按本地时区手动维护 |
 
 #### 学生状态
@@ -318,15 +319,14 @@ QrCode 字段：`id`、`organizationId`、`targetType`（`org_entry | recruitmen
 1. Owner 通过 Landing page 进入创建组织入口。
 2. 完成邮箱 magic link/OTP 验证。
 3. 填写组织名称、组织类型、默认时区和基本联系方式。
-4. 创建初始 groups。
-5. 配置 school terms。
-6. 邀请其他 staff。
-7. 选择手工录入或 CSV 导入成员。
-8. 检查导入预览和错误行。
-9. 确认导入，生成学生、家庭和待邀请联系人。
-10. 发送 parent 邀请。
+4. 配置 school terms。
+5. 邀请其他 staff。
+6. 选择手工录入或 CSV 导入成员。
+7. 检查导入预览和错误行。
+8. 确认导入，生成学生、家庭和待邀请联系人。
+9. 发送 parent 邀请。
 
-完成标准：组织拥有至少一个 group、一个 term 或明确选择稍后配置，且 owner 能看到成员和活动管理入口。
+完成标准：组织拥有一个 term 或明确选择稍后配置，且 owner 能看到成员和活动管理入口。
 
 ### 6.2 CSV 导入学生与家庭
 
@@ -340,12 +340,11 @@ QrCode 字段：`id`、`organizationId`、`targetType`（`org_entry | recruitmen
 | contactName | 是 | 成人联系人姓名 |
 | contactEmail | 是 | 成人联系人邮箱 |
 | relationship | 是 | 与学生关系 |
-| groupName | 否 | 已存在 group 的名称 |
 | status | 否 | 默认 `active`，可使用支持的学生状态 |
 
 校验要求：
 
-- 邮箱格式、学生姓名、联系人姓名和 group 引用必须校验。
+- 邮箱格式、学生姓名和联系人姓名必须校验。旧模板的 `groupName` 继续兼容并校验，但新模板不再生成该列。
 - 同一文件内的重复行要明确提示。
 - 与现有数据的匹配优先使用规范化邮箱，再结合学生姓名和联系人关系辅助提示。
 - 导入必须支持部分成功：合法行进入导入任务，错误行保留错误原因，不允许静默跳过。
@@ -447,28 +446,27 @@ QrCode 字段：`id`、`organizationId`、`targetType`（`org_entry | recruitmen
 - Privacy & Safety：成人账号、权限隔离、私有附件和未成年人数据最小化原则。
 - Contact/Start：创建组织或联系产品团队的入口。
 
-Landing page 不展示尚未实现的器材、财务、学生账号和公开活动能力。
+Landing page 不展示尚未实现的器材、学生账号、公开活动，以及 invoice、在线支付等完整财务能力。
 
 ### 7.2 应用站
 
 #### Parent 导航
 
-- Home：未来 30 天活动、待处理表单、近期通知和值班。
+- Overview：按月展示有权限访问的活动和排练。
 - Events：活动列表和活动详情。
 - Rehearsals：排练和自己的 helper assignment。
 - Notifications：站内通知和未读状态。
-- Account：组织切换、邮箱和通知偏好。
+- Account：邮箱和通知偏好；组织切换器位于侧栏顶部。
 
 #### Staff 导航
 
-- Overview：近期活动、待处理换班、导入任务和通知发送状态。
-- Members：Households、Students、Contacts、CSV Import。
-- Groups：group 创建、成员配置和状态筛选。
+- Overview：当月活动与排练月历，以及学生、活动、待换班和公费统计。
+- Members：Households、Students 和 Contacts。
 - Events：活动、updates、附件、表单和受众。
 - Rehearsals：series、occurrence 和 helper roster。
-- Notifications：发送记录和失败任务。
-- Audit：按对象、操作者和时间筛选的审计记录。
-- Settings：组织、staff、时区、terms、通知默认设置、公开主页与二维码。
+- Finance：轻量公费账本、当月收支和余额。
+- Notifications：站内通知和未读状态，位于侧栏底部工具区。
+- Settings：General、Staff & access、Terms、Public profile、Data import 和 Email delivery。
 
 所有页面必须支持移动端浏览；staff 的复杂表格和批量操作优先保证桌面体验，同时提供移动端可用的核心查看和审批流程。
 
@@ -574,7 +572,7 @@ QrCode
 - SwapRequest：`requested | approved | declined | cancelled`。
 - QrCode：`active | disabled | broken`。
 - 异步任务：至少可以区分 `queued | processing | succeeded | failed`。
-- `active` Student 只能属于一个 group；退出或归档后必须从当前运营受众中排除。
+- Student 可以不分组；退出或归档后必须从当前运营受众中排除。
 - 组织、成员、活动、排练、表单、邮件和换班的关键写入必须产生审计记录。
 - CSV 导入、邮件发送和换班审批必须幂等；同一个命令重试不能产生重复学生、重复提交或重复邮件。
 - QrCode 必须归属一个组织且指向明确的目标类型和目标对象；目标对象下线时对应 QrCode 必须转为 `disabled` 或改写为下线说明页。
@@ -607,16 +605,16 @@ QrCode
 
 ### 11.1 组织与成员
 
-- Owner 可以创建组织、设置时区、创建 group 和配置 term。
+- Owner 可以创建组织、设置时区和配置 term；新成员可以不分组。
 - Staff 可以导入 CSV，查看预览、错误行、重复提示和最终导入结果。
 - 一个学生可以关联多个联系人，一个联系人可以关联多个学生。
-- active 学生不能同时属于多个 group。
+- Group 管理、成员 Group 筛选和新日程 Group 控件不出现在当前 UI，旧限定受众不会被扩大。
 - withdrawn/archived 学生不会出现在当前运营邮件受众中。
 - 未邀请或被移除的 parent 不能登录并访问组织数据。
 
 ### 11.2 活动与通知
 
-- Staff 可以创建草稿活动、指定一个或多个 group，并发布活动。
+- Staff 可以创建全组织草稿活动并发布；编辑旧活动不会改变既有限定受众。
 - Parent 只能看到自己有权访问的未来 30 天活动。
 - Staff 可以在活动下创建、预览和发布 update，并上传附件。
 - Parent 可以查看 update 列表并下载有权限的附件。

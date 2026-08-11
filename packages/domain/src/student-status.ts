@@ -1,5 +1,5 @@
 // 学生状态机（PRD §5.1）。
-// interested：了解中；active：在组织中（必须属于一个 group）；
+// interested：了解中；active：在组织中；
 // withdrawn：已退出（可回归）；archived：历史记录（终态）。
 
 export type StudentStatus = "interested" | "active" | "withdrawn" | "archived";
@@ -22,14 +22,11 @@ export function canTransitionStudent(from: StudentStatus, to: StudentStatus): bo
   return from === to || TRANSITIONS[from].includes(to);
 }
 
-// active 学生必须有 group；其他状态允许保留 group 引用（历史信息）
+// Group 功能暂停后，新旧学生都允许无分组；保留参数用于兼容旧数据调用。
 export function validateStudentGroup(
-  status: StudentStatus,
-  groupId: string | null,
+  _status: StudentStatus,
+  _groupId: string | null,
 ): { valid: boolean; reason?: string } {
-  if (status === "active" && !groupId) {
-    return { valid: false, reason: "Active students must belong to a group" };
-  }
   return { valid: true };
 }
 

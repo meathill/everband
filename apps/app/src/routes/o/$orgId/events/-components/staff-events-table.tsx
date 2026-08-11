@@ -92,7 +92,7 @@ export function StaffEventsTable({
       className: "text-muted-foreground",
       header: "Audience",
       key: "audience",
-      render: (row) => (row.isOrgWide ? "Whole organization" : "Selected groups"),
+      render: (row) => (row.isOrgWide ? "Whole organization" : "Restricted legacy audience"),
     },
     {
       header: "Status",

@@ -107,21 +107,24 @@ describe("学生创建与约束", () => {
     expect(s1.studentId).not.toBe(s2.studentId);
   });
 
-  it("active 学生必须有 group", async () => {
+  it("Group 暂停后 active 学生可以无分组创建", async () => {
     const { orgId, membershipId } = await seedOrg();
-    await expect(
-      createStudentCore(
-        db,
-        orgId,
-        {
-          name: "No Group",
-          status: "active",
-          contact: { name: "P", email: `${unique("ng")}@test.local`, relationship: "parent" },
-        },
-        membershipId,
-        NOW,
-      ),
-    ).rejects.toThrow(MemberError);
+    const created = await createStudentCore(
+      db,
+      orgId,
+      {
+        name: "No Group",
+        status: "active",
+        contact: { name: "P", email: `${unique("ng")}@test.local`, relationship: "parent" },
+      },
+      membershipId,
+      NOW,
+    );
+    const rows = await db
+      .select({ groupId: schema.students.groupId })
+      .from(schema.students)
+      .where(eq(schema.students.id, created.studentId));
+    expect(rows[0]?.groupId).toBeNull();
   });
 
   it("拒绝其他组织的 group", async () => {

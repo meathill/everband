@@ -1,105 +1,125 @@
-// staff Overview 聚合（PRD §7.2）：近期活动、待处理换班、导入任务、发送状态。
-// 四块并行查询，全部命中现有索引（idx_events_org_status_start / idx_swaps_org_status /
-// idx_import_jobs_org_created / idx_email_sends_org_created），无需新迁移。
-
 import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import type { MonthWindow } from "@everband/domain";
+import { toLocalDateString } from "@everband/domain";
+import { and, asc, count, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { parentGroupIds } from "./events.ts";
+import { getLedgerSummaryCore } from "./finance.ts";
 
-const SECTION_LIMIT = 5;
+export interface OverviewEventItem {
+  id: string;
+  kind: "event";
+  title: string;
+  status: "draft" | "published" | "cancelled" | "completed";
+  startsAtUtc: number;
+  endsAtUtc: number | null;
+  localDate: string;
+  location: string | null;
+}
+
+export interface OverviewRehearsalItem {
+  id: string;
+  kind: "rehearsal";
+  title: "Rehearsal";
+  status: "scheduled" | "cancelled";
+  startsAtUtc: number;
+  endsAtUtc: number;
+  localDate: string;
+  location: string | null;
+}
+
+export type OverviewCalendarItem = OverviewEventItem | OverviewRehearsalItem;
+
+export interface OverviewStats {
+  studentCount: number;
+  activeStudentCount: number;
+  eventCount: number;
+  pendingSwapCount: number;
+  ledgerBalanceMinor: number;
+  ledgerMonthNetMinor: number;
+  currencyCode: string;
+}
 
 export interface StaffOverviewData {
-  upcomingEvents: {
-    id: string;
-    title: string;
-    startsAtUtc: number;
-    location: string | null;
-  }[];
-  pendingSwaps: {
-    id: string;
-    householdName: string;
-    occurrenceDate: string;
-    note: string | null;
-    createdAt: number;
-  }[];
-  pendingSwapCount: number;
-  recentImportJobs: {
-    id: string;
-    status: "queued" | "processing" | "succeeded" | "failed";
-    totalRows: number;
-    createdCount: number;
-    updatedCount: number;
-    failedCount: number;
-    createdAt: number;
-    finishedAt: number | null;
-  }[];
-  recentEmailSends: {
-    id: string;
-    subject: string;
-    status: "queued" | "processing" | "succeeded" | "partial" | "failed";
-    recipientCount: number;
-    sentCount: number;
-    failedCount: number;
-    suppressedCount: number;
-    createdAt: number;
-  }[];
+  stats: OverviewStats;
+  calendarItems: OverviewCalendarItem[];
+}
+
+export interface ParentOverviewData {
+  calendarItems: OverviewCalendarItem[];
+}
+
+function eventOverlapCondition(window: MonthWindow) {
+  return and(
+    lt(schema.events.startsAtUtc, window.endUtcMs),
+    or(isNull(schema.events.endsAtUtc), gte(schema.events.endsAtUtc, window.startUtcMs)),
+  );
+}
+
+function rehearsalOverlapCondition(window: MonthWindow) {
+  return and(
+    lt(schema.rehearsalOccurrences.startsAtUtc, window.endUtcMs),
+    gte(schema.rehearsalOccurrences.endsAtUtc, window.startUtcMs),
+  );
+}
+
+function sortCalendarItems(items: OverviewCalendarItem[]): OverviewCalendarItem[] {
+  return items.sort(
+    (left, right) => left.startsAtUtc - right.startsAtUtc || left.kind.localeCompare(right.kind),
+  );
 }
 
 export async function getStaffOverviewData(
   db: Database,
   orgId: string,
-  now: number,
+  window: MonthWindow,
+  timezone: string,
 ): Promise<StaffOverviewData> {
-  const [upcomingEvents, pendingSwaps, pendingSwapCountRows, recentImportJobs, recentEmailSends] =
+  const nextMonthStart = toLocalDateString(window.endUtcMs, timezone);
+  const [events, rehearsals, studentCounts, pendingSwapCounts, organizations, ledger] =
     await Promise.all([
       db
         .select({
           id: schema.events.id,
           title: schema.events.title,
+          status: schema.events.status,
           startsAtUtc: schema.events.startsAtUtc,
+          endsAtUtc: schema.events.endsAtUtc,
           location: schema.events.location,
         })
         .from(schema.events)
-        .where(
-          and(
-            eq(schema.events.organizationId, orgId),
-            eq(schema.events.status, "published"),
-            gte(schema.events.startsAtUtc, now),
-          ),
-        )
-        .orderBy(asc(schema.events.startsAtUtc))
-        .limit(SECTION_LIMIT),
+        .where(and(eq(schema.events.organizationId, orgId), eventOverlapCondition(window)))
+        .orderBy(asc(schema.events.startsAtUtc)),
       db
         .select({
-          id: schema.swapRequests.id,
-          householdName: schema.households.name,
-          occurrenceDate: schema.rehearsalOccurrences.localDate,
-          note: schema.swapRequests.note,
-          createdAt: schema.swapRequests.createdAt,
+          id: schema.rehearsalOccurrences.id,
+          status: schema.rehearsalOccurrences.status,
+          startsAtUtc: schema.rehearsalOccurrences.startsAtUtc,
+          endsAtUtc: schema.rehearsalOccurrences.endsAtUtc,
+          localDate: schema.rehearsalOccurrences.localDate,
+          location: schema.rehearsalSeries.location,
         })
-        .from(schema.swapRequests)
+        .from(schema.rehearsalOccurrences)
         .innerJoin(
-          schema.rosterAssignments,
-          eq(schema.swapRequests.assignmentId, schema.rosterAssignments.id),
-        )
-        .innerJoin(
-          schema.rehearsalOccurrences,
-          eq(schema.rosterAssignments.occurrenceId, schema.rehearsalOccurrences.id),
-        )
-        .innerJoin(
-          schema.households,
-          eq(schema.rosterAssignments.householdId, schema.households.id),
+          schema.rehearsalSeries,
+          eq(schema.rehearsalSeries.id, schema.rehearsalOccurrences.seriesId),
         )
         .where(
           and(
-            eq(schema.swapRequests.organizationId, orgId),
-            eq(schema.swapRequests.status, "requested"),
+            eq(schema.rehearsalOccurrences.organizationId, orgId),
+            rehearsalOverlapCondition(window),
           ),
         )
-        .orderBy(asc(schema.swapRequests.createdAt))
-        .limit(SECTION_LIMIT),
+        .orderBy(asc(schema.rehearsalOccurrences.startsAtUtc)),
       db
-        .select({ count: sql<number>`count(*)` })
+        .select({
+          studentCount: count(),
+          activeStudentCount: sql<number>`sum(case when ${schema.students.status} = 'active' then 1 else 0 end)`,
+        })
+        .from(schema.students)
+        .where(eq(schema.students.organizationId, orgId)),
+      db
+        .select({ value: count() })
         .from(schema.swapRequests)
         .where(
           and(
@@ -108,42 +128,138 @@ export async function getStaffOverviewData(
           ),
         ),
       db
-        .select({
-          id: schema.importJobs.id,
-          status: schema.importJobs.status,
-          totalRows: schema.importJobs.totalRows,
-          createdCount: schema.importJobs.createdCount,
-          updatedCount: schema.importJobs.updatedCount,
-          failedCount: schema.importJobs.failedCount,
-          createdAt: schema.importJobs.createdAt,
-          finishedAt: schema.importJobs.finishedAt,
-        })
-        .from(schema.importJobs)
-        .where(eq(schema.importJobs.organizationId, orgId))
-        .orderBy(desc(schema.importJobs.createdAt))
-        .limit(SECTION_LIMIT),
-      db
-        .select({
-          id: schema.emailSends.id,
-          subject: schema.emailSends.subject,
-          status: schema.emailSends.status,
-          recipientCount: schema.emailSends.recipientCount,
-          sentCount: schema.emailSends.sentCount,
-          failedCount: schema.emailSends.failedCount,
-          suppressedCount: schema.emailSends.suppressedCount,
-          createdAt: schema.emailSends.createdAt,
-        })
-        .from(schema.emailSends)
-        .where(eq(schema.emailSends.organizationId, orgId))
-        .orderBy(desc(schema.emailSends.createdAt))
-        .limit(SECTION_LIMIT),
+        .select({ currencyCode: schema.organizations.currencyCode })
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, orgId))
+        .limit(1),
+      getLedgerSummaryCore(db, orgId, `${window.month}-01`, nextMonthStart),
     ]);
 
+  const calendarItems: OverviewCalendarItem[] = [
+    ...events.map(
+      (event): OverviewEventItem => ({
+        ...event,
+        kind: "event",
+        localDate: toLocalDateString(event.startsAtUtc, timezone),
+      }),
+    ),
+    ...rehearsals.map(
+      (rehearsal): OverviewRehearsalItem => ({
+        ...rehearsal,
+        kind: "rehearsal",
+        title: "Rehearsal",
+      }),
+    ),
+  ];
+  const studentCount = studentCounts[0];
   return {
-    upcomingEvents,
-    pendingSwaps,
-    pendingSwapCount: pendingSwapCountRows[0]?.count ?? 0,
-    recentImportJobs,
-    recentEmailSends,
+    stats: {
+      studentCount: studentCount?.studentCount ?? 0,
+      activeStudentCount: Number(studentCount?.activeStudentCount ?? 0),
+      eventCount: events.length,
+      pendingSwapCount: pendingSwapCounts[0]?.value ?? 0,
+      ledgerBalanceMinor: ledger.balanceMinor,
+      ledgerMonthNetMinor: ledger.monthNetMinor,
+      currencyCode: organizations[0]?.currencyCode ?? "AUD",
+    },
+    calendarItems: sortCalendarItems(calendarItems),
+  };
+}
+
+export async function getParentOverviewData(
+  db: Database,
+  orgId: string,
+  userId: string,
+  window: MonthWindow,
+  timezone: string,
+): Promise<ParentOverviewData> {
+  const groupIds = await parentGroupIds(db, orgId, userId);
+  const eventAudience =
+    groupIds.length > 0
+      ? or(
+          eq(schema.events.isOrgWide, true),
+          inArray(
+            schema.events.id,
+            db
+              .select({ id: schema.eventGroups.eventId })
+              .from(schema.eventGroups)
+              .where(
+                and(
+                  eq(schema.eventGroups.organizationId, orgId),
+                  inArray(schema.eventGroups.groupId, groupIds),
+                ),
+              ),
+          ),
+        )
+      : eq(schema.events.isOrgWide, true);
+  const rehearsalAudience =
+    groupIds.length > 0
+      ? or(
+          isNull(schema.rehearsalSeries.groupId),
+          inArray(schema.rehearsalSeries.groupId, groupIds),
+        )
+      : isNull(schema.rehearsalSeries.groupId);
+
+  const [events, rehearsals] = await Promise.all([
+    db
+      .select({
+        id: schema.events.id,
+        title: schema.events.title,
+        status: schema.events.status,
+        startsAtUtc: schema.events.startsAtUtc,
+        endsAtUtc: schema.events.endsAtUtc,
+        location: schema.events.location,
+      })
+      .from(schema.events)
+      .where(
+        and(
+          eq(schema.events.organizationId, orgId),
+          inArray(schema.events.status, ["published", "cancelled"]),
+          eventOverlapCondition(window),
+          eventAudience,
+        ),
+      )
+      .orderBy(asc(schema.events.startsAtUtc)),
+    db
+      .select({
+        id: schema.rehearsalOccurrences.id,
+        status: schema.rehearsalOccurrences.status,
+        startsAtUtc: schema.rehearsalOccurrences.startsAtUtc,
+        endsAtUtc: schema.rehearsalOccurrences.endsAtUtc,
+        localDate: schema.rehearsalOccurrences.localDate,
+        location: schema.rehearsalSeries.location,
+      })
+      .from(schema.rehearsalOccurrences)
+      .innerJoin(
+        schema.rehearsalSeries,
+        eq(schema.rehearsalSeries.id, schema.rehearsalOccurrences.seriesId),
+      )
+      .where(
+        and(
+          eq(schema.rehearsalOccurrences.organizationId, orgId),
+          rehearsalOverlapCondition(window),
+          rehearsalAudience,
+        ),
+      )
+      .orderBy(asc(schema.rehearsalOccurrences.startsAtUtc)),
+  ]);
+
+  return {
+    calendarItems: sortCalendarItems([
+      ...events.map(
+        (event): OverviewEventItem => ({
+          ...event,
+          kind: "event",
+          localDate: toLocalDateString(event.startsAtUtc, timezone),
+        }),
+      ),
+      ...rehearsals.map(
+        (rehearsal): OverviewRehearsalItem => ({
+          ...rehearsal,
+          kind: "rehearsal",
+          title: "Rehearsal",
+        }),
+      ),
+    ]),
   };
 }

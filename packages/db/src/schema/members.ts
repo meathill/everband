@@ -81,7 +81,7 @@ export const students = sqliteTable(
     status: text("status", {
       enum: ["interested", "active", "withdrawn", "archived"],
     }).notNull(),
-    // active 学生必须有且只有一个 group（domain 校验 + server 落实）
+    // 旧 Group 关系继续保留；新成员默认不分组
     groupId: text("group_id").references(() => groups.id),
     statusChangedAt: integer("status_changed_at").notNull(),
     statusChangedByMembershipId: text("status_changed_by_membership_id"),

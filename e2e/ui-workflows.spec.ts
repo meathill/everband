@@ -13,23 +13,27 @@ function futureLocalDateTime(days = 7): string {
   return `${date.getFullYear()}-${part(date.getMonth() + 1)}-${part(date.getDate())}T18:00`;
 }
 
+function currentSydneyMonthDateTime(): { date: string; dateTime: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "2026";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const date = `${year}-${month}-15`;
+  return { date, dateTime: `${date}T18:00` };
+}
+
 async function createOrganization(page: Page, name: string): Promise<string> {
   await loginViaMagicLink(page, uniqueEmail("e2e-ui"));
   await page.goto("/new-org");
   await fillField(page.locator("#org-name"), name);
   await pressButton(page, "Create organization");
-  await expect(page.getByRole("heading", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   const orgId = new URL(page.url()).pathname.split("/")[2];
   expect(orgId).toBeTruthy();
   return orgId ?? "";
-}
-
-async function createGroup(page: Page, orgId: string, name: string): Promise<void> {
-  await page.goto(`/o/${orgId}/groups`);
-  await pressButton(page, "New group");
-  await fillField(page.locator("#group-name"), name);
-  await pressButton(page, "Create group");
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
 }
 
 async function chooseOption(page: Page, trigger: Locator, option: string): Promise<void> {
@@ -38,23 +42,27 @@ async function chooseOption(page: Page, trigger: Locator, option: string): Promi
   await page.getByRole("option", { name: option, exact: true }).click();
 }
 
-async function createDraftEvent(
-  page: Page,
-  orgId: string,
-  title: string,
-  audience?: string,
-): Promise<void> {
+async function createDraftEvent(page: Page, orgId: string, title: string): Promise<void> {
   await page.goto(`/o/${orgId}/events`);
   await pressButton(page, "New event");
   await expect(page.getByRole("heading", { name: "New event" })).toBeVisible();
   await expect(page.locator('[data-slot="drawer-popup"] [data-slot="frame"]')).toBeVisible();
   await fillField(page.locator("#event-title"), title);
   await fillField(page.locator("#event-starts"), futureLocalDateTime());
-  const audienceCheckbox = page.getByRole("checkbox", {
-    name: audience ?? "Whole organization",
-  });
-  await waitForHydration(audienceCheckbox);
-  await audienceCheckbox.click();
+  await pressButton(page, "Create draft");
+  await expect(page.getByRole("link", { name: title, exact: true })).toBeVisible();
+}
+
+async function createDraftEventAt(
+  page: Page,
+  orgId: string,
+  title: string,
+  startsAt: string,
+): Promise<void> {
+  await page.goto(`/o/${orgId}/events`);
+  await pressButton(page, "New event");
+  await fillField(page.locator("#event-title"), title);
+  await fillField(page.locator("#event-starts"), startsAt);
   await pressButton(page, "Create draft");
   await expect(page.getByRole("link", { name: title, exact: true })).toBeVisible();
 }
@@ -69,21 +77,14 @@ async function publishEvent(page: Page, title: string): Promise<void> {
   await expect(page.getByText("Event published", { exact: true })).toBeVisible();
 }
 
-async function importMembers(
-  page: Page,
-  orgId: string,
-  groupName: string,
-  names: string[],
-): Promise<void> {
+async function importMembers(page: Page, orgId: string, names: string[]): Promise<void> {
   const rows = names.map(
     (name, index) =>
-      `${name},Contact ${index},member-${Date.now()}-${index}@test.local,parent,${groupName},active`,
+      `${name},Contact ${index},member-${Date.now()}-${index}@test.local,parent,active`,
   );
-  const csv = ["studentName,contactName,contactEmail,relationship,groupName,status", ...rows].join(
-    "\n",
-  );
+  const csv = ["studentName,contactName,contactEmail,relationship,status", ...rows].join("\n");
   await page.goto(`/o/${orgId}/import`);
-  const fileInput = page.locator("#csv-file");
+  const fileInput = page.locator("#settings-csv-file");
   await waitForHydration(fileInput);
   await fileInput.setInputFiles({
     buffer: Buffer.from(csv),
@@ -93,7 +94,7 @@ async function importMembers(
   await expect(
     page.getByText(new RegExp(`${names.length} rows.*${names.length} valid`)),
   ).toBeVisible();
-  await pressButton(page, "Confirm import");
+  await page.getByRole("button", { name: "Confirm import" }).click();
   await expect(page.getByText(/Import queued/)).toBeVisible();
 }
 
@@ -153,6 +154,37 @@ test("Drawer 创建活动，Frame 表单提交后 URL 不变", async ({ page }) 
   await expect(page.getByRole("heading", { name: "New event" })).not.toBeVisible();
 });
 
+test("Overview 月历在桌面展示溢出 Popover，在移动端展示选中日期 agenda", async ({ page }) => {
+  const orgId = await createOrganization(page, `Calendar ${Date.now()}`);
+  const { date, dateTime } = currentSydneyMonthDateTime();
+  const titles = Array.from({ length: 4 }, (_, index) => `Calendar item ${index + 1}`);
+
+  for (const title of titles) {
+    await createDraftEventAt(page, orgId, title, dateTime);
+  }
+
+  await page.goto(`/o/${orgId}`);
+  const eventStat = page.getByText("Events this month", { exact: true }).locator("..");
+  await expect(eventStat.getByText("4", { exact: true })).toBeVisible();
+
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    const day = page.locator(`[data-day="${date}"]`);
+    await waitForHydration(day);
+    await day.click();
+    await expect(page.getByRole("heading", { name: date })).toBeVisible();
+    await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();
+  } else {
+    const overflow = page.getByRole("button", { name: "+1 more" });
+    await overflow.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();
+  }
+
+  await page.getByRole("link", { name: titles[3] }).click();
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/events/`));
+  await expect(page.getByRole("heading", { name: titles[3], exact: true })).toBeVisible();
+});
+
 test("活动删除确认与 published 取消均刷新列表并显示 toast", async ({ page }) => {
   const orgId = await createOrganization(page, `Lifecycle ${Date.now()}`);
   const deletedTitle = `Delete me ${Date.now()}`;
@@ -174,15 +206,13 @@ test("活动删除确认与 published 取消均刷新列表并显示 toast", asy
   ).toContainText("cancelled");
 });
 
-test("Members 搜索、筛选和翻页状态写入 URL", async ({ page }) => {
+test("Members 搜索、状态筛选和翻页写入 URL", async ({ page }) => {
   const orgId = await createOrganization(page, `Members ${Date.now()}`);
-  const groupName = `Group ${Date.now()}`;
   const names = Array.from(
     { length: 11 },
     (_, index) => `Pagination Member ${String(index).padStart(2, "0")}`,
   );
-  await createGroup(page, orgId, groupName);
-  await importMembers(page, orgId, groupName, names);
+  await importMembers(page, orgId, names);
 
   await page.goto(`/o/${orgId}/members?pageSize=10`);
   await expect
@@ -207,31 +237,25 @@ test("Members 搜索、筛选和翻页状态写入 URL", async ({ page }) => {
   await search.press("Enter");
   await chooseOption(page, page.getByRole("combobox", { name: "Filter by status" }), "Active");
   await expect(page).toHaveURL(/status=active/);
-  await chooseOption(page, page.getByRole("combobox", { name: "Filter by group" }), groupName);
-  await expect(page).toHaveURL(/group=grp_/);
   await page.getByRole("button", { name: "Go to next page" }).click();
   await expect(page).toHaveURL(/page=2/);
   await expect(page.getByText("Showing 11–11 of 11")).toBeVisible();
 });
 
-test("parent 仍看到 30 天活动卡片而不是 staff 管理表", async ({ page }) => {
+test("parent 仍看到有权限的活动卡片而不是 staff 管理表", async ({ page }) => {
   const orgId = await createOrganization(page, `Parent ${Date.now()}`);
-  const groupName = `Parent group ${Date.now()}`;
   const studentName = `Parent student ${Date.now()}`;
   const parentEmail = uniqueEmail("e2e-parent");
   const eventTitle = `Parent event ${Date.now()}`;
-  await createGroup(page, orgId, groupName);
-
   await page.goto(`/o/${orgId}/members`);
   await pressButton(page, "Add student");
   await fillField(page.locator("#student-name"), studentName);
   await fillField(page.locator("#contact-name"), "Parent Contact");
   await fillField(page.locator("#contact-email"), parentEmail);
-  await chooseOption(page, page.locator("#student-group"), groupName);
   await pressButton(page, "Add student");
   await expect(page.getByText(studentName, { exact: true })).toBeVisible();
 
-  await createDraftEvent(page, orgId, eventTitle, groupName);
+  await createDraftEvent(page, orgId, eventTitle);
   await publishEvent(page, eventTitle);
 
   await page.goto(`/o/${orgId}/members`);

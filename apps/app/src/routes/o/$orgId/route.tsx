@@ -1,6 +1,7 @@
 import { Separator } from "@everband/ui/components/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@everband/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { getUnreadNotificationCount } from "~/server/notify.ts";
 import { getOrgContext, getSidebarOpen, listMyOrganizations } from "~/server/org.ts";
 import { OrgSidebar } from "./-components/org-sidebar.tsx";
 
@@ -9,12 +10,13 @@ import { OrgSidebar } from "./-components/org-sidebar.tsx";
 export const Route = createFileRoute("/o/$orgId")({
   loader: async ({ params }) => {
     try {
-      const [ctx, orgs, sidebarOpen] = await Promise.all([
+      const [ctx, orgs, sidebarOpen, unreadCount] = await Promise.all([
         getOrgContext({ data: { orgId: params.orgId } }),
         listMyOrganizations(),
         getSidebarOpen(),
+        getUnreadNotificationCount({ data: { orgId: params.orgId } }),
       ]);
-      return { ...ctx, orgs, sidebarOpen };
+      return { ...ctx, orgs, sidebarOpen, unreadCount };
     } catch {
       throw redirect({ to: "/login" });
     }
@@ -23,18 +25,18 @@ export const Route = createFileRoute("/o/$orgId")({
 });
 
 function OrgLayout() {
-  const { org, role, email, orgs, sidebarOpen } = Route.useLoaderData();
+  const { org, role, email, orgs, sidebarOpen, unreadCount } = Route.useLoaderData();
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
-      <OrgSidebar org={org} role={role} email={email} orgs={orgs} />
+      <OrgSidebar org={org} role={role} email={email} orgs={orgs} unreadCount={unreadCount} />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
           <SidebarTrigger />
           <Separator className="h-4" orientation="vertical" />
           <span className="truncate font-medium text-foreground text-sm">{org.name}</span>
         </header>
-        <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
           <Outlet />
         </div>
       </SidebarInset>

@@ -24,7 +24,6 @@ export interface SeriesFormOption {
 export interface SeriesFormDrawerProps {
   orgId: string;
   terms: SeriesFormOption[];
-  groups: SeriesFormOption[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -37,7 +36,6 @@ const selectClassName =
 export function SeriesFormDrawer({
   orgId,
   terms,
-  groups,
   open,
   onOpenChange,
 }: SeriesFormDrawerProps): React.ReactElement {
@@ -52,7 +50,6 @@ export function SeriesFormDrawer({
     await create.submit({
       orgId,
       termId: String(formData.get("termId") ?? ""),
-      groupId: String(formData.get("groupId") ?? "") || undefined,
       weekday: Number(formData.get("weekday")),
       startTimeLocal: String(formData.get("startTime") ?? ""),
       endTimeLocal: String(formData.get("endTime") ?? ""),
@@ -105,26 +102,6 @@ export function SeriesFormDrawer({
           <Field>
             <FieldLabel htmlFor="series-end">Ends</FieldLabel>
             <Input defaultValue="19:00" id="series-end" name="endTime" required type="time" />
-          </Field>
-        </FramePanel>
-
-        <FramePanel>
-          <FrameHeader className="px-0 pt-0">
-            <FrameTitle>Group</FrameTitle>
-          </FrameHeader>
-          <Field>
-            <FieldLabel htmlFor="series-group">Who rehearses</FieldLabel>
-            <select className={selectClassName} defaultValue="" id="series-group" name="groupId">
-              <option value="">Whole organization</option>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-            <FieldDescription>
-              Helper duty rotates across the families of this group.
-            </FieldDescription>
           </Field>
         </FramePanel>
 

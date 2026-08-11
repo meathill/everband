@@ -17,15 +17,12 @@ import { useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
 import { DataTable, type DataTableColumn } from "~/components/data-table/data-table.tsx";
-import { inviteParent, updateStudent, updateStudentStatus } from "~/server/members.ts";
-import { type MemberFormGroup, STUDENT_STATUS_LABELS } from "./member-form-drawer.tsx";
-
-const NO_GROUP = "none";
+import { inviteParent, updateStudentStatus } from "~/server/members.ts";
+import { STUDENT_STATUS_LABELS } from "./member-form-drawer.tsx";
 
 export interface MembersTableProps {
   orgId: string;
   rows: OrgStudentRow[];
-  groups: MemberFormGroup[];
   sort: string;
   order: SortOrder;
   onSortChange: (sort: string, order: SortOrder) => void;
@@ -42,7 +39,6 @@ type RunAction = (
 export function MembersTable({
   orgId,
   rows,
-  groups,
   sort,
   order,
   onSortChange,
@@ -81,11 +77,6 @@ export function MembersTable({
       key: "status",
       render: (row) => <StatusCell orgId={orgId} row={row} run={run} />,
       sortable: true,
-    },
-    {
-      header: "Group",
-      key: "group",
-      render: (row) => <GroupCell groups={groups} orgId={orgId} row={row} run={run} />,
     },
     {
       header: "Contacts",
@@ -146,57 +137,6 @@ function StatusCell({
         {STUDENT_STATUS_VALUES.map((value) => (
           <SelectItem key={value} value={value}>
             {STUDENT_STATUS_LABELS[value]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function GroupCell({
-  groups,
-  orgId,
-  row,
-  run,
-}: {
-  groups: MemberFormGroup[];
-  orgId: string;
-  row: OrgStudentRow;
-  run: RunAction;
-}): React.ReactElement {
-  if (row.status === "archived") {
-    return <span className="text-muted-foreground text-sm">{row.groupName ?? "—"}</span>;
-  }
-  // 选项 = 活跃分组 ∪ 当前分组（后者可能已归档，不带上就会显示成空）
-  const options = groups.some((group) => group.id === row.groupId)
-    ? groups
-    : row.groupId && row.groupName
-      ? [...groups, { id: row.groupId, name: row.groupName }]
-      : groups;
-  const labels: Record<string, string> = { [NO_GROUP]: "No group" };
-  for (const group of options) {
-    labels[group.id] = group.name;
-  }
-
-  return (
-    <Select
-      items={labels}
-      onValueChange={(value: string | null) => {
-        if (!value) return;
-        const groupId = value === NO_GROUP ? null : value;
-        if (groupId === (row.groupId ?? null)) return;
-        run(() => updateStudent({ data: { orgId, studentId: row.id, groupId } }), "Group updated");
-      }}
-      value={row.groupId ?? NO_GROUP}
-    >
-      <SelectTrigger aria-label={`Group for ${row.name}`} className="w-auto min-w-32" size="sm">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={NO_GROUP}>No group</SelectItem>
-        {options.map((group) => (
-          <SelectItem key={group.id} value={group.id}>
-            {group.name}
           </SelectItem>
         ))}
       </SelectContent>
@@ -298,7 +238,7 @@ function MembersEmpty({ isFiltered }: { isFiltered: boolean }): React.ReactEleme
         <EmptyTitle>{isFiltered ? "No matching students" : "No students yet"}</EmptyTitle>
         <EmptyDescription>
           {isFiltered
-            ? "Try a different search, status or group."
+            ? "Try a different search or status."
             : "Add a student, or import a roster from a CSV file."}
         </EmptyDescription>
       </EmptyHeader>

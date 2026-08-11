@@ -6,7 +6,7 @@ import { toastManager } from "@everband/ui/components/toast";
 import { ProhibitIcon } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
 import {
   cancelRehearsalOccurrence,
@@ -27,6 +27,7 @@ export interface OccurrenceListProps {
   assignments: Overview["assignments"];
   myHouseholds: Overview["myHouseholds"];
   mySwaps: Overview["mySwaps"];
+  focusedOccurrenceId?: string;
 }
 
 /** 未来 30 场排练与它们的 helper roster；staff 可取消单场，parent 可申请/撤回换班。 */
@@ -38,6 +39,7 @@ export function OccurrenceList({
   assignments,
   myHouseholds,
   mySwaps,
+  focusedOccurrenceId,
 }: OccurrenceListProps): React.ReactElement {
   if (occurrences.length === 0) {
     return (
@@ -55,6 +57,7 @@ export function OccurrenceList({
         {occurrences.map((occurrence) => (
           <OccurrenceCard
             isStaff={isStaff}
+            isFocused={focusedOccurrenceId === occurrence.id}
             key={occurrence.id}
             myHouseholds={myHouseholds}
             mySwaps={mySwaps}
@@ -77,6 +80,7 @@ function OccurrenceCard({
   roster,
   myHouseholds,
   mySwaps,
+  isFocused,
 }: {
   orgId: string;
   isStaff: boolean;
@@ -85,12 +89,18 @@ function OccurrenceCard({
   roster: Assignment[];
   myHouseholds: Overview["myHouseholds"];
   mySwaps: Overview["mySwaps"];
+  isFocused: boolean;
 }): React.ReactElement {
   const router = useRouter();
+  const cardRef = useRef<HTMLLIElement>(null);
   const [swapFor, setSwapFor] = useState<string | null>(null);
   const isCancelled = occurrence.status === "cancelled";
   // 已经开始的场次取消没有意义，按钮只在未来场次出现
   const canCancel = isStaff && !isCancelled && occurrence.startsAtUtc > Date.now();
+
+  useEffect(() => {
+    if (isFocused) cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [isFocused]);
 
   async function handleCancelOccurrence(): Promise<boolean> {
     const result = await cancelRehearsalOccurrence({
@@ -127,7 +137,11 @@ function OccurrenceCard({
   }
 
   return (
-    <li className="flex flex-col gap-1.5 rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-sm">
+    <li
+      className={`flex flex-col gap-1.5 rounded-lg border bg-card px-4 py-3 text-sm shadow-sm ${isFocused ? "border-primary ring-2 ring-ring/30" : "border-border"}`}
+      ref={cardRef}
+      tabIndex={isFocused ? -1 : undefined}
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="font-medium text-foreground tabular-nums">
           {occurrence.localDate} · {formatOrgTime(occurrence.startsAtUtc, timezone)}

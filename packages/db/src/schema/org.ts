@@ -7,6 +7,8 @@ export const organizations = sqliteTable("organizations", {
   type: text("type").notNull().default("band"),
   // IANA 时区，如 "Australia/Sydney"；所有本地时间计算的唯一依据
   timezone: text("timezone").notNull(),
+  // ISO 4217；轻量账本首发默认 AUD，同一组织只使用一种货币
+  currencyCode: text("currency_code").notNull().default("AUD"),
   contactEmail: text("contact_email"),
   publicProfileEnabled: integer("public_profile_enabled", { mode: "boolean" })
     .notNull()

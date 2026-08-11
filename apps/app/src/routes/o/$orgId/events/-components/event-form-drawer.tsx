@@ -1,20 +1,13 @@
 import type { EventStatus } from "@everband/domain";
 import { utcMsToLocalDateTime } from "@everband/domain";
-import { Checkbox } from "@everband/ui/components/checkbox";
 import { Field, FieldDescription, FieldLabel } from "@everband/ui/components/field";
 import { Frame, FrameHeader, FramePanel, FrameTitle } from "@everband/ui/components/frame";
 import { Input } from "@everband/ui/components/input";
 import { Textarea } from "@everband/ui/components/textarea";
 import type React from "react";
-import { useState } from "react";
 import { FormDrawer } from "~/components/form-drawer.tsx";
 import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import { createEvent, updateEvent } from "~/server/events.ts";
-
-export interface EventFormGroup {
-  id: string;
-  name: string;
-}
 
 /** 编辑模式下回填用的活动快照；不传即创建模式 */
 export interface EventFormValues {
@@ -33,7 +26,6 @@ export interface EventFormDrawerProps {
   orgId: string;
   /** 组织时区：datetime-local 的输入/回填都在这个时区下发生 */
   timezone: string;
-  groups: EventFormGroup[];
   event?: EventFormValues;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,7 +46,6 @@ function text(formData: FormData, key: string): string {
 export function EventFormDrawer({
   orgId,
   timezone,
-  groups,
   event,
   open,
   onOpenChange,
@@ -79,8 +70,6 @@ export function EventFormDrawer({
   const active = isEdit ? update : create;
 
   async function handleSubmit(formData: FormData) {
-    const isOrgWide = formData.get("isOrgWide") === "on";
-    const groupIds = isOrgWide ? [] : formData.getAll("groupIds").map(String);
     const shared = {
       description: text(formData, "description"),
       location: text(formData, "location"),
@@ -95,8 +84,8 @@ export function EventFormDrawer({
         location: shared.location || undefined,
         startsAtLocal: text(formData, "startsAt"),
         endsAtLocal: shared.endsAtLocal || undefined,
-        isOrgWide,
-        groupIds,
+        isOrgWide: true,
+        groupIds: [],
       });
       return;
     }
@@ -110,8 +99,6 @@ export function EventFormDrawer({
       ...shared,
       title: text(formData, "title"),
       startsAtLocal: text(formData, "startsAt"),
-      isOrgWide,
-      groupIds,
     });
   }
 
@@ -131,25 +118,20 @@ export function EventFormDrawer({
       title={isEdit ? "Edit event" : "New event"}
     >
       {/* 抽屉关闭时 Portal 卸载 children，这里的 state 与非受控输入一起天然重置 */}
-      <EventFormFields event={event} groups={groups} isLocked={isLocked} timezone={timezone} />
+      <EventFormFields event={event} isLocked={isLocked} timezone={timezone} />
     </FormDrawer>
   );
 }
 
 function EventFormFields({
   event,
-  groups,
   isLocked,
   timezone,
 }: {
   event?: EventFormValues;
-  groups: EventFormGroup[];
   isLocked: boolean;
   timezone: string;
 }): React.ReactElement {
-  // 纯展示状态：控制 group 复选框是否可用；提交时的真值仍从 FormData 读
-  const [isOrgWide, setIsOrgWide] = useState(event?.isOrgWide ?? false);
-
   return (
     <Frame>
       <FramePanel>
@@ -226,49 +208,11 @@ function EventFormFields({
         <FrameHeader className="px-0 pt-0">
           <FrameTitle>Audience</FrameTitle>
         </FrameHeader>
-        {/* FieldDescription 依赖 Field.Root 的 context，整块受众必须包在同一个 Field 里 */}
-        <Field>
-          <label
-            className="flex items-center gap-2 text-foreground text-sm"
-            htmlFor="event-org-wide"
-          >
-            <Checkbox
-              defaultChecked={event?.isOrgWide ?? false}
-              disabled={isLocked}
-              id="event-org-wide"
-              name="isOrgWide"
-              onCheckedChange={setIsOrgWide}
-            />
-            Whole organization
-          </label>
-          {groups.length === 0 ? (
-            <FieldDescription>
-              No groups yet. Create one first, or make the event organization-wide.
-            </FieldDescription>
-          ) : (
-            <div className="flex flex-wrap gap-x-4 gap-y-3">
-              {groups.map((group) => (
-                <label
-                  className="flex items-center gap-2 text-foreground text-sm"
-                  htmlFor={`event-group-${group.id}`}
-                  key={group.id}
-                >
-                  <Checkbox
-                    defaultChecked={event?.groupIds.includes(group.id) ?? false}
-                    disabled={isOrgWide || isLocked}
-                    id={`event-group-${group.id}`}
-                    name="groupIds"
-                    value={group.id}
-                  />
-                  {group.name}
-                </label>
-              ))}
-            </div>
-          )}
-          {isLocked && (
-            <FieldDescription>Audience is fixed once the event is published.</FieldDescription>
-          )}
-        </Field>
+        <p className="text-muted-foreground text-sm">
+          {event && !event.isOrgWide
+            ? "This legacy event keeps its existing restricted audience."
+            : "This event is available to the whole organization."}
+        </p>
       </FramePanel>
     </Frame>
   );

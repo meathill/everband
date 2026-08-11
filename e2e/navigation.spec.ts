@@ -57,14 +57,13 @@ test("已有组织时通用入口进入组织首页，不再打开创建表单",
   await page.goto("/new-org?intent=create");
   await fillField(page.locator("#org-name"), "Existing Organization Test");
   await pressButton(page, "Create organization");
-  await expect(page.getByRole("heading", { name: "Existing Organization Test" })).toBeVisible();
-
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   const orgId = new URL(page.url()).pathname.split("/")[2];
   expect(orgId).toBeTruthy();
 
   await page.goto("/new-org");
   await expect(page).toHaveURL(new RegExp(`/o/${orgId}$`));
-  await expect(page.getByRole("heading", { name: "Existing Organization Test" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create an organization" })).not.toBeVisible();
 });
 
@@ -94,7 +93,9 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
   await page.goto("/new-org");
   await fillField(page.locator("#org-name"), "Sidebar Test Band");
   await pressButton(page, "Create organization");
-  await expect(page.getByRole("heading", { name: "Sidebar Test Band" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  const orgId = new URL(page.url()).pathname.split("/")[2];
+  expect(orgId).toBeTruthy();
 
   // 旧的顶部导航已移除，正文区不应再横向溢出（原 header flex-wrap 决策的替代验证）
   const overflow = await page.evaluate(
@@ -106,8 +107,13 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
 
   // Overview 是父路径，必须精确匹配，否则任何子页面都会让它高亮
   await expect(page.getByRole("link", { name: "Overview" })).toHaveAttribute("data-active", "true");
-  // owner 才有的 Manage 分组
+  // 组织切换器保持在侧栏顶部；日常运营与底部工具都有稳定入口
+  await expect(page.getByRole("button", { name: "Sidebar Test Band" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Finance" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Notifications" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Groups" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Events" }).click();
   // Events 是列表页，validateSearch 的默认值会被 Link 补进 URL（?page=1&…），所以不能锚 $
@@ -118,6 +124,24 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
     "data-active",
     "false",
   );
+
+  await openSidebarOnMobile(page);
+  const settingsLink = page.getByRole("link", { name: "Settings" });
+  await settingsLink.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    await page.getByRole("combobox", { name: "Settings section" }).click();
+    await page.getByRole("option", { name: "Data import" }).click();
+  } else {
+    await page.getByRole("tab", { name: "Data import" }).click();
+  }
+  await expect(page.getByRole("heading", { name: "Data import" })).toBeVisible();
+
+  await page.goto(`/o/${orgId}/import`);
+  await expect(page).toHaveURL(/\/settings\?.*section=data-import/);
+  await page.goto(`/o/${orgId}/groups`);
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/members`));
 });
 
 test("favicon 和 band 品牌资源返回有效图片", async ({ page }) => {

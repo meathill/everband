@@ -28,8 +28,8 @@ describe("学生状态机", () => {
     }
   });
 
-  it("active 必须绑定 group", () => {
-    expect(validateStudentGroup("active", null).valid).toBe(false);
+  it("Group 暂停后 active 也允许不分组", () => {
+    expect(validateStudentGroup("active", null).valid).toBe(true);
     expect(validateStudentGroup("active", "grp_x").valid).toBe(true);
     expect(validateStudentGroup("interested", null).valid).toBe(true);
     expect(validateStudentGroup("withdrawn", null).valid).toBe(true);

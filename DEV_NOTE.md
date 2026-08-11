@@ -113,6 +113,18 @@
 - **别用 `SidebarMenuButton` 的 outline 变体**：它的 shadow 写的是老式
   `hsl(var(--sidebar-border))`，我们的 token 是 oklch，渲染不出来。默认变体没问题。
 
+## 信息架构与轻量账本（2026-08-11）
+
+- **Overview 月份边界只认组织时区**：URL 使用 `month=YYYY-MM`，`monthWindow` 生成 UTC
+  半开区间；跨月 Event 通过开始/结束重叠判断进入月历，展示日期再转换回组织本地日期。
+- **Group 暂停不等于迁移数据**：导航、筛选和新建控件隐藏；新 Event 强制全组织、新
+  Rehearsal 强制 `groupId=null`、新成员允许无分组。旧 `event_groups`、学生 Group 和排练
+  Group 仍用于 Parent 读取权限，编辑旧对象不能扩大原受众。
+- **Finance 金额使用整数最小货币单位**：组织保存 `currencyCode`（默认 AUD），账本只做
+  income/expense、编辑和 void。void 保留记录且不计入余额，每次写入都必须产生 audit。
+- **Settings 是运营工具归宿**：Import jobs 位于 Data import，邮件发送记录位于 Email
+  delivery；Notifications 只保留站内通知。旧 `/import`、`/groups` 只做兼容重定向。
+
 ## 列表页样板（2026-08-11，UI 改造 P2）
 
 分页/排序/搜索的基建：`packages/validation/src/list.ts`（`createListQuerySchema` /

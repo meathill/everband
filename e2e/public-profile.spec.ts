@@ -15,11 +15,11 @@ test("公开主页开启/二维码/关闭后统一降级", async ({ page, browse
   await page.goto("/new-org");
   await fillField(page.locator("#org-name"), "Public Page Test Band");
   await pressButton(page, "Create organization");
-  await expect(page.getByRole("heading", { name: "Public Page Test Band" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   const orgUrl = page.url();
 
   // 开启公开主页
-  await page.goto(`${orgUrl}/settings`);
+  await page.goto(`${orgUrl}/settings?section=public-profile`);
   await fillField(page.locator("#public-slug"), slug);
   await fillField(page.locator("#public-summary"), "A test band for the public page.");
   await pressButton(page, "Open public page");

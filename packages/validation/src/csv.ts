@@ -10,11 +10,21 @@ export const CSV_HEADERS = [
   "contactName",
   "contactEmail",
   "relationship",
+  "status",
+] as const;
+
+export const LEGACY_CSV_HEADERS = [
+  "studentName",
+  "contactName",
+  "contactEmail",
+  "relationship",
   "groupName",
   "status",
 ] as const;
 
-export const CSV_TEMPLATE = `${CSV_HEADERS.join(",")}\nAlex Chen,Morgan Chen,morgan.chen@example.com,parent,Senior band,active\n`;
+const KNOWN_CSV_HEADERS = LEGACY_CSV_HEADERS;
+
+export const CSV_TEMPLATE = `${CSV_HEADERS.join(",")}\nAlex Chen,Morgan Chen,morgan.chen@example.com,parent,active\n`;
 
 // RFC 4180 基本子集：支持双引号包裹、内嵌逗号与转义引号（""）
 export function parseCsv(text: string): string[][] {
@@ -108,7 +118,7 @@ export function validateImportCsv(text: string): CsvValidationResult {
   }
   const normalizedHeader = header.map((value) => value.trim());
   const missing = CSV_HEADERS.filter(
-    (name) => name !== "groupName" && name !== "status" && !normalizedHeader.includes(name),
+    (name) => name !== "status" && !normalizedHeader.includes(name),
   );
   if (missing.length > 0) {
     return {
@@ -124,7 +134,7 @@ export function validateImportCsv(text: string): CsvValidationResult {
     const cells = parsed[i] ?? [];
     const rowNumber = i;
     const raw: Record<string, string> = {};
-    for (const name of CSV_HEADERS) {
+    for (const name of KNOWN_CSV_HEADERS) {
       const index = columnIndex.get(name);
       raw[name] = index === undefined ? "" : (cells[index] ?? "");
     }

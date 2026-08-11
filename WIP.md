@@ -1,7 +1,5 @@
 # WIP
 
-当前没有进行中的开发任务。
-
 ## 里程碑归档
 
 - M1 脚手架：monorepo + DYQR 设计系统（emerald + coss/ui）+ 三 Worker + 初始迁移
@@ -18,6 +16,8 @@
   staff Overview 四卡仪表盘，全部部署生产并冒烟验证
 - 应用 UI 框架改造（2026-08-11，P0–P8）：侧边栏布局、列表查询协议、FormDrawer/Frame、
   Events/Members/Groups/Rehearsals/Notifications/Import/Settings 全功能化与浏览器回归
+- 信息架构重规划（2026-08-11）：Overview 月历与统计、Finance 轻量公费账本、Settings 二级导航、
+  Notifications 下移、Group UI 暂停、旧路由兼容及桌面/移动端回归
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
-（普通单测 63 + Worker 集成测试 95 + e2e 14 场景、双视口 28 例）。
+（普通单测 66 + Worker 集成测试 95 + e2e 16 场景、双视口 32 例）。

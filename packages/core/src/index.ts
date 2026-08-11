@@ -5,6 +5,7 @@ export * from "./auth.ts";
 export * from "./email-sender.ts";
 export * from "./event-admin.ts";
 export * from "./events.ts";
+export * from "./finance.ts";
 export * from "./forms.ts";
 export * from "./import.ts";
 export * from "./member-admin.ts";

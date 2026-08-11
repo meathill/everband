@@ -2,7 +2,7 @@ import { env } from "cloudflare:test";
 import { listImportJobsCore, processImportJob } from "@everband/core";
 import { createDb, schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
-import { CSV_HEADERS } from "@everband/validation";
+import { LEGACY_CSV_HEADERS } from "@everband/validation";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
@@ -61,7 +61,7 @@ async function seedJob(orgId: string, membershipId: string): Promise<string> {
   return jobId;
 }
 
-const header = CSV_HEADERS.join(",");
+const header = LEGACY_CSV_HEADERS.join(",");
 
 describe("processImportJob", () => {
   it("部分成功：合法行导入，错误行保留原因，计数正确", async () => {

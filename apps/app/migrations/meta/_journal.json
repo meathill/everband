@@ -64,6 +64,13 @@
       "when": 1786161325565,
       "tag": "0008_qr-codes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1786450952756,
+      "tag": "0009_finance",
+      "breakpoints": true
     }
   ]
 }
