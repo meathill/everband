@@ -171,10 +171,17 @@ export async function processImportJob(
     return { processed: true };
   }
 
+  // 只认 active 分组：归档分组不该再接收新学生（与选择器语义一致），
+  // 导入时按"不存在"处理，行级失败并给出原因
   const groups = await db
     .select({ id: schema.groups.id, name: schema.groups.name })
     .from(schema.groups)
-    .where(eq(schema.groups.organizationId, job.organizationId));
+    .where(
+      and(
+        eq(schema.groups.organizationId, job.organizationId),
+        eq(schema.groups.status, "active" as const),
+      ),
+    );
   const groupsByName = new Map(groups.map((group) => [group.name.trim().toLowerCase(), group.id]));
 
   const counts = { created: 0, updated: 0, skipped: 0, failed: 0 };

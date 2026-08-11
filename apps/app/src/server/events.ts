@@ -198,10 +198,16 @@ export const getEventsPageData = createServerFn({ method: "GET" })
     if (ctx.role === "owner" || ctx.role === "staff") {
       const [list, groups] = await Promise.all([
         listOrgEventsCore(db, data.orgId, data, Date.now()),
+        // 受众选择器只列 active 分组；归档分组在 updateGroupCore 里就被禁止留下活动引用
         db
           .select({ id: schema.groups.id, name: schema.groups.name })
           .from(schema.groups)
-          .where(eq(schema.groups.organizationId, data.orgId))
+          .where(
+            and(
+              eq(schema.groups.organizationId, data.orgId),
+              eq(schema.groups.status, "active" as const),
+            ),
+          )
           .orderBy(asc(schema.groups.name)),
       ]);
       return { mode: "staff" as const, list, groups };
@@ -257,12 +263,17 @@ export const getEventDetail = createServerFn({ method: "GET" })
         .from(schema.eventGroups)
         .innerJoin(schema.groups, eq(schema.groups.id, schema.eventGroups.groupId))
         .where(eq(schema.eventGroups.eventId, data.eventId)),
-      // 编辑抽屉的受众选项；parent 用不到，但多一次小查询换掉一趟额外往返
+      // 编辑抽屉的受众选项（只列 active 分组）；parent 用不到，但多一次小查询换掉一趟额外往返
       isStaff
         ? db
             .select({ id: schema.groups.id, name: schema.groups.name })
             .from(schema.groups)
-            .where(eq(schema.groups.organizationId, data.orgId))
+            .where(
+              and(
+                eq(schema.groups.organizationId, data.orgId),
+                eq(schema.groups.status, "active" as const),
+              ),
+            )
             .orderBy(asc(schema.groups.name))
         : Promise.resolve([]),
       db

@@ -1,8 +1,11 @@
 import {
   addContactToStudent,
   createStudentCore,
+  listStudentsCore,
   MemberError,
   recordAudit,
+  updateGroupCore,
+  updateStudentCore,
   updateStudentStatusCore,
 } from "@everband/core";
 import { schema } from "@everband/db";
@@ -13,7 +16,11 @@ import {
   createStudentSchema,
   createTermSchema,
   inviteParentSchema,
+  listGroupsSchema,
   orgIdSchema,
+  studentsPageSchema,
+  updateGroupSchema,
+  updateStudentSchema,
   updateStudentStatusSchema,
 } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
@@ -31,41 +38,11 @@ function toError(cause: unknown): { ok: false; error: string } {
 }
 
 export const listStudents = createServerFn({ method: "GET" })
-  .validator(orgIdSchema)
+  .validator(studentsPageSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
-    const students = await db
-      .select({
-        id: schema.students.id,
-        name: schema.students.name,
-        status: schema.students.status,
-        groupId: schema.students.groupId,
-        groupName: schema.groups.name,
-        householdId: schema.students.householdId,
-      })
-      .from(schema.students)
-      .leftJoin(schema.groups, eq(schema.students.groupId, schema.groups.id))
-      .where(eq(schema.students.organizationId, data.orgId))
-      .orderBy(asc(schema.students.name));
-
-    const links = await db
-      .select({
-        studentId: schema.studentContacts.studentId,
-        contactId: schema.contacts.id,
-        contactName: schema.contacts.name,
-        contactEmail: schema.contacts.email,
-        relationship: schema.studentContacts.relationship,
-        contactUserId: schema.contacts.userId,
-      })
-      .from(schema.studentContacts)
-      .innerJoin(schema.contacts, eq(schema.studentContacts.contactId, schema.contacts.id))
-      .where(eq(schema.studentContacts.organizationId, data.orgId));
-
-    return students.map((student) => ({
-      ...student,
-      contacts: links.filter((link) => link.studentId === student.id),
-    }));
+    return listStudentsCore(db, data.orgId, data);
   });
 
 export const createStudent = createServerFn({ method: "POST" })
@@ -125,6 +102,20 @@ export const updateStudentStatus = createServerFn({ method: "POST" })
     }
   });
 
+export const updateStudent = createServerFn({ method: "POST" })
+  .validator(updateStudentSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    return updateStudentCore(
+      db,
+      data.orgId,
+      data.studentId,
+      { name: data.name, groupId: data.groupId },
+      ctx.membershipId,
+    );
+  });
+
 export const addStudentContact = createServerFn({ method: "POST" })
   .validator(addStudentContactSchema)
   .handler(async ({ data }) => {
@@ -171,15 +162,21 @@ export const inviteParent = createServerFn({ method: "POST" })
     return createInvite(db, ctx, contact.email, "parent", getRequestUrl().origin);
   });
 
+// status 默认 active：分组选择器只该看到在用的分组，管理页显式传 archived / all
 export const listGroups = createServerFn({ method: "GET" })
-  .validator(orgIdSchema)
+  .validator(listGroupsSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId);
     return db
       .select()
       .from(schema.groups)
-      .where(eq(schema.groups.organizationId, data.orgId))
+      .where(
+        and(
+          eq(schema.groups.organizationId, data.orgId),
+          ...(data.status === "all" ? [] : [eq(schema.groups.status, data.status)]),
+        ),
+      )
       .orderBy(asc(schema.groups.name));
   });
 
@@ -209,6 +206,20 @@ export const createGroup = createServerFn({ method: "POST" })
       summary: { name: data.name },
     });
     return { ok: true as const, groupId };
+  });
+
+export const updateGroup = createServerFn({ method: "POST" })
+  .validator(updateGroupSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    return updateGroupCore(
+      db,
+      data.orgId,
+      data.groupId,
+      { name: data.name, status: data.status },
+      ctx.membershipId,
+    );
   });
 
 export const listTerms = createServerFn({ method: "GET" })

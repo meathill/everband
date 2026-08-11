@@ -7,6 +7,7 @@ export * from "./event-admin.ts";
 export * from "./events.ts";
 export * from "./forms.ts";
 export * from "./import.ts";
+export * from "./member-admin.ts";
 export * from "./members.ts";
 export * from "./notify.ts";
 export * from "./overview.ts";

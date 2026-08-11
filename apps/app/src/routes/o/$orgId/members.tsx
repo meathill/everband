@@ -1,24 +1,37 @@
+import type { OrgStudentRow } from "@everband/core";
 import { Button } from "@everband/ui/components/button";
-import { Input } from "@everband/ui/components/input";
-import { RELATIONSHIPS, STUDENT_STATUS_VALUES } from "@everband/validation";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
 import {
-  createStudent,
-  inviteParent,
-  listGroups,
-  listStudents,
-  updateStudentStatus,
-} from "~/server/members.ts";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@everband/ui/components/select";
+import type { StudentStatusFilter } from "@everband/validation";
+import { STUDENT_STATUS_FILTERS, studentsListSchema } from "@everband/validation";
+import { PlusIcon } from "@phosphor-icons/react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import type React from "react";
+import { useState } from "react";
+import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
+import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
+import { useListSearch } from "~/components/data-table/use-list-search.ts";
+import { listGroups, listStudents } from "~/server/members.ts";
+import { MemberFormDrawer } from "./-components/member-form-drawer.tsx";
+import { MembersTable } from "./-components/members-table.tsx";
 
 export const Route = createFileRoute("/o/$orgId/members")({
-  loader: async ({ params }) => {
+  validateSearch: studentsListSchema,
+  // 漏了 loaderDeps 就会"翻页/排序/搜索点了没反应"：loader 只在 params 变化时重跑
+  loaderDeps: ({ search }) => search,
+  loader: async ({ params, deps }) => {
     try {
-      const [students, groups] = await Promise.all([
-        listStudents({ data: { orgId: params.orgId } }),
-        listGroups({ data: { orgId: params.orgId } }),
+      const [list, groups] = await Promise.all([
+        listStudents({ data: { orgId: params.orgId, ...deps } }),
+        // 分组下拉只列在用的分组
+        listGroups({ data: { orgId: params.orgId, status: "active" } }),
       ]);
-      return { students, groups };
+      return { list, groups };
     } catch {
       throw redirect({ to: "/o/$orgId", params: { orgId: params.orgId } });
     }
@@ -26,253 +39,123 @@ export const Route = createFileRoute("/o/$orgId/members")({
   component: MembersPage,
 });
 
-type Students = Awaited<ReturnType<typeof listStudents>>;
-type Groups = Awaited<ReturnType<typeof listGroups>>;
+const STATUS_LABELS: Record<StudentStatusFilter, string> = {
+  all: "All students",
+  active: "Active",
+  archived: "Archived",
+  interested: "Interested",
+  withdrawn: "Withdrawn",
+};
 
-function MembersPage() {
-  const { students, groups } = Route.useLoaderData();
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Members</h1>
-      </div>
-      <AddStudentForm groups={groups} />
-      <StudentsTable students={students} groups={groups} />
-    </div>
-  );
-}
+const ALL_GROUPS = "all";
 
-function AddStudentForm({ groups }: { groups: Groups }) {
+function MembersPage(): React.ReactElement {
+  const { list, groups } = Route.useLoaderData();
   const { orgId } = Route.useParams();
-  const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const listSearch = useListSearch({
+    search,
+    onChange: (patch) => navigate({ replace: true, search: (prev) => ({ ...prev, ...patch }) }),
+  });
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setIsBusy(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      const result = await createStudent({
-        data: {
-          orgId,
-          name: String(form.get("studentName")),
-          status: String(form.get("status")) as (typeof STUDENT_STATUS_VALUES)[number],
-          groupId: String(form.get("groupId")) || undefined,
-          contact: {
-            name: String(form.get("contactName")),
-            email: String(form.get("contactEmail")),
-            relationship: String(form.get("relationship")) as (typeof RELATIONSHIPS)[number],
-          },
-        },
-      });
-      if (result.ok) {
-        setIsOpen(false);
-        await router.invalidate();
-      } else {
-        setError(result.error);
-      }
-    } finally {
-      setIsBusy(false);
-    }
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState<OrgStudentRow | undefined>(undefined);
+
+  function openCreate() {
+    setEditing(undefined);
+    setIsDrawerOpen(true);
   }
 
-  if (!isOpen) {
-    return (
-      <div>
-        <Button onClick={() => setIsOpen(true)}>Add student</Button>
-      </div>
-    );
+  function openEdit(row: OrgStudentRow) {
+    setEditing(row);
+    setIsDrawerOpen(true);
   }
 
-  const selectClass =
-    "h-9 rounded-md border border-input bg-popover px-3 text-base text-foreground sm:h-8 sm:text-sm";
+  const groupLabels: Record<string, string> = { [ALL_GROUPS]: "All groups" };
+  for (const group of groups) {
+    groupLabels[group.id] = group.name;
+  }
+  const isFiltered = Boolean(search.q) || search.status !== "all" || search.group !== ALL_GROUPS;
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex max-w-2xl flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
-    >
-      <h2 className="text-lg font-semibold text-foreground">New student</h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1.5" htmlFor="student-name">
-          <span className="text-sm font-medium text-foreground">Student name</span>
-          <Input id="student-name" name="studentName" required />
-        </label>
-        <label className="flex flex-col gap-1.5" htmlFor="student-status">
-          <span className="text-sm font-medium text-foreground">Status</span>
-          <select id="student-status" name="status" defaultValue="active" className={selectClass}>
-            {STUDENT_STATUS_VALUES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
+    <div className="flex flex-col gap-6">
+      <h1 className="font-semibold text-3xl text-foreground tracking-tight">Members</h1>
+
+      <DataTableToolbar
+        actions={
+          <Button onClick={openCreate}>
+            <PlusIcon />
+            Add student
+          </Button>
+        }
+        defaultQuery={search.q}
+        onQueryChange={listSearch.setQuery}
+        searchPlaceholder="Search students"
+      >
+        {/* 筛选值是 URL 状态，所以这些 Select 是受控的；items 让 SelectValue 显示标签 */}
+        <Select
+          items={STATUS_LABELS}
+          onValueChange={(value: StudentStatusFilter | null) =>
+            value && listSearch.setFilter("status", value)
+          }
+          value={search.status}
+        >
+          <SelectTrigger aria-label="Filter by status" className="w-auto min-w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STUDENT_STATUS_FILTERS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {STATUS_LABELS[value]}
+              </SelectItem>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5" htmlFor="student-group">
-          <span className="text-sm font-medium text-foreground">Group</span>
-          <select id="student-group" name="groupId" className={selectClass} defaultValue="">
-            <option value="">No group</option>
+          </SelectContent>
+        </Select>
+        <Select
+          items={groupLabels}
+          onValueChange={(value: string | null) => value && listSearch.setFilter("group", value)}
+          value={groupLabels[search.group] ? search.group : ALL_GROUPS}
+        >
+          <SelectTrigger aria-label="Filter by group" className="w-auto min-w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_GROUPS}>All groups</SelectItem>
             {groups.map((group) => (
-              <option key={group.id} value={group.id}>
+              <SelectItem key={group.id} value={group.id}>
                 {group.name}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-        </label>
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1.5" htmlFor="contact-name">
-          <span className="text-sm font-medium text-foreground">Contact name</span>
-          <Input id="contact-name" name="contactName" required />
-        </label>
-        <label className="flex flex-col gap-1.5" htmlFor="contact-email">
-          <span className="text-sm font-medium text-foreground">Contact email</span>
-          <Input id="contact-email" name="contactEmail" type="email" required />
-        </label>
-        <label className="flex flex-col gap-1.5" htmlFor="contact-relationship">
-          <span className="text-sm font-medium text-foreground">Relationship</span>
-          <select
-            id="contact-relationship"
-            name="relationship"
-            defaultValue="parent"
-            className={selectClass}
-          >
-            {RELATIONSHIPS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {error && <p className="text-sm text-destructive-foreground">{error}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" loading={isBusy}>
-          Create student
-        </Button>
-        <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
-          Cancel
-        </Button>
-      </div>
-    </form>
-  );
-}
+          </SelectContent>
+        </Select>
+      </DataTableToolbar>
 
-function StudentsTable({ students, groups }: { students: Students; groups: Groups }) {
-  const { orgId } = Route.useParams();
-  const router = useRouter();
-  const [message, setMessage] = useState<string | null>(null);
+      <MembersTable
+        groups={groups}
+        isFiltered={isFiltered}
+        onEdit={openEdit}
+        onSortChange={listSearch.setSort}
+        order={search.order}
+        orgId={orgId}
+        rows={list.items}
+        sort={search.sort}
+      />
 
-  async function handleStatusChange(studentId: string, status: string, groupId: string | null) {
-    setMessage(null);
-    const result = await updateStudentStatus({
-      data: {
-        orgId,
-        studentId,
-        status: status as (typeof STUDENT_STATUS_VALUES)[number],
-        groupId: groupId ?? undefined,
-      },
-    });
-    if (!result.ok) {
-      setMessage(result.error);
-    }
-    await router.invalidate();
-  }
+      <DataTablePagination
+        onPageChange={listSearch.setPage}
+        page={list.page}
+        pageSize={list.pageSize}
+        total={list.total}
+      />
 
-  async function handleInviteParent(contactId: string) {
-    setMessage(null);
-    const result = await inviteParent({ data: { orgId, contactId } });
-    setMessage(result.ok ? "Invitation sent." : result.error);
-  }
-
-  if (students.length === 0) {
-    return <p className="text-muted-foreground">No students yet. Add one above or import a CSV.</p>;
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {message && <p className="text-sm text-muted-foreground">{message}</p>}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-border text-muted-foreground">
-              <th className="py-2 pr-4 font-medium">Student</th>
-              <th className="py-2 pr-4 font-medium">Status</th>
-              <th className="py-2 pr-4 font-medium">Group</th>
-              <th className="py-2 font-medium">Contacts</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.map((student) => (
-              <tr key={student.id} className="border-b border-border align-top">
-                <td className="py-2 pr-4 font-medium text-foreground">{student.name}</td>
-                <td className="py-2 pr-4">
-                  <select
-                    aria-label={`Status for ${student.name}`}
-                    className="h-8 rounded-md border border-input bg-popover px-2 text-sm text-foreground"
-                    value={student.status}
-                    onChange={(e) =>
-                      handleStatusChange(student.id, e.target.value, student.groupId)
-                    }
-                  >
-                    {STUDENT_STATUS_VALUES.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="py-2 pr-4">
-                  <select
-                    aria-label={`Group for ${student.name}`}
-                    className="h-8 rounded-md border border-input bg-popover px-2 text-sm text-foreground"
-                    value={student.groupId ?? ""}
-                    onChange={(e) =>
-                      handleStatusChange(student.id, student.status, e.target.value || null)
-                    }
-                  >
-                    <option value="">No group</option>
-                    {groups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="py-2">
-                  <ul className="flex flex-col gap-1">
-                    {student.contacts.map((contact) => (
-                      <li key={contact.contactId} className="flex items-center gap-2">
-                        <span className="text-foreground">{contact.contactName}</span>
-                        <span className="text-muted-foreground">{contact.contactEmail}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({contact.relationship})
-                        </span>
-                        {contact.contactUserId ? (
-                          <span className="text-xs font-semibold tracking-wide text-success-foreground uppercase">
-                            linked
-                          </span>
-                        ) : (
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            onClick={() => handleInviteParent(contact.contactId)}
-                          >
-                            Invite parent
-                          </Button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <MemberFormDrawer
+        groups={groups}
+        onOpenChange={setIsDrawerOpen}
+        open={isDrawerOpen}
+        orgId={orgId}
+        student={editing}
+      />
     </div>
   );
 }
