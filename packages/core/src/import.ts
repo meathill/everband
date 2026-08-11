@@ -4,12 +4,37 @@
 import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
 import { canTransitionStudent, generateId, ID_PREFIXES } from "@everband/domain";
-import { type ImportRow, validateImportCsv } from "@everband/validation";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { type ImportRow, type ListResult, toOffset, validateImportCsv } from "@everband/validation";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { recordAudit } from "./audit.ts";
 import { upsertContact } from "./members.ts";
 
 export type ImportOutcome = "created" | "updated" | "skipped" | "failed";
+
+export interface ListImportJobsInput {
+  page: number;
+  pageSize: number;
+}
+
+/** 导入历史固定按时间倒序；id 作为同毫秒任务的稳定兜底排序。 */
+export async function listImportJobsCore(
+  db: Database,
+  orgId: string,
+  input: ListImportJobsInput,
+): Promise<ListResult<typeof schema.importJobs.$inferSelect>> {
+  const where = eq(schema.importJobs.organizationId, orgId);
+  const [items, totals] = await Promise.all([
+    db
+      .select()
+      .from(schema.importJobs)
+      .where(where)
+      .orderBy(desc(schema.importJobs.createdAt), asc(schema.importJobs.id))
+      .limit(input.pageSize)
+      .offset(toOffset(input.page, input.pageSize)),
+    db.select({ value: count() }).from(schema.importJobs).where(where),
+  ]);
+  return { items, total: totals[0]?.value ?? 0, page: input.page, pageSize: input.pageSize };
+}
 
 interface RowResult {
   rowNumber: number;

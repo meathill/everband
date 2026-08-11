@@ -6,7 +6,9 @@ import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import type { EmailSender } from "@everband/integrations/email";
-import { and, eq, inArray } from "drizzle-orm";
+import type { ListResult, NotificationFilter } from "@everband/validation";
+import { toOffset } from "@everband/validation";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { AudienceContact } from "./events.ts";
 
 export interface PrepareEmailSendInput {
@@ -180,6 +182,108 @@ export async function createNotifications(
       createdAt: now,
     })),
   );
+}
+
+// ---------------------------------------------------------------------------
+// 收件箱（本人数据，调用方已经确认过 membership 归属，这里只按 membershipId 取）
+// ---------------------------------------------------------------------------
+
+export interface NotificationRow {
+  id: string;
+  type: string;
+  title: string;
+  linkPath: string | null;
+  createdAt: number;
+  readAt: number | null;
+}
+
+export interface ListNotificationsInput {
+  page: number;
+  pageSize: number;
+  filter: NotificationFilter;
+}
+
+/**
+ * 收件箱分页。排序固定"最新在前"（通知没有第二种有意义的排法），
+ * unreadCount 一并返回：顶部的 "Mark all read" 要据此决定是否可用，
+ * 而 unread 筛选下的 total 并不能代表全部未读数。
+ */
+export async function listNotificationsCore(
+  db: Database,
+  membershipId: string,
+  input: ListNotificationsInput,
+): Promise<ListResult<NotificationRow> & { unreadCount: number }> {
+  const mine = eq(schema.notifications.membershipId, membershipId);
+  const where =
+    input.filter === "unread" ? and(mine, isNull(schema.notifications.readAt)) : and(mine);
+
+  const [rows, totals, unread] = await Promise.all([
+    db
+      .select({
+        id: schema.notifications.id,
+        type: schema.notifications.type,
+        title: schema.notifications.title,
+        linkPath: schema.notifications.linkPath,
+        createdAt: schema.notifications.createdAt,
+        readAt: schema.notifications.readAt,
+      })
+      .from(schema.notifications)
+      .where(where)
+      // id 兜底：同毫秒写入的一批通知（fan-out 是批量插入）顺序才稳定，翻页不会重复或丢行
+      .orderBy(desc(schema.notifications.createdAt), asc(schema.notifications.id))
+      .limit(input.pageSize)
+      .offset(toOffset(input.page, input.pageSize)),
+    db.select({ value: count() }).from(schema.notifications).where(where),
+    db
+      .select({ value: count() })
+      .from(schema.notifications)
+      .where(and(mine, isNull(schema.notifications.readAt))),
+  ]);
+
+  return {
+    items: rows,
+    total: totals[0]?.value ?? 0,
+    page: input.page,
+    pageSize: input.pageSize,
+    unreadCount: unread[0]?.value ?? 0,
+  };
+}
+
+/** 单条标记已读。已读的再点一次不做事（WHERE 里带 readAt IS NULL）。 */
+export async function markNotificationReadCore(
+  db: Database,
+  membershipId: string,
+  notificationId: string,
+  now: number,
+): Promise<{ ok: boolean }> {
+  const updated = await db
+    .update(schema.notifications)
+    .set({ readAt: now })
+    .where(
+      and(
+        eq(schema.notifications.id, notificationId),
+        eq(schema.notifications.membershipId, membershipId),
+        isNull(schema.notifications.readAt),
+      ),
+    )
+    .returning({ id: schema.notifications.id });
+  return { ok: updated.length > 0 };
+}
+
+/** 全部标记已读，返回本次真正被改动的条数。 */
+export async function markAllNotificationsReadCore(
+  db: Database,
+  membershipId: string,
+  now: number,
+): Promise<{ updated: number }> {
+  const updated = await db
+    .update(schema.notifications)
+    .set({ readAt: now })
+    .where(
+      and(eq(schema.notifications.membershipId, membershipId), isNull(schema.notifications.readAt)),
+    )
+    .returning({ id: schema.notifications.id });
+  return { updated: updated.length };
 }
 
 // 受众邮箱 → 对应的 active membership（站内通知目标 + 退订过滤都用它）

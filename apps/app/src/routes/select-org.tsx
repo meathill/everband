@@ -1,5 +1,7 @@
+import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
-import { Card } from "@everband/ui/components/card";
+import { Frame, FramePanel } from "@everband/ui/components/frame";
+import { ArrowRightIcon, BuildingsIcon } from "@phosphor-icons/react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { listMyOrganizations } from "~/server/org.ts";
 
@@ -30,21 +32,25 @@ function SelectOrgPage() {
       </div>
 
       {orgs.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <Frame>
           {orgs.map((org) => (
             <Link key={org.orgId} to="/o/$orgId" params={{ orgId: org.orgId }}>
-              <Card className="flex flex-row items-center justify-between px-4 py-3 transition-shadow hover:shadow-md">
-                <div>
-                  <p className="font-medium text-foreground">{org.name}</p>
-                  <p className="text-sm text-muted-foreground capitalize">{org.type}</p>
-                </div>
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {org.role}
+              <FramePanel className="flex flex-row items-center gap-3 transition-colors hover:bg-accent/40">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
+                  <BuildingsIcon />
                 </span>
-              </Card>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">{org.name}</p>
+                  <p className="text-muted-foreground text-sm capitalize">{org.type}</p>
+                </div>
+                <Badge className="capitalize" variant="secondary">
+                  {org.role}
+                </Badge>
+                <ArrowRightIcon className="shrink-0 text-muted-foreground" />
+              </FramePanel>
             </Link>
           ))}
-        </div>
+        </Frame>
       )}
 
       <Button render={<Link to="/new-org" />}>Create an organization</Button>

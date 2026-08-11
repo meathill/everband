@@ -1,12 +1,17 @@
-import { recordAudit } from "@everband/core";
+import { recordAudit, updateOrganizationCore } from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
-import { createOrganizationSchema, inviteStaffSchema, orgIdSchema } from "@everband/validation";
+import {
+  createOrganizationSchema,
+  inviteStaffSchema,
+  orgIdSchema,
+  updateOrganizationSchema,
+} from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, getRequestUrl } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "./context.ts";
-import { requireMembership, requireUser, STAFF_ROLES } from "./guards.ts";
+import { OWNER_ROLES, requireMembership, requireUser, STAFF_ROLES } from "./guards.ts";
 import { createInvite } from "./invites.ts";
 
 export const createOrganization = createServerFn({ method: "POST" })
@@ -90,6 +95,20 @@ export const getOrgContext = createServerFn({ method: "GET" })
       throw new Error("Organization not found");
     }
     return { org, role: ctx.role, membershipId: ctx.membershipId, email: ctx.user.email };
+  });
+
+// 组织设置：改名与改时区，owner 专属
+export const updateOrganization = createServerFn({ method: "POST" })
+  .validator(updateOrganizationSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, OWNER_ROLES);
+    return updateOrganizationCore(
+      db,
+      data.orgId,
+      { name: data.name, timezone: data.timezone },
+      ctx.membershipId,
+    );
   });
 
 export const listOrgMemberships = createServerFn({ method: "GET" })

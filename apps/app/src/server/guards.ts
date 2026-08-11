@@ -50,3 +50,5 @@ export async function requireMembership(
 }
 
 export const STAFF_ROLES = ["owner", "staff"] as const;
+// 组织级设置（改名、改时区）只有 owner 能动，staff 不行
+export const OWNER_ROLES = ["owner"] as const;

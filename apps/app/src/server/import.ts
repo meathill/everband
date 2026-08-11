@@ -1,9 +1,10 @@
 import { env } from "cloudflare:workers";
+import { listImportJobsCore } from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES, sha256Hex } from "@everband/domain";
-import { validateImportCsv } from "@everband/validation";
+import { importJobsPageSchema, validateImportCsv } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
@@ -74,16 +75,11 @@ export const confirmImport = createServerFn({ method: "POST" })
   });
 
 export const listImportJobs = createServerFn({ method: "GET" })
-  .validator(z.object({ orgId: z.string().min(1) }))
+  .validator(importJobsPageSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     await requireMembership(db, data.orgId, STAFF_ROLES);
-    return db
-      .select()
-      .from(schema.importJobs)
-      .where(eq(schema.importJobs.organizationId, data.orgId))
-      .orderBy(desc(schema.importJobs.createdAt))
-      .limit(20);
+    return listImportJobsCore(db, data.orgId, { page: data.page, pageSize: data.pageSize });
   });
 
 export const getImportJob = createServerFn({ method: "GET" })

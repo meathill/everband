@@ -1,6 +1,13 @@
 import { Button } from "@everband/ui/components/button";
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import {
+  Frame,
+  FrameDescription,
+  FrameHeader,
+  FramePanel,
+  FrameTitle,
+} from "@everband/ui/components/frame";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import { getMyEmailPreference, setEmailPreference } from "~/server/notify.ts";
 import { getOrgContext } from "~/server/org.ts";
 
@@ -22,42 +29,52 @@ export const Route = createFileRoute("/o/$orgId/account")({
 function AccountPage() {
   const { email, optOut } = Route.useLoaderData();
   const { orgId } = Route.useParams();
-  const router = useRouter();
-  const [isBusy, setIsBusy] = useState(false);
-
-  async function handleToggle() {
-    setIsBusy(true);
-    try {
-      await setEmailPreference({ data: { orgId, optOut: !optOut } });
-      await router.invalidate();
-    } finally {
-      setIsBusy(false);
-    }
-  }
+  const preference = useServerFormAction({
+    action: setEmailPreference,
+    successMessage: "Email preference saved",
+  });
 
   return (
-    <div className="flex max-w-lg flex-col gap-6">
-      <h1 className="text-3xl font-semibold tracking-tight text-foreground">Account</h1>
-      <dl className="text-sm">
-        <dt className="text-muted-foreground">Signed in as</dt>
-        <dd className="font-medium text-foreground">{email}</dd>
-      </dl>
+    <div className="flex max-w-2xl flex-col gap-6">
+      <h1 className="font-semibold text-3xl text-foreground tracking-tight">Account</h1>
 
-      <section className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-sm">
-        <h2 className="font-medium text-foreground">Email preferences</h2>
-        <p className="text-sm text-muted-foreground">
-          Operational emails cover event updates and roster changes. Sign-in and security emails are
-          always sent.
-        </p>
-        <p className="text-sm text-foreground">
-          Operational emails: <strong>{optOut ? "off" : "on"}</strong>
-        </p>
-        <div>
-          <Button variant="outline" size="sm" onClick={handleToggle} loading={isBusy}>
-            {optOut ? "Turn on" : "Turn off"}
-          </Button>
-        </div>
-      </section>
+      <Frame>
+        <FramePanel>
+          <FrameHeader className="px-0 pt-0">
+            <FrameTitle>Signed-in account</FrameTitle>
+            <FrameDescription>This address is used for sign-in and invitations.</FrameDescription>
+          </FrameHeader>
+          <p className="font-medium text-foreground text-sm">{email}</p>
+        </FramePanel>
+
+        <FramePanel>
+          <FrameHeader className="px-0 pt-0">
+            <FrameTitle>Email preferences</FrameTitle>
+            <FrameDescription>
+              Event updates and roster changes are optional. Sign-in and security emails are always
+              sent.
+            </FrameDescription>
+          </FrameHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-foreground text-sm">
+              Operational emails: <strong>{optOut ? "off" : "on"}</strong>
+            </p>
+            <Button
+              loading={preference.isBusy}
+              onClick={() => preference.submit({ orgId, optOut: !optOut })}
+              size="sm"
+              variant="outline"
+            >
+              {optOut ? "Turn on" : "Turn off"}
+            </Button>
+          </div>
+          {preference.error && (
+            <p className="mt-3 text-destructive-foreground text-sm" role="alert">
+              {preference.error}
+            </p>
+          )}
+        </FramePanel>
+      </Frame>
 
       <Link to="/select-org" className="text-sm text-primary underline-offset-4 hover:underline">
         Switch organization

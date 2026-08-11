@@ -1,5 +1,5 @@
 import { env } from "cloudflare:test";
-import { processImportJob } from "@everband/core";
+import { listImportJobsCore, processImportJob } from "@everband/core";
 import { createDb, schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import { CSV_HEADERS } from "@everband/validation";
@@ -176,5 +176,31 @@ describe("processImportJob", () => {
       .where(eq(schema.importJobs.id, secondJob));
     expect(jobs[0]?.updatedCount).toBe(1);
     expect(jobs[0]?.createdCount).toBe(0);
+  });
+});
+
+describe("listImportJobsCore", () => {
+  it("按时间倒序稳定分页且隔离组织", async () => {
+    const firstOrg = await seedOrgWithGroup();
+    const secondOrg = await seedOrgWithGroup();
+    const ids: string[] = [];
+    for (let index = 0; index < 5; index += 1) {
+      const id = await seedJob(firstOrg.orgId, firstOrg.membershipId);
+      ids.push(id);
+      await db
+        .update(schema.importJobs)
+        .set({ createdAt: NOW + index })
+        .where(eq(schema.importJobs.id, id));
+    }
+    await seedJob(secondOrg.orgId, secondOrg.membershipId);
+
+    const first = await listImportJobsCore(db, firstOrg.orgId, { page: 1, pageSize: 2 });
+    const second = await listImportJobsCore(db, firstOrg.orgId, { page: 2, pageSize: 2 });
+    const third = await listImportJobsCore(db, firstOrg.orgId, { page: 3, pageSize: 2 });
+    expect(first.total).toBe(5);
+    expect([...first.items, ...second.items, ...third.items].map((row) => row.id)).toEqual(
+      ids.reverse(),
+    );
+    expect(third.items).toHaveLength(1);
   });
 });

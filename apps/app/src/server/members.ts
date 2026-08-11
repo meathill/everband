@@ -219,6 +219,7 @@ export const updateGroup = createServerFn({ method: "POST" })
       data.groupId,
       { name: data.name, status: data.status },
       ctx.membershipId,
+      Date.now(),
     );
   });
 

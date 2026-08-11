@@ -7,7 +7,7 @@ import type { StudentStatus } from "@everband/domain";
 import { validateStudentGroup } from "@everband/domain";
 import type { GroupStatus, ListResult, SortOrder, StudentStatusFilter } from "@everband/validation";
 import { toOffset } from "@everband/validation";
-import { and, asc, count, desc, eq, inArray, ne, type SQL, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
 import { recordAudit } from "./audit.ts";
 
 export interface StudentContactRow {
@@ -215,7 +215,9 @@ export interface UpdateGroupCoreInput {
  * 改名 / 归档 / 恢复分组。
  *
  * 归档前必须没有东西还指着它：分组一旦归档就从所有选择器里消失，留下的引用只会变成
- * 界面上选不回来的悬空值。所以在册学生（非 archived）和 draft/published 活动都会拦下归档。
+ * 界面上选不回来的悬空值。三类拦截：在册学生（非 archived）、draft/published 活动、
+ * active 排练 series（isEnabled 且未来仍有 scheduled 场次——active 的判定与
+ * listRehearsalSeriesCore 一致；这种 series 还会继续生成排班）。
  */
 export async function updateGroupCore(
   db: Database,
@@ -223,6 +225,7 @@ export async function updateGroupCore(
   groupId: string,
   input: UpdateGroupCoreInput,
   actorMembershipId: string,
+  nowUtcMs: number,
 ): Promise<MemberWriteResult> {
   const rows = await db
     .select({ status: schema.groups.status })
@@ -235,7 +238,7 @@ export async function updateGroupCore(
   }
 
   if (input.status === "archived" && current.status !== "archived") {
-    const [students, events] = await Promise.all([
+    const [students, events, series] = await Promise.all([
       db
         .select({ value: count() })
         .from(schema.students)
@@ -257,6 +260,23 @@ export async function updateGroupCore(
             inArray(schema.events.status, ["draft", "published"]),
           ),
         ),
+      // 未来仍排着场次的启用中 series：不拦下来会继续给一个选不到的组生成排班
+      db
+        .select({ value: count() })
+        .from(schema.rehearsalOccurrences)
+        .innerJoin(
+          schema.rehearsalSeries,
+          eq(schema.rehearsalSeries.id, schema.rehearsalOccurrences.seriesId),
+        )
+        .where(
+          and(
+            eq(schema.rehearsalSeries.organizationId, orgId),
+            eq(schema.rehearsalSeries.groupId, groupId),
+            eq(schema.rehearsalSeries.isEnabled, true),
+            eq(schema.rehearsalOccurrences.status, "scheduled"),
+            gte(schema.rehearsalOccurrences.startsAtUtc, nowUtcMs),
+          ),
+        ),
     ]);
     if ((students[0]?.value ?? 0) > 0) {
       return { ok: false, error: "Move the remaining students out of this group first." };
@@ -266,6 +286,9 @@ export async function updateGroupCore(
         ok: false,
         error: "This group is still the audience of a draft or published event.",
       };
+    }
+    if ((series[0]?.value ?? 0) > 0) {
+      return { ok: false, error: "End the rehearsal series for this group first." };
     }
   }
 

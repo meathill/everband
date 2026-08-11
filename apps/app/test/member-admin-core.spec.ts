@@ -99,6 +99,61 @@ function list(seeded: Seeded, patch: Partial<ListStudentsInput> = {}) {
   return listStudentsCore(db, seeded.orgId, { ...BASE_QUERY, ...patch });
 }
 
+function updateGroup(
+  seeded: Seeded,
+  groupId: string,
+  input: { name?: string; status?: "active" | "archived" },
+  now = NOW,
+) {
+  return updateGroupCore(db, seeded.orgId, groupId, input, seeded.membershipId, now);
+}
+
+interface SeedSeriesOptions {
+  groupId?: string;
+  isEnabled?: boolean;
+  /** 场次的开始时间；不传即未来一天 */
+  occurrenceStartsAtUtc?: number;
+  occurrenceStatus?: "scheduled" | "cancelled";
+}
+
+/** 一条 series + 一个场次；active 的判定与 listRehearsalSeriesCore 一致 */
+async function seedSeries(seeded: Seeded, options: SeedSeriesOptions = {}): Promise<string> {
+  const termId = generateId(ID_PREFIXES.term);
+  const seriesId = generateId(ID_PREFIXES.rehearsalSeries);
+  await db.insert(schema.terms).values({
+    id: termId,
+    organizationId: seeded.orgId,
+    name: unique("Term"),
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    createdAt: NOW,
+  });
+  await db.insert(schema.rehearsalSeries).values({
+    id: seriesId,
+    organizationId: seeded.orgId,
+    termId,
+    groupId: options.groupId ?? seeded.groupA,
+    weekday: 3,
+    startTimeLocal: "18:00",
+    endTimeLocal: "19:30",
+    helpersNeeded: 1,
+    isEnabled: options.isEnabled ?? true,
+    createdAt: NOW,
+  });
+  const startsAtUtc = options.occurrenceStartsAtUtc ?? NOW + DAY;
+  await db.insert(schema.rehearsalOccurrences).values({
+    id: generateId(ID_PREFIXES.rehearsalOccurrence),
+    organizationId: seeded.orgId,
+    seriesId,
+    localDate: new Date(startsAtUtc).toISOString().slice(0, 10),
+    startsAtUtc,
+    endsAtUtc: startsAtUtc + 5_400_000,
+    status: options.occurrenceStatus ?? "scheduled",
+    createdAt: NOW,
+  });
+  return seriesId;
+}
+
 async function auditActions(orgId: string, objectId: string): Promise<string[]> {
   const rows = await db
     .select({ action: schema.auditEntries.action })
@@ -289,13 +344,7 @@ describe("updateGroupCore", () => {
     const seeded = await seed();
     const name = unique("Renamed");
 
-    const result = await updateGroupCore(
-      db,
-      seeded.orgId,
-      seeded.groupA,
-      { name },
-      seeded.membershipId,
-    );
+    const result = await updateGroup(seeded, seeded.groupA, { name });
     expect(result.ok).toBe(true);
 
     const rows = await db
@@ -309,17 +358,7 @@ describe("updateGroupCore", () => {
   it("归档后从 active 列表消失，restore 后回来", async () => {
     const seeded = await seed();
 
-    expect(
-      (
-        await updateGroupCore(
-          db,
-          seeded.orgId,
-          seeded.groupA,
-          { status: "archived" },
-          seeded.membershipId,
-        )
-      ).ok,
-    ).toBe(true);
+    expect((await updateGroup(seeded, seeded.groupA, { status: "archived" })).ok).toBe(true);
 
     const activeIds = async () =>
       (
@@ -336,17 +375,7 @@ describe("updateGroupCore", () => {
 
     expect(await activeIds()).not.toContain(seeded.groupA);
 
-    expect(
-      (
-        await updateGroupCore(
-          db,
-          seeded.orgId,
-          seeded.groupA,
-          { status: "active" },
-          seeded.membershipId,
-        )
-      ).ok,
-    ).toBe(true);
+    expect((await updateGroup(seeded, seeded.groupA, { status: "active" })).ok).toBe(true);
     expect(await activeIds()).toContain(seeded.groupA);
   });
 
@@ -354,13 +383,7 @@ describe("updateGroupCore", () => {
     const seeded = await seed();
     const studentId = await seedStudent(seeded, { groupId: seeded.groupA });
 
-    const blockedByStudent = await updateGroupCore(
-      db,
-      seeded.orgId,
-      seeded.groupA,
-      { status: "archived" },
-      seeded.membershipId,
-    );
+    const blockedByStudent = await updateGroup(seeded, seeded.groupA, { status: "archived" });
     expect(blockedByStudent.ok).toBe(false);
 
     // 学生挪走后换成活动挡路
@@ -389,13 +412,7 @@ describe("updateGroupCore", () => {
       groupId: seeded.groupA,
     });
 
-    const blockedByEvent = await updateGroupCore(
-      db,
-      seeded.orgId,
-      seeded.groupA,
-      { status: "archived" },
-      seeded.membershipId,
-    );
+    const blockedByEvent = await updateGroup(seeded, seeded.groupA, { status: "archived" });
     expect(blockedByEvent.ok).toBe(false);
 
     // 活动取消后放行
@@ -403,26 +420,50 @@ describe("updateGroupCore", () => {
       .update(schema.events)
       .set({ status: "cancelled" })
       .where(eq(schema.events.id, eventId));
-    const allowed = await updateGroupCore(
-      db,
-      seeded.orgId,
-      seeded.groupA,
-      { status: "archived" },
-      seeded.membershipId,
-    );
+    const allowed = await updateGroup(seeded, seeded.groupA, { status: "archived" });
     expect(allowed.ok).toBe(true);
+  });
+
+  it("还有 active 排练 series 时拒绝归档", async () => {
+    const seeded = await seed();
+    const seriesId = await seedSeries(seeded, { groupId: seeded.groupA });
+
+    const blocked = await updateGroup(seeded, seeded.groupA, { status: "archived" });
+    expect(blocked).toEqual({
+      ok: false,
+      error: "End the rehearsal series for this group first.",
+    });
+
+    // series 结束（isEnabled=false）后放行
+    await db
+      .update(schema.rehearsalSeries)
+      .set({ isEnabled: false })
+      .where(eq(schema.rehearsalSeries.id, seriesId));
+    expect((await updateGroup(seeded, seeded.groupA, { status: "archived" })).ok).toBe(true);
+  });
+
+  it("场次全部过去或被取消的 series 不挡归档", async () => {
+    const seeded = await seed();
+    // 只剩历史场次
+    await seedSeries(seeded, { groupId: seeded.groupA, occurrenceStartsAtUtc: NOW - DAY });
+    expect((await updateGroup(seeded, seeded.groupA, { status: "archived" })).ok).toBe(true);
+
+    // 未来场次但已取消
+    const other = await seed();
+    await seedSeries(other, { groupId: other.groupA, occurrenceStatus: "cancelled" });
+    expect((await updateGroup(other, other.groupA, { status: "archived" })).ok).toBe(true);
+  });
+
+  it("其他分组的 active series 不影响本组归档", async () => {
+    const seeded = await seed();
+    await seedSeries(seeded, { groupId: seeded.groupB });
+    expect((await updateGroup(seeded, seeded.groupA, { status: "archived" })).ok).toBe(true);
   });
 
   it("归档分组不能再接收学生", async () => {
     const seeded = await seed();
     const studentId = await seedStudent(seeded, { groupId: seeded.groupA });
-    await updateGroupCore(
-      db,
-      seeded.orgId,
-      seeded.groupB,
-      { status: "archived" },
-      seeded.membershipId,
-    );
+    await updateGroup(seeded, seeded.groupB, { status: "archived" });
 
     const result = await updateStudentCore(
       db,

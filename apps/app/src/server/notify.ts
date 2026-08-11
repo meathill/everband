@@ -1,16 +1,19 @@
 import { env } from "cloudflare:workers";
 import {
   createNotifications,
+  listNotificationsCore,
+  markAllNotificationsReadCore,
+  markNotificationReadCore,
   membershipsForEmails,
   prepareEmailSend,
   recordAudit,
   resolveEventAudienceContacts,
 } from "@everband/core";
 import { schema } from "@everband/db";
-import { orgIdSchema } from "@everband/validation";
+import { notificationIdSchema, notificationsPageSchema, orgIdSchema } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
@@ -128,33 +131,35 @@ export const sendUpdateEmail = createServerFn({ method: "POST" })
     return { ok: true as const, deduplicated: false, sendId: prepared.sendId };
   });
 
+// 本人的通知，requireMembership 已经确认过归属，不需要 STAFF_ROLES
 export const listMyNotifications = createServerFn({ method: "GET" })
-  .validator(orgIdSchema)
+  .validator(notificationsPageSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
-    return db
-      .select()
-      .from(schema.notifications)
-      .where(eq(schema.notifications.membershipId, ctx.membershipId))
-      .orderBy(desc(schema.notifications.createdAt))
-      .limit(50);
+    return listNotificationsCore(db, ctx.membershipId, {
+      page: data.page,
+      pageSize: data.pageSize,
+      filter: data.filter,
+    });
   });
 
-export const markNotificationsRead = createServerFn({ method: "POST" })
+export const markNotificationRead = createServerFn({ method: "POST" })
+  .validator(notificationIdSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId);
+    await markNotificationReadCore(db, ctx.membershipId, data.notificationId, Date.now());
+    // 已读的再点一次不是错误，统一返回 ok
+    return { ok: true as const };
+  });
+
+export const markAllNotificationsRead = createServerFn({ method: "POST" })
   .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
-    await db
-      .update(schema.notifications)
-      .set({ readAt: Date.now() })
-      .where(
-        and(
-          eq(schema.notifications.membershipId, ctx.membershipId),
-          isNull(schema.notifications.readAt),
-        ),
-      );
+    await markAllNotificationsReadCore(db, ctx.membershipId, Date.now());
     return { ok: true as const };
   });
 

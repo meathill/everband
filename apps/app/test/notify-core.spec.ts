@@ -1,5 +1,11 @@
 import { env } from "cloudflare:test";
-import { prepareEmailSend, processEmailSend } from "@everband/core";
+import {
+  listNotificationsCore,
+  markAllNotificationsReadCore,
+  markNotificationReadCore,
+  prepareEmailSend,
+  processEmailSend,
+} from "@everband/core";
 import { createDb, schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import { MockEmailSender } from "@everband/integrations/email";
@@ -43,6 +49,86 @@ function audienceOf(...emails: string[]) {
     name: email,
   }));
 }
+
+async function seedNotification(
+  orgId: string,
+  membershipId: string,
+  createdAt: number,
+  readAt: number | null = null,
+): Promise<string> {
+  const id = generateId(ID_PREFIXES.notification);
+  await db.insert(schema.notifications).values({
+    id,
+    organizationId: orgId,
+    membershipId,
+    type: "event-update",
+    title: unique("Notice"),
+    readAt,
+    createdAt,
+  });
+  return id;
+}
+
+describe("notifications inbox", () => {
+  it("分页稳定、未读筛选与未读总数互不混淆", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const oldest = await seedNotification(orgId, membershipId, NOW - 2);
+    const middle = await seedNotification(orgId, membershipId, NOW - 1, NOW);
+    const newest = await seedNotification(orgId, membershipId, NOW);
+
+    const first = await listNotificationsCore(db, membershipId, {
+      page: 1,
+      pageSize: 2,
+      filter: "all",
+    });
+    const second = await listNotificationsCore(db, membershipId, {
+      page: 2,
+      pageSize: 2,
+      filter: "all",
+    });
+    expect(first.total).toBe(3);
+    expect(first.unreadCount).toBe(2);
+    expect(first.items.map((row) => row.id)).toEqual([newest, middle]);
+    expect(second.items.map((row) => row.id)).toEqual([oldest]);
+
+    const unread = await listNotificationsCore(db, membershipId, {
+      page: 1,
+      pageSize: 20,
+      filter: "unread",
+    });
+    expect(unread.total).toBe(2);
+    expect(unread.unreadCount).toBe(2);
+    expect(new Set(unread.items.map((row) => row.id))).toEqual(new Set([newest, oldest]));
+  });
+
+  it("单条已读不能越过 membership，全部已读只修改本人", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const otherMembershipId = generateId(ID_PREFIXES.membership);
+    await db.insert(schema.memberships).values({
+      id: otherMembershipId,
+      organizationId: orgId,
+      role: "parent",
+      status: "active",
+      invitedEmail: `${unique("parent")}@test.local`,
+      createdAt: NOW,
+    });
+    const mine = await seedNotification(orgId, membershipId, NOW);
+    const theirs = await seedNotification(orgId, otherMembershipId, NOW);
+
+    expect((await markNotificationReadCore(db, membershipId, theirs, NOW + 1)).ok).toBe(false);
+    expect((await markNotificationReadCore(db, membershipId, mine, NOW + 1)).ok).toBe(true);
+    expect((await markNotificationReadCore(db, membershipId, mine, NOW + 2)).ok).toBe(false);
+
+    await seedNotification(orgId, membershipId, NOW + 2);
+    expect((await markAllNotificationsReadCore(db, membershipId, NOW + 3)).updated).toBe(1);
+    const rows = await db
+      .select({ id: schema.notifications.id, readAt: schema.notifications.readAt })
+      .from(schema.notifications)
+      .where(eq(schema.notifications.organizationId, orgId));
+    expect(rows.find((row) => row.id === theirs)?.readAt).toBeNull();
+    expect(rows.filter((row) => row.id !== theirs).every((row) => row.readAt !== null)).toBe(true);
+  });
+});
 
 describe("prepareEmailSend（快照 + 幂等 + 退订）", () => {
   it("dedupKey 相同的第二次请求不创建新任务", async () => {

@@ -1,6 +1,21 @@
 import { Button } from "@everband/ui/components/button";
+import { Field, FieldDescription, FieldLabel } from "@everband/ui/components/field";
+import {
+  Frame,
+  FrameDescription,
+  FrameHeader,
+  FramePanel,
+  FrameTitle,
+} from "@everband/ui/components/frame";
 import { Input } from "@everband/ui/components/input";
-import { ORGANIZATION_TYPES } from "@everband/validation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@everband/ui/components/select";
+import { COMMON_TIMEZONES, ORGANIZATION_TYPES } from "@everband/validation";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { getCurrentUser } from "~/server/auth.ts";
@@ -17,15 +32,15 @@ export const Route = createFileRoute("/new-org")({
   component: NewOrgPage,
 });
 
-const COMMON_TIMEZONES = [
-  "Australia/Sydney",
-  "Australia/Melbourne",
-  "Australia/Brisbane",
-  "Australia/Adelaide",
-  "Australia/Perth",
-  "Australia/Hobart",
-  "Pacific/Auckland",
-];
+const ORGANIZATION_TYPE_LABELS: Record<(typeof ORGANIZATION_TYPES)[number], string> = {
+  band: "Band",
+  baseball: "Baseball team",
+  club: "Club",
+  football: "Football team",
+  other: "Other community group",
+};
+
+const TIMEZONE_LABELS = Object.fromEntries(COMMON_TIMEZONES.map((value) => [value, value]));
 
 function NewOrgPage() {
   const navigate = useNavigate();
@@ -69,55 +84,71 @@ function NewOrgPage() {
         <p className="text-muted-foreground">A band, team or club you run. You'll be its owner.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5" htmlFor="org-name">
-          <span className="text-sm font-medium text-foreground">Organization name</span>
-          <Input
-            id="org-name"
-            name="name"
-            required
-            autoFocus
-            placeholder="Riverside Community Band"
-          />
-        </label>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <Frame>
+          <FramePanel>
+            <FrameHeader className="px-0 pt-0">
+              <FrameTitle>Organization</FrameTitle>
+              <FrameDescription>Start with the group people already recognize.</FrameDescription>
+            </FrameHeader>
+            <Field>
+              <FieldLabel htmlFor="org-name">Organization name</FieldLabel>
+              <Input
+                autoFocus
+                id="org-name"
+                name="name"
+                placeholder="Riverside Community Band"
+                required
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="org-type">Type</FieldLabel>
+              <Select defaultValue="band" items={ORGANIZATION_TYPE_LABELS} name="type">
+                <SelectTrigger id="org-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORGANIZATION_TYPES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {ORGANIZATION_TYPE_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </FramePanel>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">Type</span>
-          <select
-            name="type"
-            className="h-9 rounded-md border border-input bg-popover px-3 text-base text-foreground sm:h-8 sm:text-sm"
-            defaultValue="band"
-          >
-            {ORGANIZATION_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {value.charAt(0).toUpperCase() + value.slice(1)}
-              </option>
-            ))}
-          </select>
-        </label>
+          <FramePanel>
+            <FrameHeader className="px-0 pt-0">
+              <FrameTitle>Local time</FrameTitle>
+              <FrameDescription>Used for events, rehearsals and reminders.</FrameDescription>
+            </FrameHeader>
+            <Field>
+              <FieldLabel htmlFor="org-timezone">Timezone</FieldLabel>
+              <Select defaultValue="Australia/Sydney" items={TIMEZONE_LABELS} name="timezone">
+                <SelectTrigger id="org-timezone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMMON_TIMEZONES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>You can change this later from Settings.</FieldDescription>
+            </Field>
+          </FramePanel>
+        </Frame>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground">Timezone</span>
-          <select
-            name="timezone"
-            className="h-9 rounded-md border border-input bg-popover px-3 text-base text-foreground sm:h-8 sm:text-sm"
-            defaultValue="Australia/Sydney"
-          >
-            {COMMON_TIMEZONES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Button type="submit" loading={isBusy}>
+        <Button loading={isBusy} type="submit">
           Create organization
         </Button>
       </form>
 
       {error === "session-expired" ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Your session has expired.{" "}
           <Link
             to="/login"
@@ -128,7 +159,7 @@ function NewOrgPage() {
           </Link>
         </p>
       ) : (
-        error && <p className="text-sm text-destructive-foreground">{error}</p>
+        error && <p className="text-destructive-foreground text-sm">{error}</p>
       )}
     </main>
   );
