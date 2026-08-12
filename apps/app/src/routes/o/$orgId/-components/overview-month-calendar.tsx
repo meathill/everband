@@ -110,7 +110,7 @@ export function OverviewMonthCalendar({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
         <div className="flex items-center gap-2">
           <Button
             aria-label="Previous month"
@@ -159,7 +159,7 @@ export function OverviewMonthCalendar({
       </div>
 
       <div className="hidden md:block">
-        <div className="grid grid-cols-7 border-b bg-muted/40">
+        <div className="grid grid-cols-7 border-b border-border bg-muted/40">
           {WEEKDAYS.map((weekday) => (
             <div className="px-3 py-2 font-medium text-muted-foreground text-xs" key={weekday}>
               {weekday}
@@ -173,7 +173,7 @@ export function OverviewMonthCalendar({
             const isOutside = value.slice(0, 7) !== month;
             return (
               <div
-                className="min-h-32 border-b border-r p-2 last:border-r-0"
+                className="min-h-32 border-b border-r border-border p-2 last:border-r-0"
                 data-date={value}
                 key={value}
               >
