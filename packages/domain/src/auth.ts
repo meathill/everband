@@ -15,6 +15,10 @@ export const LOGIN_REQUEST_WINDOW_MS = 10 * 60 * 1000;
 export const MAX_LOGIN_REQUESTS_PER_EMAIL = 3;
 export const MAX_LOGIN_REQUESTS_PER_IP = 30;
 
+export function isLoginRateLimited(byEmail: number, byIp: number): boolean {
+  return byEmail >= MAX_LOGIN_REQUESTS_PER_EMAIL || byIp >= MAX_LOGIN_REQUESTS_PER_IP;
+}
+
 const BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 export function generateSecret(byteLength = 32): string {

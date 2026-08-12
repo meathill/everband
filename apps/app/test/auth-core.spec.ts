@@ -7,7 +7,15 @@ import {
   verifyOtpCore,
 } from "@everband/core";
 import { createDb, schema } from "@everband/db";
-import { generateId, ID_PREFIXES, MAX_OTP_ATTEMPTS, sha256Hex } from "@everband/domain";
+import {
+  generateId,
+  ID_PREFIXES,
+  isLoginRateLimited,
+  MAX_LOGIN_REQUESTS_PER_EMAIL,
+  MAX_LOGIN_REQUESTS_PER_IP,
+  MAX_OTP_ATTEMPTS,
+  sha256Hex,
+} from "@everband/domain";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const db = createDb(env.DB);
@@ -154,5 +162,21 @@ describe("租户隔离（findActiveMembership）", () => {
     expect(await activateInvitedMembership(db, membershipId, userId, NOW)).toBe(orgId);
     expect(await activateInvitedMembership(db, membershipId, userId, NOW)).toBeNull();
     expect(await findActiveMembership(db, orgId, userId)).not.toBeNull();
+  });
+});
+
+describe("isLoginRateLimited（登录请求限流边界）", () => {
+  it("未达任一维度上限时放行", () => {
+    expect(
+      isLoginRateLimited(MAX_LOGIN_REQUESTS_PER_EMAIL - 1, MAX_LOGIN_REQUESTS_PER_IP - 1),
+    ).toBe(false);
+  });
+
+  it("email 维度达到上限即拒绝", () => {
+    expect(isLoginRateLimited(MAX_LOGIN_REQUESTS_PER_EMAIL, 0)).toBe(true);
+  });
+
+  it("IP 维度达到上限即拒绝", () => {
+    expect(isLoginRateLimited(0, MAX_LOGIN_REQUESTS_PER_IP)).toBe(true);
   });
 });

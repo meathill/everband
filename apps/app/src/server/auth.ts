@@ -12,9 +12,8 @@ import {
   generateOtp,
   generateSecret,
   ID_PREFIXES,
+  isLoginRateLimited,
   LOGIN_REQUEST_WINDOW_MS,
-  MAX_LOGIN_REQUESTS_PER_EMAIL,
-  MAX_LOGIN_REQUESTS_PER_IP,
   sha256Hex,
   tokenTtlMs,
 } from "@everband/domain";
@@ -22,7 +21,7 @@ import { requestLoginSchema, verifyOtpSchema, verifyTokenSchema } from "@everban
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP, getRequestUrl } from "@tanstack/react-start/server";
 import { and, eq, gt, sql } from "drizzle-orm";
-import { getDb } from "./context.ts";
+import { getDb, getEmailMode } from "./context.ts";
 import { getEmailSender } from "./email.ts";
 import { createSession, destroySession, getSessionUser } from "./session.ts";
 
@@ -54,7 +53,9 @@ export const requestLoginCode = createServerFn({ method: "POST" })
       countRecentTokens(db, "email", data.email, now),
       countRecentTokens(db, "requestIp", ip, now),
     ]);
-    if (byEmail >= MAX_LOGIN_REQUESTS_PER_EMAIL || byIp >= MAX_LOGIN_REQUESTS_PER_IP) {
+    // 限流是生产安全措施；dev/mock（本地与 CI 测试环境）放行，
+    // 否则 e2e 多视口累计登录请求会撞 IP 上限
+    if (getEmailMode() === "cloudflare" && isLoginRateLimited(byEmail, byIp)) {
       return { ok: false as const, error: "Too many requests. Try again in a few minutes." };
     }
 
