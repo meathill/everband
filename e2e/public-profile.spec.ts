@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.ts";
 import { fillField, loginViaMagicLink, pressButton, uniqueEmail } from "./helpers.ts";
 
 // PRD §12.2 场景 8：开启公开主页 → 生成二维码 → 访客可见；

@@ -1,4 +1,5 @@
 import { createRouter, Link } from "@tanstack/react-router";
+import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { routeTree } from "./routeTree.gen.ts";
 
 // 与 /p/$publicSlug 降级页同风格的 404（issue #5）
@@ -24,6 +25,14 @@ export function getRouter() {
     routeTree,
     scrollRestoration: true,
     defaultPreload: "intent",
+    // 不用 defaultPendingComponent：它是 root Transitioner 的 Suspense fallback，
+    // 水合瞬间会渲染并替换整棵 <html>，触发 React hydration mismatch（#418）。
+    // 加载反馈改由各路由的 pendingComponent 提供（org 布局/子页面骨架 + 公开页 FullPageLoader）。
+    defaultPendingMs: 150,
+    // 水合后不立即重载：默认 staleTime 0 会让 SSR 数据一落地就过期，水合后立刻
+    // re-fetch，有 pendingComponent 的路由会渲染 fallback 与 SSR HTML 不一致
+    // （#418）。60s 内同参数重访复用缓存；搜索/翻页/提交走 invalidate，不受影响。
+    defaultStaleTime: 60_000,
     defaultNotFoundComponent: NotFoundPage,
   });
 }

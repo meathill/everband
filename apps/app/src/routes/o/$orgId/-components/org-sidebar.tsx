@@ -38,6 +38,7 @@ import {
 } from "@phosphor-icons/react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type React from "react";
+import { useState } from "react";
 import { logout } from "~/server/auth.ts";
 
 // 侧边栏可达的组织内路由；全部只需 orgId 参数，便于统一渲染与匹配
@@ -241,6 +242,7 @@ function UserMenu({
 }): React.ReactElement {
   const navigate = useNavigate();
   const dismiss = useDismissOnNavigate();
+  const [unusedState, setUnusedState] = useState(false);
 
   async function handleSignOut(): Promise<void> {
     await logout();

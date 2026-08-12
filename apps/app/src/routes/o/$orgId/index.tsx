@@ -2,6 +2,7 @@ import type { StaffOverviewData } from "@everband/core";
 import { Card, CardPanel } from "@everband/ui/components/card";
 import { overviewSearchSchema } from "@everband/validation";
 import { createFileRoute, getRouteApi, Link, redirect } from "@tanstack/react-router";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { getRouteAuthErrorCode } from "~/lib/route-auth-error.ts";
 import { getOverview } from "~/server/overview.ts";
 import { OverviewMonthCalendar } from "./-components/overview-month-calendar.tsx";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/o/$orgId/")({
     }
   },
   component: OrgOverview,
+  pendingComponent: PageSkeleton,
 });
 
 function OrgOverview() {

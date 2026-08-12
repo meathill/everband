@@ -14,6 +14,7 @@ import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
 import { EventFormSection } from "~/components/event-form-section.tsx";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { getEventDetail, transitionEvent } from "~/server/events.ts";
 import { getEventForm, listFormResults } from "~/server/forms.ts";
 import { EventAttachmentsSection } from "./-components/event-attachments-section.tsx";
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
     }
   },
   component: EventDetailPage,
+  pendingComponent: PageSkeleton,
 });
 
 const orgRoute = getRouteApi("/o/$orgId");

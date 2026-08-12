@@ -20,6 +20,13 @@
   Notifications 下移、Group UI 暂停、旧路由兼容及桌面/移动端回归
 - 生产登录恢复与 CI 修复（2026-08-11）：补应用 `0009_finance.sql`、修复组织 loader 异常误跳
   Login、两个现有组织在线验收、升级到 pnpm 11.21 与新版 GitHub Actions setup
+- 页面跳转加载反馈（2026-08-12）：pending 骨架屏 + 全局 spinner 兜底
+  （select-org→org 整页骨架、9 个 org 子页面内容区骨架、sign out loading 态），
+  e2e 慢网络基建（CDP 节流 + 字体拦截 + 骨架回归用例）；本地全量受 dev server
+  长跑退化影响（见 DEV_NOTE），功能验证按子集跑全绿
+  - 生产回归修复（2026-08-12）：defaultPendingComponent 引发全站 hydration mismatch
+    （#418，`<html>` 节点）——已移除，改为公开路由级 pendingComponent +
+    defaultStaleTime 60s；本地生产构建 + 登录态验证 0 418
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
 （普通单测 66 + Worker 集成测试 97 + e2e 18 场景、双视口 36 例）。

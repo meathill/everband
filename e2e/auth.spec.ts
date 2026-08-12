@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.ts";
 import { readLatestMagicLink, requestMagicLink, uniqueEmail } from "./helpers.ts";
 
 // M2 骨架用例：magic link 登录闭环（PRD §12.2 场景 2 的最小切片）。

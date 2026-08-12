@@ -17,6 +17,7 @@ import { useState } from "react";
 import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
 import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
 import { useListSearch } from "~/components/data-table/use-list-search.ts";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import {
   listMyNotifications,
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/o/$orgId/notifications")({
     }
   },
   component: NotificationsPage,
+  pendingComponent: PageSkeleton,
 });
 
 const orgRoute = getRouteApi("/o/$orgId");

@@ -13,6 +13,7 @@ import {
 } from "@everband/validation";
 import { createFileRoute, getRouteApi, redirect } from "@tanstack/react-router";
 import type React from "react";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { PublicProfileSection } from "~/components/public-profile-section.tsx";
 import { listImportJobs } from "~/server/import.ts";
 import { listTerms } from "~/server/members.ts";
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/o/$orgId/settings")({
     }
   },
   component: SettingsPage,
+  pendingComponent: PageSkeleton,
 });
 
 const orgRoute = getRouteApi("/o/$orgId");

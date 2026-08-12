@@ -23,6 +23,7 @@ import { DataTable, type DataTableColumn } from "~/components/data-table/data-ta
 import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
 import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
 import { useListSearch } from "~/components/data-table/use-list-search.ts";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { listLedgerEntries, voidLedgerEntry } from "~/server/finance.ts";
 import { LedgerEntryFormDrawer } from "./-components/ledger-entry-form-drawer.tsx";
 
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/o/$orgId/finance")({
     }
   },
   component: FinancePage,
+  pendingComponent: PageSkeleton,
 });
 
 const DIRECTION_LABELS: Record<LedgerDirectionFilter, string> = {

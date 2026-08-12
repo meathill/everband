@@ -1,6 +1,7 @@
 import { redirectPathSchema } from "@everband/validation";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
+import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { verifyLoginToken } from "~/server/auth.ts";
 
 // magic link 落地页：loader 内消费 token，成功即跳转；
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/verify")({
     return { error: result.error };
   },
   component: VerifyPage,
+  pendingComponent: FullPageLoader,
 });
 
 function VerifyPage() {

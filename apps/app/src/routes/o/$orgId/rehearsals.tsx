@@ -1,6 +1,7 @@
 import { createFileRoute, getRouteApi, redirect } from "@tanstack/react-router";
 import type React from "react";
 import { z } from "zod";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import {
   getRehearsalOverview,
   listRehearsalSeries,
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/o/$orgId/rehearsals")({
     }
   },
   component: RehearsalsPage,
+  pendingComponent: PageSkeleton,
 });
 
 const orgRoute = getRouteApi("/o/$orgId");

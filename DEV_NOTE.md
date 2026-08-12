@@ -320,3 +320,17 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
 - **coss/ui 安装方式**：`packages/ui` 内 `pnpm dlx shadcn@latest add @coss/ui`（components.json 已配 `@coss` registry 与 workspace alias）。组件源码进仓库（src/components/），属"我们的代码"，可按设计系统改（已改 Button：rounded-md、hover 用 --brand-hover、press scale 0.98）。
 - **vendored 组件的已知偏差**：coss 组件内部用 lucide-react 图标（约 17 个文件），与"只用 Phosphor"红线冲突；策略是**用到哪个组件改哪个**（替换成 @phosphor-icons/react 等价图标），不一次性全改。biome 对 `packages/ui/src/components/**` 关闭 lint（上游代码模式），业务代码不受此豁免。
 - **CLI 追加的语义色块已改回 DYQR token**：coss init 会把 --success/--warning/--info 覆盖成 Tailwind 默认色板——只保留其 `*-foreground` 新增（按 DYQR 色相取深档），本体沿用 colors-and-type.css。注意 coss 语义里 `--destructive-foreground` 是"浅底上的深色错误文字"（实心破坏性按钮直接 text-white），与 shadcn 经典语义不同。
+- **本地 e2e 长跑后 dev server 退化**（2026-08-12 排查）：42 测试规模（约 4.3m）跑到 mobile 后期，dev server 响应退化到 10s+（页面模块 5-16s、login SSR 12s、server fn 35-60s），最后 4 个 mobile 测试登录超时。**与业务代码无关**：stash 全部改动后同规模套件同样挂 4 个（master 对照），38 测试规模（约 3.6m）不触发。已尝试未根治的项：① Google Fonts @import 外网挂起（已用 e2e fixture 拦截 fonts.googleapis/gstatic，见 e2e/fixtures.ts，保留）；② miniflare observability trace-store 膨胀到 680MB（e2e global-setup 每次清理，保留）；③ vite watch 忽略 .wrangler（vite.config.ts，保留）。怀疑与 vite/miniflare 长时运行的内存/GC 有关，未定位。CI 每次全新环境不受影响；本地跑全量如遇此问题，重启 dev server 后按子集（单文件）跑。
+- **e2e 慢网络模拟用 CDP 节流而非 page.route**：page.route 的 handler 延迟在页面关闭后仍会触发，实测污染后续测试（后续 server fn 请求被拖慢到超时）。CDP `Network.emulateNetworkConditions` 是页面级、测试结束自动清理。注意 CDP 节流会拖慢页面自身 JS 加载、推迟水合，须先 waitForHydration 再开节流。
+- **e2e 断言 pending 骨架时避免 hover**：playwright click 自带 hover，会触发 router 的 `defaultPreload: "intent"` 预加载，预取完成后点击导航零等待、骨架屏不出现。用键盘 Enter（focus + Enter）触发真实导航。
+- **defaultPendingComponent 会触发生产 hydration mismatch（#418）**（2026-08-12 生产冒烟发现）：
+  全局 `defaultPendingComponent` 是 root Transitioner 的 Suspense fallback，水合瞬间渲染并替换
+  整棵 `<html>`，与 SSR HTML 不匹配 → 每个页面报 React 418（`args[]=HTML`）。本地 dev 也被
+  类似问题掩盖（dev-client script 的干扰）。**路由级 `pendingComponent` 无此问题**（org 布局/
+  子页面骨架验证 0 418）。另需 `defaultStaleTime: 60_000`：默认 staleTime 0 会让 SSR 数据
+  水合后立即过期并 re-fetch，有 pendingComponent 的路由同样渲染 fallback 与 SSR 不一致。
+  验证方式：`vite build` + `wrangler dev` 后 playwright 收集 pageerror（minified 418）。
+  注意：wrangler dev 生产构建发出的 magic link 是生产域名，本地登录要替换 host。
+- **pending 加载态不要配 `pendingMinMs`**：它强制"一旦显示至少停留 N ms"，会阻塞导航提交，
+  每次页面切换变慢（实测 42 测试的 e2e 套件总时长 +40s+，还能把整体拖过超时临界）。
+  用 `pendingMs`（延迟显示，快速跳转不闪骨架）即可，慢导航本身不会"闪"。

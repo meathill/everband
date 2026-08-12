@@ -14,6 +14,7 @@ import { COMMON_TIMEZONES, ORGANIZATION_TYPES } from "@everband/validation";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { getCurrentUser } from "~/server/auth.ts";
 import { createOrganization, listMyOrganizations } from "~/server/org.ts";
 
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/new-org")({
     }
   },
   component: NewOrgPage,
+  pendingComponent: FullPageLoader,
 });
 
 const ORGANIZATION_TYPE_LABELS: Record<(typeof ORGANIZATION_TYPES)[number], string> = {

@@ -8,6 +8,9 @@ import { defineConfig } from "vite";
 export default defineConfig({
   server: {
     port: 3000,
+    // miniflare 的 D1/缓存状态在 .wrangler/state 下，测试写入会触发 watch 风暴、
+    // 无效化 transform 缓存，导致长跑 e2e 越跑越慢（页面模块请求 10s+）
+    watch: { ignored: ["**/.wrangler/**"] },
   },
   resolve: {
     alias: {

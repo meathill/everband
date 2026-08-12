@@ -7,6 +7,7 @@ import {
   FrameTitle,
 } from "@everband/ui/components/frame";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import { getMyEmailPreference, setEmailPreference } from "~/server/notify.ts";
 import { getOrgContext } from "~/server/org.ts";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/o/$orgId/account")({
     }
   },
   component: AccountPage,
+  pendingComponent: PageSkeleton,
 });
 
 function AccountPage() {

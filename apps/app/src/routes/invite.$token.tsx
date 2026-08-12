@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { verifyLoginToken } from "~/server/auth.ts";
 
 // 邀请链接：与 magic link 同一消费路径（purpose=invite 会激活 membership）
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/invite/$token")({
     return { error: result.error };
   },
   component: InvitePage,
+  pendingComponent: FullPageLoader,
 });
 
 function InvitePage() {

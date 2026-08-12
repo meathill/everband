@@ -16,6 +16,7 @@ import { useState } from "react";
 import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
 import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
 import { useListSearch } from "~/components/data-table/use-list-search.ts";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { listStudents } from "~/server/members.ts";
 import { MemberFormDrawer } from "./-components/member-form-drawer.tsx";
 import { MembersTable } from "./-components/members-table.tsx";
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/o/$orgId/members")({
     }
   },
   component: MembersPage,
+  pendingComponent: PageSkeleton,
 });
 
 const STATUS_LABELS: Record<StudentStatusFilter, string> = {

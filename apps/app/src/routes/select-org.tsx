@@ -3,6 +3,7 @@ import { Button } from "@everband/ui/components/button";
 import { Frame, FramePanel } from "@everband/ui/components/frame";
 import { ArrowRightIcon, BuildingsIcon } from "@phosphor-icons/react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { listMyOrganizations } from "~/server/org.ts";
 
 export const Route = createFileRoute("/select-org")({
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/select-org")({
     }
   },
   component: SelectOrgPage,
+  pendingComponent: FullPageLoader,
 });
 
 function SelectOrgPage() {

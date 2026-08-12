@@ -17,6 +17,7 @@ import { useState } from "react";
 import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
 import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
 import { useListSearch } from "~/components/data-table/use-list-search.ts";
+import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { getEventsPageData } from "~/server/events.ts";
 import { EventFormDrawer } from "./-components/event-form-drawer.tsx";
 import { StaffEventsTable } from "./-components/staff-events-table.tsx";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/o/$orgId/events/")({
   loaderDeps: ({ search }) => search,
   loader: ({ params, deps }) => getEventsPageData({ data: { orgId: params.orgId, ...deps } }),
   component: EventsPage,
+  pendingComponent: PageSkeleton,
 });
 
 const orgRoute = getRouteApi("/o/$orgId");

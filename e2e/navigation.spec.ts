@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "./fixtures.ts";
 import {
   fillField,
   loginViaMagicLink,
@@ -6,6 +6,7 @@ import {
   readLatestMagicLink,
   requestMagicLink,
   uniqueEmail,
+  waitForHydration,
 } from "./helpers.ts";
 
 // 验收 issue #1/#2/#4/#5 的固化用例：首页导航、未登录回跳、404、favicon。
@@ -185,4 +186,76 @@ test("favicon 和 band 品牌资源返回有效图片", async ({ page }) => {
   const lockup = await page.request.get("/brand/band-lockup.png");
   expect(lockup.status()).toBe(200);
   expect(lockup.headers()["content-type"] ?? "").toContain("image/png");
+});
+
+// 页面跳转的 pending 反馈（骨架屏）：给 server fn 加延迟，
+// 模拟慢网络下"点了链接几秒后才加载完"的场景，断言期间有骨架屏可见。
+// search 变化（翻页/筛选）走 background reload，不应出现骨架屏，也一并覆盖。
+const RPC_DELAY_MS = 800;
+
+// 用 CDP 网络节流制造慢网络。不用 page.route 拦截：route handler 的延迟在
+// 页面关闭后仍会触发，实测会污染后续测试（后续请求被拖慢到超时）。
+async function delayServerFns(page: Page): Promise<void> {
+  const session = await page.context().newCDPSession(page);
+  await session.send("Network.enable");
+  await session.send("Network.emulateNetworkConditions", {
+    latency: RPC_DELAY_MS,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+    offline: false,
+  });
+}
+
+// 键盘激活链接跳转。不用 click()：click 自带 hover，会触发 defaultPreload:
+// "intent" 的预加载，预取完成后点击时导航零等待，骨架屏不再出现。
+async function pressLink(page: Page, name: string | RegExp): Promise<void> {
+  const link = page.getByRole("link", { name });
+  await waitForHydration(link);
+  await link.focus();
+  await page.keyboard.press("Enter");
+}
+
+test("从组织选择页进入组织：先显示整页骨架，再渲染页面（pending UI）", async ({ page }) => {
+  await loginViaMagicLink(page, navEmail());
+  await page.goto("/new-org?intent=create");
+  await fillField(page.locator("#org-name"), "Pending UI Test Band");
+  await pressButton(page, "Create organization");
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  const orgId = new URL(page.url()).pathname.split("/")[2];
+  expect(orgId).toBeTruthy();
+
+  await page.goto("/select-org");
+  await expect(page.getByRole("heading", { name: "Your organizations" })).toBeVisible();
+  // 水合完成后才开节流：throttle 会拖慢页面自身的 JS 资源加载，进而推迟水合
+  await waitForHydration(page.getByRole("link", { name: /Pending UI Test Band/ }));
+
+  await delayServerFns(page);
+  await pressLink(page, /Pending UI Test Band/);
+  // 布局 loader（4 个 server fn）未完成期间，整页骨架可见，点击不再是"没反应"
+  // （移动端侧边栏骨架隐藏，:visible 只取可见的骨架）
+  await expect(page.locator('[data-slot="skeleton"]:visible').first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe(`/o/${orgId}`);
+});
+
+test("组织内页面切换：内容区先显示骨架，侧边栏保持", async ({ page }) => {
+  await loginViaMagicLink(page, navEmail());
+  await page.goto("/new-org");
+  await fillField(page.locator("#org-name"), "In-org Pending Test Band");
+  await pressButton(page, "Create organization");
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+
+  await openSidebarOnMobile(page);
+  await delayServerFns(page);
+  await pressLink(page, "Members");
+  await expect(page.locator('[data-slot="skeleton"]:visible').first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Members" })).toBeVisible();
+
+  // search 变化（翻页/筛选）走 background reload：旧表格保持、无骨架屏闪烁
+  await delayServerFns(page);
+  const searchInput = page.getByPlaceholder("Search students");
+  if (await searchInput.isVisible()) {
+    await searchInput.fill("zzz-no-match");
+  }
+  await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0);
 });

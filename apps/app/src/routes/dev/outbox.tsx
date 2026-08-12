@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { listDevOutbox } from "~/server/dev.ts";
 
 // dev 专用发件箱：查看 magic link/OTP 邮件；生产模式（EMAIL_MODE=cloudflare）
@@ -6,6 +7,7 @@ import { listDevOutbox } from "~/server/dev.ts";
 export const Route = createFileRoute("/dev/outbox")({
   loader: async () => ({ messages: await listDevOutbox() }),
   component: DevOutboxPage,
+  pendingComponent: FullPageLoader,
 });
 
 function DevOutboxPage() {
