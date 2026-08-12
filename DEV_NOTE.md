@@ -129,6 +129,9 @@
   session 失效，用户重复登录也无法恢复。
 - **涉及新 schema 的发布顺序**：先应用向后兼容的 D1 migration，再部署读取新字段/表的 Worker，
   最后执行已登录组织页 smoke test。`wrangler d1 migrations list --remote` 必须无待应用项。
+- **CI 运行时由 `pnpm/setup` 统一安装**：根 `packageManager` 固定 pnpm 版本，workflow 使用
+  `pnpm/setup` 同时安装 pnpm 和 Node runtime，不再叠加 `pnpm/action-setup` 与
+  `actions/setup-node`。首次建立版本 pin 需写入 `package.json`，之后 `pnpm self-update` 会更新它。
 
 ## 列表页样板（2026-08-11，UI 改造 P2）
 

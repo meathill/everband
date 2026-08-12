@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  # CI 禁止真实外呼（PRD §12.3）
+  # 单元与集成测试禁止真实外呼
   EMAIL_MODE: mock
   DYQR_MODE: mock
 
@@ -14,14 +14,13 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: pnpm/setup@v2
         with:
-          node-version: 24
-          cache: pnpm
+          runtime: node@24
+          cache: true
+          install: false
 
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
@@ -44,6 +43,11 @@ jobs:
       - name: 应用本地 D1 迁移
         run: pnpm -C apps/app exec wrangler d1 migrations apply everband --local
 
-      # dev server 的 worker vars（EMAIL_MODE=dev / DYQR_MODE=mock）保证零真实外呼
+      # shell env 不会覆盖 wrangler vars；从公开模板生成仅供本次 run 使用的本地 Worker 配置
+      - name: 准备 E2E Worker 环境
+        run: |
+          cp apps/app/.dev.vars.example apps/app/.dev.vars
+          cp apps/tasks/.dev.vars.example apps/tasks/.dev.vars
+
       - name: E2E 测试
         run: pnpm run test:e2e

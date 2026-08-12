@@ -1,16 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // e2e 对 apps/app 的 vite dev server 跑（本地复用已启动的 3000 端口）。
-// CI 中由 webServer 自行拉起；EMAIL_MODE=dev 保证邮件走 /dev/outbox。
+// CI 中由 webServer 自行拉起；.dev.vars 将邮件与第三方集成都固定为 mock。
 export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
+  // GitHub runner 上完整组织工作流接近 30s；保留零重试，用合理总时限避免性能抖动误报
+  timeout: 60_000,
   fullyParallel: false,
   // 本地 D1（SQLite）对并行写敏感，套件小，串行换稳定
   workers: 1,
   retries: 0,
-  // vite dev 按需编译，路由首次访问可能超过默认 5s
-  expect: { timeout: 10_000 },
+  // vite dev 按需编译；CI 首次编译并完成 Worker 写入可能超过默认 5s
+  expect: { timeout: 20_000 },
   reporter: [["list"]],
   use: {
     baseURL: "http://localhost:3000",

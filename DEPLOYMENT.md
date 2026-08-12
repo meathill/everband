@@ -145,4 +145,6 @@ vite build + wrangler deploy）。
 | `DYQR_TOKEN` | app | 无 | 待配 Secret（`wrangler secret put`） |
 | `TURNSTILE_SECRET` | landing | 测试 secret | 待换真实 Secret |
 
-CI 恒为 `EMAIL_MODE=mock`、`DYQR_MODE=mock`，不产生真实外呼（PRD §12.3）。
+CI 的单元与集成测试恒为 `EMAIL_MODE=mock`、`DYQR_MODE=mock`；E2E 启动 Worker 前从
+`.dev.vars.example` 生成临时 `.dev.vars`，使邮件写入本地 `dev_outbox`，供
+`/dev/outbox` 获取 magic link。两种模式都不产生真实外呼（PRD §12.3）。

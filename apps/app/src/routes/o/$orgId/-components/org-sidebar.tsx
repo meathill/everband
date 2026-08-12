@@ -36,7 +36,7 @@ import {
   UsersIcon,
   WalletIcon,
 } from "@phosphor-icons/react";
-import { Link, useMatchRoute, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { logout } from "~/server/auth.ts";
 
@@ -138,15 +138,16 @@ function NavMenu({
   orgId: string;
   unreadCount?: number;
 }): React.ReactElement {
-  const matchRoute = useMatchRoute();
+  const pathname = useLocation({ select: (location) => location.pathname });
   const dismiss = useDismissOnNavigate();
 
   return (
     <SidebarMenu>
       {items.map((item) => {
-        const isActive = Boolean(
-          matchRoute({ to: item.to, params: { orgId }, fuzzy: !item.exact }),
-        );
+        const itemPath = item.to.replace("$orgId", orgId);
+        const isActive = item.exact
+          ? pathname === itemPath
+          : pathname === itemPath || pathname.startsWith(`${itemPath}/`);
         return (
           <SidebarMenuItem key={item.label}>
             <SidebarMenuButton

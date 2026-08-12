@@ -168,9 +168,9 @@ test("Overview 月历在桌面展示溢出 Popover，在移动端展示选中日
   await expect(eventStat.getByText("4", { exact: true })).toBeVisible();
 
   if ((page.viewportSize()?.width ?? 0) < 768) {
-    const day = page.locator(`[data-day="${date}"]`);
-    await waitForHydration(day);
-    await day.click();
+    const dayButton = page.locator(`[data-day="${date}"] button`);
+    await waitForHydration(dayButton);
+    await dayButton.click();
     await expect(page.getByRole("heading", { name: date })).toBeVisible();
     await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();
   } else {

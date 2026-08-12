@@ -1,14 +1,5 @@
 # WIP
 
-## 进行中：选择组织后被重定向回登录页
-
-- [x] 定位真实异常：生产 D1 尚未应用 `0009_finance.sql`，数据库异常又被 loader 误判为未登录。
-- [x] 增加多组织选择、明确鉴权错误及非鉴权错误分类的回归测试。
-- [x] 修复非鉴权异常跳 Login，完成 format、typecheck、test、E2E 和 build。
-- [ ] 经用户明确授权后应用生产迁移、部署修复并在线验收。
-
-约束：不改动或提交用户现有的 `apps/app/src/routes/select-org.tsx` 和 `WIP-plan.md`。
-
 ## 里程碑归档
 
 - M1 脚手架：monorepo + DYQR 设计系统（emerald + coss/ui）+ 三 Worker + 初始迁移
@@ -27,6 +18,8 @@
   Events/Members/Groups/Rehearsals/Notifications/Import/Settings 全功能化与浏览器回归
 - 信息架构重规划（2026-08-11）：Overview 月历与统计、Finance 轻量公费账本、Settings 二级导航、
   Notifications 下移、Group UI 暂停、旧路由兼容及桌面/移动端回归
+- 生产登录恢复与 CI 修复（2026-08-11）：补应用 `0009_finance.sql`、修复组织 loader 异常误跳
+  Login、两个现有组织在线验收、升级到 pnpm 11.21 与新版 GitHub Actions setup
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
 （普通单测 66 + Worker 集成测试 97 + e2e 18 场景、双视口 36 例）。
