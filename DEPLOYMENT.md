@@ -141,9 +141,9 @@ vite build + wrangler deploy）。
 | --- | --- | --- | --- |
 | `EMAIL_MODE` | app, tasks | `dev` | `cloudflare` ✅ |
 | `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME` | app, tasks | — | `no-reply@meathill.com` / `Everband` |
-| `DYQR_MODE` | app | `mock` | 待切 `dyqr` |
-| `DYQR_TOKEN` | app | 无 | 待配 Secret（`wrangler secret put`） |
-| `TURNSTILE_SECRET` | landing | 测试 secret | 待换真实 Secret |
+| `DYQR_MODE` | app | `mock` | `dyqr` ✅（token 缺失自动回退 mock） |
+| `DYQR_TOKEN` | app | 无 | 已配 Secret（`wrangler secret put`） ✅ |
+| `TURNSTILE_SECRET` | landing | 测试 secret | 真实 Secret ✅ |
 
 CI 的单元与集成测试恒为 `EMAIL_MODE=mock`、`DYQR_MODE=mock`；E2E 启动 Worker 前从
 `.dev.vars.example` 生成临时 `.dev.vars`，使邮件写入本地 `dev_outbox`，供

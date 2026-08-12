@@ -288,6 +288,11 @@ Base UI Drawer 的关键行为（都验证过）：
 - `pagination.tsx`：3 个 lucide 图标换 phosphor（`CaretLeft`/`CaretRight`/`DotsThree`）。
   组件本身是链接语义（`<a>`），我们的列表分页只用它的 nav/ul/li 与省略号，页码按钮另拼。
 - `select.tsx`：3 个 lucide 图标换 phosphor。
+- **全局（2026-08-12，提交"统一边框颜色"）**：20 处 `border`/`border-t/b/e/s` 显式补
+  `border-border` token（Tailwind v4 默认 border 色是 currentColor，会跟着文字颜色走）。
+  涉及 sidebar/alert/alert-dialog/card/dialog/drawer/empty/frame/menu/popover/preview-card/
+  select/sheet/table/toast/toolbar/tooltip/combobox/command 与 overview-month-calendar。
+  同步上游后需重新检查共享容器的边框颜色。
 
 其余组件仍留着 lucide，策略不变：用到哪个改哪个。
 

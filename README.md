@@ -3,7 +3,7 @@
 乐队首发、模型通用的社区团队运营平台。面向由家长和社区委员会运营的学生军乐队（以及后续的球队、社团），提供组织、成员、活动、排练、值班、通知与公费账本的运营闭环。
 
 产品规格见 [PRD.md](PRD.md)，开发中长期注意事项见 [DEV_NOTE.md](DEV_NOTE.md)，
-部署见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+测试见 [TESTING.md](TESTING.md)，部署见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
 ## 仓库结构
 
