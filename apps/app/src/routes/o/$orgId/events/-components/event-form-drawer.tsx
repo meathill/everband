@@ -27,6 +27,8 @@ export interface EventFormDrawerProps {
   /** 组织时区：datetime-local 的输入/回填都在这个时区下发生 */
   timezone: string;
   event?: EventFormValues;
+  /** 创建模式下预填的开始时间（datetime-local 字符串，如 "2026-08-15T09:00"） */
+  defaultStartsAtLocal?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -47,6 +49,7 @@ export function EventFormDrawer({
   orgId,
   timezone,
   event,
+  defaultStartsAtLocal,
   open,
   onOpenChange,
 }: EventFormDrawerProps): React.ReactElement {
@@ -118,7 +121,12 @@ export function EventFormDrawer({
       title={isEdit ? "Edit event" : "New event"}
     >
       {/* 抽屉关闭时 Portal 卸载 children，这里的 state 与非受控输入一起天然重置 */}
-      <EventFormFields event={event} isLocked={isLocked} timezone={timezone} />
+      <EventFormFields
+        defaultStartsAtLocal={defaultStartsAtLocal}
+        event={event}
+        isLocked={isLocked}
+        timezone={timezone}
+      />
     </FormDrawer>
   );
 }
@@ -127,10 +135,12 @@ function EventFormFields({
   event,
   isLocked,
   timezone,
+  defaultStartsAtLocal,
 }: {
   event?: EventFormValues;
   isLocked: boolean;
   timezone: string;
+  defaultStartsAtLocal?: string;
 }): React.ReactElement {
   return (
     <Frame>
@@ -181,7 +191,9 @@ function EventFormFields({
         <Field>
           <FieldLabel htmlFor="event-starts">Starts</FieldLabel>
           <Input
-            defaultValue={event ? utcMsToLocalDateTime(event.startsAtUtc, timezone) : undefined}
+            defaultValue={
+              event ? utcMsToLocalDateTime(event.startsAtUtc, timezone) : defaultStartsAtLocal
+            }
             disabled={isLocked}
             id="event-starts"
             name="startsAt"

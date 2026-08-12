@@ -24,6 +24,8 @@ export interface SeriesFormOption {
 export interface SeriesFormDrawerProps {
   orgId: string;
   terms: SeriesFormOption[];
+  /** 预选的星期几（0=周日 … 6=周六），来自日历点击的日期 */
+  defaultWeekday?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -36,6 +38,7 @@ const selectClassName =
 export function SeriesFormDrawer({
   orgId,
   terms,
+  defaultWeekday = 3,
   open,
   onOpenChange,
 }: SeriesFormDrawerProps): React.ReactElement {
@@ -87,7 +90,12 @@ export function SeriesFormDrawer({
           </Field>
           <Field>
             <FieldLabel htmlFor="series-weekday">Weekday</FieldLabel>
-            <select className={selectClassName} defaultValue="3" id="series-weekday" name="weekday">
+            <select
+              className={selectClassName}
+              defaultValue={defaultWeekday}
+              id="series-weekday"
+              name="weekday"
+            >
               {WEEKDAYS.map((name, index) => (
                 <option key={name} value={index}>
                   {name}

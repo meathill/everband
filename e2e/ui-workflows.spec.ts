@@ -186,6 +186,44 @@ test("Overview 月历在桌面展示溢出 Popover，在移动端展示选中日
   await expect(page.getByRole("heading", { name: titles[3], exact: true })).toBeVisible();
 });
 
+test("Overview 日期数字快捷创建 event：staff 菜单、预填日期与 toggle 筛选", async ({ page }) => {
+  const orgId = await createOrganization(page, `Quick create ${Date.now()}`);
+  const { date } = currentSydneyMonthDateTime();
+  const title = `Quick event ${Date.now()}`;
+  await page.goto(`/o/${orgId}`);
+
+  const eventsToggle = page.getByRole("button", { name: "Show events" });
+  await expect(eventsToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Show rehearsals" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    const dayButton = page.locator(`[data-day="${date}"] button`);
+    await waitForHydration(dayButton);
+    await dayButton.click();
+    await expect(page.getByRole("heading", { name: date })).toBeVisible();
+  }
+
+  const createButton = page.getByRole("button", { name: `Create on ${date}` });
+  await waitForHydration(createButton);
+  await createButton.click();
+
+  await expect(page.getByRole("menuitem", { name: "New event" })).toBeVisible();
+  // 新建组织还没有 term，排练项应禁用
+  await expect(page.getByRole("menuitem", { name: "New weekly rehearsal" })).toBeDisabled();
+
+  await page.getByRole("menuitem", { name: "New event" }).click();
+  await expect(page.getByRole("heading", { name: "New event" })).toBeVisible();
+  await expect(page.locator("#event-starts")).toHaveValue(`${date}T09:00`);
+
+  await fillField(page.locator("#event-title"), title);
+  await pressButton(page, "Create draft");
+  // 日历 Badge 的可访问名带 status 后缀（如 "… draft"），这里不做 exact 匹配
+  await expect(page.getByRole("link", { name: title })).toBeVisible();
+});
+
 test("活动删除确认与 published 取消均刷新列表并显示 toast", async ({ page }) => {
   const orgId = await createOrganization(page, `Lifecycle ${Date.now()}`);
   const deletedTitle = `Delete me ${Date.now()}`;
@@ -275,4 +313,8 @@ test("parent 仍看到有权限的活动卡片而不是 staff 管理表", async 
   await expect(page.getByRole("link", { name: eventTitle })).toBeVisible();
   await expect(page.getByRole("button", { name: "New event" })).not.toBeVisible();
   await expect(page.locator("table")).not.toBeVisible();
+
+  // parent 在 Overview 也没有快捷创建入口
+  await page.goto(`/o/${orgId}`);
+  await expect(page.getByRole("button", { name: /Create on \d{4}/ })).toHaveCount(0);
 });

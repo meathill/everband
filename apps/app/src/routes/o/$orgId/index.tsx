@@ -26,7 +26,7 @@ export const Route = createFileRoute("/o/$orgId/")({
 
 function OrgOverview() {
   const { org, role } = orgRoute.useLoaderData();
-  const { month, overview } = Route.useLoaderData();
+  const { month, overview, terms } = Route.useLoaderData();
   const navigate = Route.useNavigate();
   const isStaff = role === "owner" || role === "staff";
   const staffOverview = isStaff ? (overview as StaffOverviewData) : null;
@@ -39,10 +39,12 @@ function OrgOverview() {
       </div>
       {staffOverview && <OverviewStatsCards data={staffOverview} orgId={org.id} />}
       <OverviewMonthCalendar
+        isStaff={isStaff}
         items={overview.calendarItems}
         month={month}
         onMonthChange={(nextMonth) => navigate({ search: { month: nextMonth } })}
         orgId={org.id}
+        terms={terms}
         timezone={org.timezone}
       />
     </div>

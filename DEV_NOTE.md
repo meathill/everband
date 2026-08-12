@@ -242,6 +242,18 @@ Base UI Drawer 的关键行为（都验证过）：
   业务侧无需处理。
 - Base UI 的 `FieldDescription` 必须有 `Field` 祖先，否则抛 `FieldRootContext is missing`。
 
+Base UI Menu（`menu.tsx`）的两个易踩点：
+
+- MenuItem 的触发回调是 `onClick`（`closeOnClick` 默认 true），**没有 onSelect**——写 `onSelect` 会被静默丢弃。
+- `MenuGroupLabel` 必须包在 `<MenuGroup>` 里，否则抛 `MenuGroupContext is missing`。
+
+Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
+
+- group 内 item 的 pressed 状态由 item 的 `value` + group 的 `value`/`onValueChange` 决定，
+  **item 上的 `pressed` prop 会被忽略**（aria-pressed 恒为 false，视觉上永远"未选中"）。
+  多选筛选要写成 `value={[...set]} onValueChange={(v) => set(new Set(v))}`。
+  注意 `onValueChange` 的回参类型是 `string[]`，需要自行断言成联合类型。
+
 ## e2e 的水合等待（2026-08-11）
 
 侧边栏让应用主包变大后，dev server 下"页面刚出现就操作"的 flake 明显变多，症状有两种：
