@@ -32,6 +32,10 @@
   Landing 全套 OG/Twitter/canonical/JSON-LD + og:image 生成脚本 + robots/sitemap，
   App 站默认 noindex + 公开页动态 head + robots Disallow；单测 100 条、e2e 52 例全绿，
   已部署生产并冒烟验证
+- Landing 页面拆分（2026-08-13）：首页反馈表单移除，新增 /contact（表单直连
+  feedback.meathill.com/api/feedbacks，appId=everband-landing）与 /about 页面；
+  删除 api.contact.ts 与 Turnstile 依赖，header/footer 导航与 sitemap/SEO 同步更新，
+  e2e 新增表单提交 mock 断言；已部署生产并冒烟验证
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
 （普通单测 66 + Worker 集成测试 100 + e2e 19 场景、双视口 52 例）。

@@ -8,6 +8,12 @@ export function SiteFooter() {
         <span>Everband</span>
         <span>Built for the people who keep community groups running.</span>
         <nav className="flex items-center gap-4">
+          <Link to="/about" className="hover:text-foreground">
+            About
+          </Link>
+          <Link to="/contact" className="hover:text-foreground">
+            Contact
+          </Link>
           <Link to="/privacy" className="hover:text-foreground">
             Privacy Policy
           </Link>

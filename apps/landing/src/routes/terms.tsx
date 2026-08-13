@@ -135,10 +135,10 @@ function TermsPage() {
         <Section title="Contact">
           <p>
             Questions about these terms? Reach us through the{" "}
-            <a href="/#contact" className="text-primary underline-offset-4 hover:underline">
+            <a href="/contact" className="text-primary underline-offset-4 hover:underline">
               contact form
-            </a>{" "}
-            on our home page.
+            </a>
+            .
           </p>
         </Section>
       </main>

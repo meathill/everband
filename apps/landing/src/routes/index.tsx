@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ContactSection } from "~/components/contact-section.tsx";
 import { SiteFooter } from "~/components/site-footer.tsx";
 import { SiteHeader } from "~/components/site-header.tsx";
 import { APP_URL } from "~/lib/config.ts";
@@ -171,29 +170,47 @@ function Home() {
           </div>
         </section>
 
-        {/* Privacy & Safety */}
-        <section id="privacy" className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-16">
+        {/* FAQ */}
+        <section id="faq" className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-16">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">
-            Privacy & safety
+            Frequently asked questions
           </h2>
-          <ul className="flex flex-col gap-3 text-muted-foreground">
-            <li>
-              Adults hold the accounts. Students never sign in, and we collect the minimum about
-              them.
-            </li>
-            <li>
-              Each organization's data is isolated — staff and parents only see their own
-              organization.
-            </li>
-            <li>
-              Attachments are private. Every download is checked against who is allowed to see it.
-            </li>
-            <li>Contact details are never public. There are no public event pages.</li>
-          </ul>
+          <div className="flex flex-col gap-3">
+            {[
+              [
+                "What is Everband?",
+                "A management workspace for community bands, teams and clubs: members and families, events and updates, rehearsals and helper rosters, and the notifications that keep everyone posted.",
+              ],
+              [
+                "Who is it for?",
+                "Community organizations run by volunteers — parents and committees who manage students, game days, concerts and working bees in their spare time.",
+              ],
+              [
+                "Do students need accounts?",
+                "No. Adults hold the accounts, and we collect the minimum about students.",
+              ],
+              [
+                "Is our data private?",
+                "Each organization's data is isolated — staff and parents only see their own organization. Attachments are private, every download is checked against who is allowed to see it, and contact details are never public.",
+              ],
+              [
+                "Can we import our existing member lists?",
+                "Yes. Import students and families from a CSV — Everband matches and merges duplicates so nothing gets lost.",
+              ],
+              [
+                "How do parents stay updated?",
+                "Publish event changes once and parents get an email plus an in-app notification — with delivery history for staff.",
+              ],
+            ].map(([question, answer]) => (
+              <details key={question} className="rounded-xl border border-border bg-card p-5">
+                <summary className="cursor-pointer font-semibold text-foreground">
+                  {question}
+                </summary>
+                <p className="mt-3 text-sm text-muted-foreground">{answer}</p>
+              </details>
+            ))}
+          </div>
         </section>
-
-        {/* Contact / Start */}
-        <ContactSection appUrl={APP_URL} />
       </main>
 
       <SiteFooter />

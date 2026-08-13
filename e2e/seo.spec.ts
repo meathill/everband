@@ -75,8 +75,55 @@ test.describe("landing SEO", () => {
 
     const sitemap = await (await request.get(`${LANDING}/sitemap.xml`)).text();
     expect(sitemap).toContain("https://everband.meathill.com/");
+    expect(sitemap).toContain("https://everband.meathill.com/about");
+    expect(sitemap).toContain("https://everband.meathill.com/contact");
     expect(sitemap).toContain("https://everband.meathill.com/privacy");
     expect(sitemap).toContain("https://everband.meathill.com/terms");
+  });
+
+  test("about/contact head：canonical + og:url 指向自身", async ({ page }) => {
+    await page.goto(`${LANDING}/about`);
+    await expect(page).toHaveTitle("About — Everband");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://everband.meathill.com/about",
+    );
+
+    await page.goto(`${LANDING}/contact`);
+    await expect(page).toHaveTitle("Contact us — Everband");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://everband.meathill.com/contact",
+    );
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+      "content",
+      "https://everband.meathill.com/contact",
+    );
+  });
+
+  test("contact 表单提交到 feedback.meathill.com，字段映射正确", async ({ page }) => {
+    let submitted: { url: string; body: unknown } | null = null;
+    await page.route("**/api/feedbacks", async (route) => {
+      submitted = {
+        url: route.request().url(),
+        body: route.request().postDataJSON(),
+      };
+      await route.fulfill({ status: 201, json: { success: true } });
+    });
+
+    await page.goto(`${LANDING}/contact`);
+    await page.fill("#contact-name", "Test User");
+    await page.fill("#contact-email", "test@example.com");
+    await page.fill("#contact-message", "Hello Everband!");
+    await page.getByRole("button", { name: "Send message" }).click();
+    await expect(page.getByText("we've received your message")).toBeVisible();
+
+    expect(submitted?.url).toBe("https://feedback.meathill.com/api/feedbacks");
+    expect(submitted?.body).toEqual({
+      appId: "everband-landing",
+      content: "Hello Everband!",
+      contact: "Test User <test@example.com>",
+    });
   });
 });
 

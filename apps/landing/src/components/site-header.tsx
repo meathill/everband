@@ -1,6 +1,7 @@
 import { APP_URL } from "~/lib/config.ts";
 
-// 全站共用页头：锚点用 /#xxx 形式，在子页面（/privacy /terms）也能跳回首页对应板块
+// 全站共用页头：锚点用 /#xxx 形式，在子页面也能跳回首页对应板块；
+// Contact 与 Privacy 只在 footer 提供
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
@@ -18,11 +19,11 @@ export function SiteHeader() {
           <a href="/#features" className="hover:text-foreground">
             Features
           </a>
-          <a href="/#privacy" className="hover:text-foreground">
-            Privacy
+          <a href="/#faq" className="hover:text-foreground">
+            FAQ
           </a>
-          <a href="/#contact" className="hover:text-foreground">
-            Contact
+          <a href="/about" className="hover:text-foreground">
+            About
           </a>
         </nav>
         <a

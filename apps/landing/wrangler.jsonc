@@ -9,6 +9,4 @@
   "observability": {
     "enabled": true
   }
-  // TURNSTILE_SECRET 是敏感值，生产走 `wrangler secret put TURNSTILE_SECRET`；
-  // 本地 dev 由 .dev.vars 提供官方测试 secret（恒通过）
 }
