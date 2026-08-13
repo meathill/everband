@@ -21,7 +21,7 @@ import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
 import { updateOrganization } from "~/server/org.ts";
 
 export interface OrganizationSettingsFormProps {
-  org: { id: string; name: string; timezone: string };
+  org: { id: string; name: string; timezone: string; contactEmail: string | null };
   isOwner: boolean;
 }
 
@@ -48,6 +48,7 @@ export function OrganizationSettingsForm({
       orgId: org.id,
       name: String(formData.get("name") ?? "").trim(),
       timezone: String(formData.get("timezone") ?? org.timezone),
+      contactEmail: String(formData.get("contactEmail") ?? "").trim(),
     });
   }
 
@@ -101,6 +102,30 @@ export function OrganizationSettingsForm({
                 <Input disabled id="organization-timezone" value={org.timezone} />
               )}
               <FieldDescription>Dates and rehearsal schedules use this setting.</FieldDescription>
+            </Field>
+          </FramePanel>
+
+          <FramePanel>
+            <FrameHeader className="px-0 pt-0">
+              <FrameTitle>Public contact</FrameTitle>
+              <FrameDescription>
+                This email appears on public equipment cards so a finder can contact the
+                organization.
+              </FrameDescription>
+            </FrameHeader>
+            <Field>
+              <FieldLabel htmlFor="organization-contact-email">Contact email</FieldLabel>
+              <Input
+                defaultValue={org.contactEmail ?? ""}
+                disabled={!isOwner}
+                id="organization-contact-email"
+                name="contactEmail"
+                placeholder="committee@example.org"
+                type="email"
+              />
+              <FieldDescription>
+                Required before Staff can generate an equipment QR code.
+              </FieldDescription>
             </Field>
           </FramePanel>
         </Frame>

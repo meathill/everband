@@ -57,6 +57,11 @@
   （dev/CI，内存实现 + 占位 SVG）。`DYQR_MODE=mock|dyqr`，token 只经 env（Secrets Store），
   所有写操作 everband 侧记 audit。slug 变更先同步 dyqr targetUrl 再落库，dyqr 不可用则
   放弃变更（保护已打印二维码）。
+- **器材标签生命周期**：Asset 先保存，再尝试创建 `targetType=asset` 的 dyqr 链接；
+  `qrCodeId` 可空，失败后幂等重试。Everband 不固化 dyqr 套餐数量，provider 配额/频率错误
+  原样分类后转成可操作提示。只有 dyqr 明确返回 404 才把 QrCode 标为 `broken`，瞬时错误不
+  改状态；退役只在本地设为 `disabled`，稳定 `/a/:assetId` 路由负责统一停用页，恢复时复用
+  健康二维码。公开查询使用字段白名单，永不读取 Asset notes。
 - **公开主页安全模式**：`getPublicPage` 只返回展示字段白名单；关闭/不存在统一返回 null →
   同一"暂未开放"页（与附件统一 404 同风格）。
 - **Turnstile**：dev 用官方测试 key（1x000…AA 恒通过），生产替换 landing 的

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { organizations } from "./org.ts";
 
@@ -27,6 +28,10 @@ export const qrCodes = sqliteTable(
   },
   (table) => [
     uniqueIndex("uq_qr_codes_alias").on(table.dyqrAlias),
+    // org_entry 可有多张；每件器材只能有一个未损坏的当前标签。
+    uniqueIndex("uq_qr_codes_current_asset")
+      .on(table.organizationId, table.targetType, table.targetObjectId)
+      .where(sql`${table.targetType} = 'asset' AND ${table.status} != 'broken'`),
     index("idx_qr_codes_org").on(table.organizationId, table.targetType),
   ],
 );

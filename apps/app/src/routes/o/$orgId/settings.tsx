@@ -149,7 +149,7 @@ function SettingsPanel({
     sends: Awaited<ReturnType<typeof listEmailSends>>;
   };
   onPageChange: (page: number) => void;
-  org: { id: string; name: string; timezone: string };
+  org: { id: string; name: string; timezone: string; contactEmail: string | null };
   orgId: string;
   role: string;
   section: SettingsSection;

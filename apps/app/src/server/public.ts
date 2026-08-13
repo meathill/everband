@@ -11,11 +11,14 @@ import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
 
-// 平台共享 dyqr 配额下的单组织软上限（PRD §5.7；具体数值待运营确认）
-const MAX_QR_PER_ORG = 5;
-
 function getShortLinkService() {
   return chooseShortLinkService(env.DYQR_MODE, env.DYQR_TOKEN);
+}
+
+function getShortLinkActionError(cause: ShortLinkError): string {
+  if (cause.kind === "quota") return "The QR service plan limit has been reached.";
+  if (cause.kind === "unauthorized") return "The QR service connection needs attention.";
+  return "QR link service is temporarily unavailable. Try again later.";
 }
 
 // 公开主页数据：无认证。关闭或不存在一律返回 null（统一"暂未开放"，
@@ -180,17 +183,6 @@ export const createOrgEntryQr = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Enable the public page first." };
     }
 
-    const existing = await db
-      .select({ id: schema.qrCodes.id })
-      .from(schema.qrCodes)
-      .where(eq(schema.qrCodes.organizationId, data.orgId));
-    if (existing.length >= MAX_QR_PER_ORG) {
-      return {
-        ok: false as const,
-        error: `This organization has reached the limit of ${MAX_QR_PER_ORG} QR codes.`,
-      };
-    }
-
     const targetUrl = `${getRequestUrl().origin}/p/${org.publicSlug}`;
     let created: { alias: string; shortUrl: string };
     try {
@@ -202,7 +194,7 @@ export const createOrgEntryQr = createServerFn({ method: "POST" })
       if (cause instanceof ShortLinkError) {
         return {
           ok: false as const,
-          error: "QR link service is temporarily unavailable. Try again later.",
+          error: getShortLinkActionError(cause),
         };
       }
       throw cause;
@@ -244,9 +236,9 @@ export const getQrImageData = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const db = getDb();
-    await requireMembership(db, data.orgId, STAFF_ROLES);
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
     const rows = await db
-      .select({ dyqrAlias: schema.qrCodes.dyqrAlias })
+      .select({ id: schema.qrCodes.id, dyqrAlias: schema.qrCodes.dyqrAlias })
       .from(schema.qrCodes)
       .where(and(eq(schema.qrCodes.id, data.qrId), eq(schema.qrCodes.organizationId, data.orgId)))
       .limit(1);
@@ -263,6 +255,20 @@ export const getQrImageData = createServerFn({ method: "GET" })
       return { ok: true as const, contentType: image.contentType, base64: btoa(binary) };
     } catch (cause) {
       if (cause instanceof ShortLinkError) {
+        if (cause.kind === "not_found") {
+          await db
+            .update(schema.qrCodes)
+            .set({ status: "broken", updatedAt: Date.now() })
+            .where(eq(schema.qrCodes.id, qr.id));
+          await recordAudit(db, {
+            organizationId: data.orgId,
+            actorMembershipId: ctx.membershipId,
+            action: "qr_code.broken",
+            objectType: "qr_code",
+            objectId: qr.id,
+          });
+          return { ok: false as const, error: "This QR link no longer exists." };
+        }
         return { ok: false as const, error: "QR link service is temporarily unavailable." };
       }
       throw cause;
@@ -273,7 +279,7 @@ export const refreshQrStats = createServerFn({ method: "POST" })
   .validator(z.object({ orgId: z.string().min(1) }))
   .handler(async ({ data }) => {
     const db = getDb();
-    await requireMembership(db, data.orgId, STAFF_ROLES);
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
     const now = Date.now();
     const service = getShortLinkService();
     const rows = await db
@@ -281,12 +287,28 @@ export const refreshQrStats = createServerFn({ method: "POST" })
       .from(schema.qrCodes)
       .where(eq(schema.qrCodes.organizationId, data.orgId));
     for (const qr of rows) {
-      const count = await service.getScanCount(qr.dyqrAlias);
-      if (count !== null) {
-        await db
-          .update(schema.qrCodes)
-          .set({ scanCount: count, lastStatsSyncAt: now })
-          .where(eq(schema.qrCodes.id, qr.id));
+      try {
+        const count = await service.getScanCount(qr.dyqrAlias);
+        if (count !== null) {
+          await db
+            .update(schema.qrCodes)
+            .set({ scanCount: count, lastStatsSyncAt: now })
+            .where(eq(schema.qrCodes.id, qr.id));
+        }
+      } catch (cause) {
+        if (cause instanceof ShortLinkError && cause.kind === "not_found") {
+          await db
+            .update(schema.qrCodes)
+            .set({ status: "broken", updatedAt: now })
+            .where(eq(schema.qrCodes.id, qr.id));
+          await recordAudit(db, {
+            organizationId: data.orgId,
+            actorMembershipId: ctx.membershipId,
+            action: "qr_code.broken",
+            objectType: "qr_code",
+            objectId: qr.id,
+          });
+        }
       }
     }
     return { ok: true as const };

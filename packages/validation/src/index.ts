@@ -1,3 +1,4 @@
+export * from "./asset.ts";
 export * from "./auth.ts";
 export * from "./csv.ts";
 export * from "./email.ts";

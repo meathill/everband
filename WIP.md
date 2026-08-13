@@ -10,7 +10,7 @@
 - M6 固定场景表单：四种 kind、一人一份幂等、关闭只读
 - M7 通知与邮件：受众快照、去重、退订、队列发送、发送历史
 - M8 排练值班：term 展开（DST 安全）、可预测轮换、换班审批
-- M9 公开主页 + dyqr 二维码（mock/real 双实现、slug 同步、软配额、统一降级）+
+- M9 公开主页 + dyqr 二维码（mock/real 双实现、slug 同步、provider 配额提示、统一降级）+
   Landing 六板块 + Turnstile 联系表单 + 公开主页 e2e
 - 验收修复轮（2026-08-10）：issue 1-5（登录回跳/首页按钮/隐私条款页/favicon/404 页）+
   staff Overview 四卡仪表盘，全部部署生产并冒烟验证
@@ -27,6 +27,10 @@
   - 生产回归修复（2026-08-12）：defaultPendingComponent 引发全站 hydration mismatch
     （#418，`<html>` 节点）——已移除，改为公开路由级 pendingComponent +
     defaultStaleTime 60s；本地生产构建 + 登录态验证 0 418
+- 器材管理与 dyqr 动态二维码（2026-08-13）：Asset 数据模型与本地迁移、Staff CRUD/
+  搜索/筛选/退役恢复、active Student 持有人、组织联系邮箱、自动生成与失败重试、SVG/PNG
+  下载、扫描统计与 404 损坏替换、公开字段白名单与姓名脱敏；单元/Worker 202 条、桌面/移动
+  E2E 44 条全绿。本次仅完成代码和本地验证，未应用生产迁移、未部署。
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
 （普通单测 66 + Worker 集成测试 97 + e2e 18 场景、双视口 36 例）。

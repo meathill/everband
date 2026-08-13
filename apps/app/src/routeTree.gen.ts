@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as NewOrgRouteImport } from './routes/new-org'
 import { Route as SelectOrgRouteImport } from './routes/select-org'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as AAssetIdRouteImport } from './routes/a/$assetId'
 import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
 import { Route as DevResetRouteImport } from './routes/dev/reset'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
@@ -21,6 +22,7 @@ import { Route as OOrgIdRouteRouteImport } from './routes/o/$orgId/route'
 import { Route as PPublicSlugRouteImport } from './routes/p/$publicSlug'
 import { Route as OOrgIdIndexRouteImport } from './routes/o/$orgId/index'
 import { Route as OOrgIdAccountRouteImport } from './routes/o/$orgId/account'
+import { Route as OOrgIdAssetsRouteImport } from './routes/o/$orgId/assets'
 import { Route as OOrgIdFinanceRouteImport } from './routes/o/$orgId/finance'
 import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
 import { Route as OOrgIdImportRouteImport } from './routes/o/$orgId/import'
@@ -57,6 +59,11 @@ const VerifyRoute = VerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AAssetIdRoute = AAssetIdRouteImport.update({
+  id: '/a/$assetId',
+  path: '/a/$assetId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevOutboxRoute = DevOutboxRouteImport.update({
   id: '/dev/outbox',
   path: '/dev/outbox',
@@ -90,6 +97,11 @@ const OOrgIdIndexRoute = OOrgIdIndexRouteImport.update({
 const OOrgIdAccountRoute = OOrgIdAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
+const OOrgIdAssetsRoute = OOrgIdAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
 const OOrgIdFinanceRoute = OOrgIdFinanceRouteImport.update({
@@ -151,11 +163,13 @@ export interface FileRoutesByFullPath {
   '/select-org': typeof SelectOrgRoute
   '/verify': typeof VerifyRoute
   '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
+  '/a/$assetId': typeof AAssetIdRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/dev/reset': typeof DevResetRoute
   '/invite/$token': typeof InviteTokenRoute
   '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
+  '/o/$orgId/assets': typeof OOrgIdAssetsRoute
   '/o/$orgId/finance': typeof OOrgIdFinanceRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -174,11 +188,13 @@ export interface FileRoutesByTo {
   '/new-org': typeof NewOrgRoute
   '/select-org': typeof SelectOrgRoute
   '/verify': typeof VerifyRoute
+  '/a/$assetId': typeof AAssetIdRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/dev/reset': typeof DevResetRoute
   '/invite/$token': typeof InviteTokenRoute
   '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
+  '/o/$orgId/assets': typeof OOrgIdAssetsRoute
   '/o/$orgId/finance': typeof OOrgIdFinanceRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -199,11 +215,13 @@ export interface FileRoutesById {
   '/select-org': typeof SelectOrgRoute
   '/verify': typeof VerifyRoute
   '/o/$orgId': typeof OOrgIdRouteRouteWithChildren
+  '/a/$assetId': typeof AAssetIdRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/dev/reset': typeof DevResetRoute
   '/invite/$token': typeof InviteTokenRoute
   '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
+  '/o/$orgId/assets': typeof OOrgIdAssetsRoute
   '/o/$orgId/finance': typeof OOrgIdFinanceRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -225,11 +243,13 @@ export interface FileRouteTypes {
     | '/select-org'
     | '/verify'
     | '/o/$orgId'
+    | '/a/$assetId'
     | '/dev/outbox'
     | '/dev/reset'
     | '/invite/$token'
     | '/p/$publicSlug'
     | '/o/$orgId/account'
+    | '/o/$orgId/assets'
     | '/o/$orgId/finance'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -248,11 +268,13 @@ export interface FileRouteTypes {
     | '/new-org'
     | '/select-org'
     | '/verify'
+    | '/a/$assetId'
     | '/dev/outbox'
     | '/dev/reset'
     | '/invite/$token'
     | '/p/$publicSlug'
     | '/o/$orgId/account'
+    | '/o/$orgId/assets'
     | '/o/$orgId/finance'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -272,11 +294,13 @@ export interface FileRouteTypes {
     | '/select-org'
     | '/verify'
     | '/o/$orgId'
+    | '/a/$assetId'
     | '/dev/outbox'
     | '/dev/reset'
     | '/invite/$token'
     | '/p/$publicSlug'
     | '/o/$orgId/account'
+    | '/o/$orgId/assets'
     | '/o/$orgId/finance'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -297,6 +321,7 @@ export interface RootRouteChildren {
   SelectOrgRoute: typeof SelectOrgRoute
   VerifyRoute: typeof VerifyRoute
   OOrgIdRouteRoute: typeof OOrgIdRouteRouteWithChildren
+  AAssetIdRoute: typeof AAssetIdRoute
   DevOutboxRoute: typeof DevOutboxRoute
   DevResetRoute: typeof DevResetRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -339,6 +364,13 @@ declare module '@tanstack/react-router' {
       path: '/verify'
       fullPath: '/verify'
       preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a/$assetId': {
+      id: '/a/$assetId'
+      path: '/a/$assetId'
+      fullPath: '/a/$assetId'
+      preLoaderRoute: typeof AAssetIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev/outbox': {
@@ -388,6 +420,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/o/$orgId/account'
       preLoaderRoute: typeof OOrgIdAccountRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
+    '/o/$orgId/assets': {
+      id: '/o/$orgId/assets'
+      path: '/assets'
+      fullPath: '/o/$orgId/assets'
+      preLoaderRoute: typeof OOrgIdAssetsRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
     '/o/$orgId/finance': {
@@ -465,6 +504,7 @@ declare module '@tanstack/react-router' {
 
 interface OOrgIdRouteRouteChildren {
   OOrgIdAccountRoute: typeof OOrgIdAccountRoute
+  OOrgIdAssetsRoute: typeof OOrgIdAssetsRoute
   OOrgIdFinanceRoute: typeof OOrgIdFinanceRoute
   OOrgIdGroupsRoute: typeof OOrgIdGroupsRoute
   OOrgIdImportRoute: typeof OOrgIdImportRoute
@@ -479,6 +519,7 @@ interface OOrgIdRouteRouteChildren {
 
 const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
   OOrgIdAccountRoute: OOrgIdAccountRoute,
+  OOrgIdAssetsRoute: OOrgIdAssetsRoute,
   OOrgIdFinanceRoute: OOrgIdFinanceRoute,
   OOrgIdGroupsRoute: OOrgIdGroupsRoute,
   OOrgIdImportRoute: OOrgIdImportRoute,
@@ -502,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   SelectOrgRoute: SelectOrgRoute,
   VerifyRoute: VerifyRoute,
   OOrgIdRouteRoute: OOrgIdRouteRouteWithChildren,
+  AAssetIdRoute: AAssetIdRoute,
   DevOutboxRoute: DevOutboxRoute,
   DevResetRoute: DevResetRoute,
   InviteTokenRoute: InviteTokenRoute,

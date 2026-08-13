@@ -32,6 +32,7 @@ export const ID_PREFIXES = {
   importJobRow: "row",
   auditEntry: "aud",
   qrCode: "qr",
+  asset: "ast",
   ledgerEntry: "led",
 } as const;
 

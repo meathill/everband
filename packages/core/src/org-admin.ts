@@ -11,6 +11,7 @@ export type OrgWriteResult = { ok: true } | { ok: false; error: string };
 export interface UpdateOrganizationCoreInput {
   name?: string;
   timezone?: string;
+  contactEmail?: string | null;
 }
 
 /**
@@ -25,7 +26,11 @@ export async function updateOrganizationCore(
   actorMembershipId: string,
 ): Promise<OrgWriteResult> {
   const rows = await db
-    .select({ name: schema.organizations.name, timezone: schema.organizations.timezone })
+    .select({
+      name: schema.organizations.name,
+      timezone: schema.organizations.timezone,
+      contactEmail: schema.organizations.contactEmail,
+    })
     .from(schema.organizations)
     .where(eq(schema.organizations.id, orgId))
     .limit(1);
@@ -37,8 +42,13 @@ export async function updateOrganizationCore(
   const next = {
     name: input.name ?? current.name,
     timezone: input.timezone ?? current.timezone,
+    contactEmail: input.contactEmail === undefined ? current.contactEmail : input.contactEmail,
   };
-  if (next.name === current.name && next.timezone === current.timezone) {
+  if (
+    next.name === current.name &&
+    next.timezone === current.timezone &&
+    next.contactEmail === current.contactEmail
+  ) {
     return { ok: true };
   }
 

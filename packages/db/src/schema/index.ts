@@ -1,3 +1,4 @@
+export * from "./assets.ts";
 export * from "./auth.ts";
 export * from "./events.ts";
 export * from "./finance.ts";

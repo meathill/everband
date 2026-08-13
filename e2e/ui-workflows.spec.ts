@@ -317,4 +317,11 @@ test("parent 仍看到有权限的活动卡片而不是 staff 管理表", async 
   // parent 在 Overview 也没有快捷创建入口
   await page.goto(`/o/${orgId}`);
   await expect(page.getByRole("button", { name: /Create on \d{4}/ })).toHaveCount(0);
+
+  // 器材管理仅限 Owner/Staff：Parent 看不到导航，直接访问也回到组织首页。
+  if ((page.viewportSize()?.width ?? 0) < 768) await openMobileSidebar(page);
+  await expect(page.getByRole("link", { name: "Equipment" })).toHaveCount(0);
+  await page.goto(`/o/${orgId}/assets`);
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/?(?:\\?|$)`));
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });

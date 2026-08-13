@@ -5,8 +5,14 @@
 
 import { DyqrApiError, DyqrClient } from "@dyqr/sdk";
 
+export type ShortLinkErrorKind = "not_found" | "quota" | "unauthorized" | "unavailable";
+
 export class ShortLinkError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly kind: ShortLinkErrorKind = "unavailable",
+    readonly status?: number,
+  ) {
     super(message);
   }
 }
@@ -24,6 +30,7 @@ export interface QrImageResult {
 export interface ShortLinkService {
   createLink(input: { targetUrl: string; title?: string }): Promise<CreatedShortLink>;
   updateTarget(alias: string, targetUrl: string): Promise<void>;
+  removeLink(alias: string): Promise<void>;
   getQrImage(alias: string, format: "svg" | "png"): Promise<QrImageResult>;
   // 扫描统计（轮询同步，非强一致；不可用时返回 null）
   getScanCount(alias: string): Promise<number | null>;
@@ -39,11 +46,18 @@ export class DyqrShortLinkService implements ShortLinkService {
   }
 
   private wrap(cause: unknown): ShortLinkError {
-    const message =
-      cause instanceof DyqrApiError
-        ? `dyqr API error: ${cause.message}`
-        : "dyqr.me is temporarily unavailable";
-    return new ShortLinkError(message);
+    if (!(cause instanceof DyqrApiError)) {
+      return new ShortLinkError("dyqr.me is temporarily unavailable");
+    }
+    const kind: ShortLinkErrorKind =
+      cause.status === 404
+        ? "not_found"
+        : cause.status === 402
+          ? "quota"
+          : cause.status === 401 || cause.status === 403
+            ? "unauthorized"
+            : "unavailable";
+    return new ShortLinkError(`dyqr API error: ${cause.message}`, kind, cause.status);
   }
 
   async createLink(input: { targetUrl: string; title?: string }): Promise<CreatedShortLink> {
@@ -66,6 +80,14 @@ export class DyqrShortLinkService implements ShortLinkService {
     }
   }
 
+  async removeLink(alias: string): Promise<void> {
+    try {
+      await this.client.links.remove(alias);
+    } catch (cause) {
+      throw this.wrap(cause);
+    }
+  }
+
   async getQrImage(alias: string, format: "svg" | "png"): Promise<QrImageResult> {
     try {
       const image = await this.client.links.qr(alias, { format });
@@ -80,7 +102,10 @@ export class DyqrShortLinkService implements ShortLinkService {
       const result = await this.client.links.get(alias);
       const link = result.link as { clicks?: number; clickCount?: number };
       return link.clicks ?? link.clickCount ?? null;
-    } catch {
+    } catch (cause) {
+      const wrapped = this.wrap(cause);
+      // 只有明确的 404 才能判定已打印标签损坏；网络/限流只做降级。
+      if (wrapped.kind === "not_found") throw wrapped;
       return null;
     }
   }
@@ -100,6 +125,11 @@ export class MockShortLinkService implements ShortLinkService {
 
   updateTarget(alias: string, targetUrl: string): Promise<void> {
     this.links.set(alias, targetUrl);
+    return Promise.resolve();
+  }
+
+  removeLink(alias: string): Promise<void> {
+    this.links.delete(alias);
     return Promise.resolve();
   }
 

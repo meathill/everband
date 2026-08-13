@@ -6,7 +6,8 @@
       接入 `env.EMAIL.send()`（接口已留好：packages/core/src/email-sender.ts）、送达率试发
 - [x] dyqr 平台 token（2026-08-09 已完成）：device flow 获取并入 Secret，
       `DYQR_MODE=dyqr` 已切换、线上验证真实短链跳转
-      - [ ] 仍待核查：平台配额与单组织软上限数值（当前代码内 MAX_QR_PER_ORG=5）
+      - [x] 2026-08-13 移除 `MAX_QR_PER_ORG` 业务限制；套餐与频率限制以 dyqr
+            实际响应为准，不在 Everband 固化数量
 - [x] 生产 D1/R2/Queues 资源创建与 database_id 配置（2026-08-08 已完成）
 - [x] Turnstile 真实 site key/secret（2026-08-09 已完成，secret 走 Worker Secret）
 - [ ] 隐私声明、数据删除/导出、澳洲未成年人数据法律审查
@@ -31,4 +32,5 @@
 ## 近期扩展（PRD §4.3，设计已定稿）
 
 - [ ] 成员招募二维码 + RecruitmentSubmission 审核流（§6.7）
-- [ ] 器材只读信息卡 + 二维码（§6.8）
+- [x] 器材只读信息卡 + 二维码（§6.8，2026-08-13 完成）：Staff CRUD、持有人、
+      退役/恢复、dyqr 失败重试/下载/统计、公开脱敏卡片与桌面/移动端 E2E

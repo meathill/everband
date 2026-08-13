@@ -71,6 +71,13 @@
       "when": 1786450952756,
       "tag": "0009_finance",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786554468318,
+      "tag": "0010_assets",
+      "breakpoints": true
     }
   ]
 }

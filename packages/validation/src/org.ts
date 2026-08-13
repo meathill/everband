@@ -52,12 +52,17 @@ export const orgIdSchema = z.object({
   orgId: z.string().min(1),
 });
 
-// 只改传了的字段。type / contactEmail 暂不开放修改：前者决定不了任何行为，
-// 后者还没有使用方，等有真实需求再加。
+const optionalContactEmailSchema = z
+  .union([emailSchema, z.literal("")])
+  .transform((value) => value || null)
+  .optional();
+
+// 只改传了的字段。type 暂不开放修改；contactEmail 是器材公开卡的联系入口。
 export const updateOrganizationSchema = z.object({
   orgId: z.string().min(1),
   name: z.string().trim().min(2).max(80).optional(),
   timezone: timezoneSchema.optional(),
+  contactEmail: optionalContactEmailSchema,
 });
 
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;

@@ -87,6 +87,7 @@ export const getOrgContext = createServerFn({ method: "GET" })
         type: schema.organizations.type,
         timezone: schema.organizations.timezone,
         currencyCode: schema.organizations.currencyCode,
+        contactEmail: schema.organizations.contactEmail,
       })
       .from(schema.organizations)
       .where(eq(schema.organizations.id, ctx.organizationId))
@@ -107,7 +108,7 @@ export const updateOrganization = createServerFn({ method: "POST" })
     return updateOrganizationCore(
       db,
       data.orgId,
-      { name: data.name, timezone: data.timezone },
+      { name: data.name, timezone: data.timezone, contactEmail: data.contactEmail },
       ctx.membershipId,
     );
   });

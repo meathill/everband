@@ -32,6 +32,7 @@ import {
   PlusIcon,
   SignOutIcon,
   SquaresFourIcon,
+  ToolboxIcon,
   UserCircleIcon,
   UsersIcon,
   WalletIcon,
@@ -48,6 +49,7 @@ type OrgNavPath =
   | "/o/$orgId/rehearsals"
   | "/o/$orgId/notifications"
   | "/o/$orgId/members"
+  | "/o/$orgId/assets"
   | "/o/$orgId/finance"
   | "/o/$orgId/settings";
 
@@ -64,6 +66,7 @@ const MAIN_ITEMS: NavItem[] = [
   { to: "/o/$orgId/events", label: "Events", icon: CalendarBlankIcon },
   { to: "/o/$orgId/rehearsals", label: "Rehearsals", icon: MusicNotesIcon },
   { to: "/o/$orgId/members", label: "Members", icon: UsersIcon },
+  { to: "/o/$orgId/assets", label: "Equipment", icon: ToolboxIcon },
   { to: "/o/$orgId/finance", label: "Finance", icon: WalletIcon },
 ];
 

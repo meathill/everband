@@ -2,13 +2,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { MockClient, DyqrApiErrorMock, clients } = vi.hoisted(() => {
   const clients: MockClient[] = [];
-  class DyqrApiErrorMock extends Error {}
+  class DyqrApiErrorMock extends Error {
+    constructor(
+      message: string,
+      readonly status = 0,
+    ) {
+      super(message);
+    }
+  }
   class MockClient {
     readonly links: {
       create: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
       get: ReturnType<typeof vi.fn>;
       qr: ReturnType<typeof vi.fn>;
+      remove: ReturnType<typeof vi.fn>;
     };
     constructor(readonly options: { baseUrl: string; token: string }) {
       this.links = {
@@ -16,6 +24,7 @@ const { MockClient, DyqrApiErrorMock, clients } = vi.hoisted(() => {
         update: vi.fn(),
         get: vi.fn(),
         qr: vi.fn(),
+        remove: vi.fn(),
       };
       clients.push(this);
     }
@@ -97,6 +106,12 @@ describe("MockShortLinkService", () => {
     const service = new MockShortLinkService();
     await expect(service.getScanCount()).resolves.toBe(0);
   });
+
+  it("removeLink 删除链接", async () => {
+    const service = new MockShortLinkService();
+    const { alias } = await service.createLink({ targetUrl: "https://example.com/a" });
+    await expect(service.removeLink(alias)).resolves.toBeUndefined();
+  });
 });
 
 describe("DyqrShortLinkService", () => {
@@ -140,6 +155,20 @@ describe("DyqrShortLinkService", () => {
       .catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(ShortLinkError);
     expect((error as Error).message).toBe("dyqr.me is temporarily unavailable");
+  });
+
+  it("保留可安全判断的 API 错误类别", async () => {
+    const service = createService();
+    lastClient().links.get.mockRejectedValue(new DyqrApiErrorMock("missing", 404));
+    const error = await service.getScanCount("gone").catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ShortLinkError);
+    expect(error).toMatchObject({ kind: "not_found", status: 404 });
+
+    lastClient().links.create.mockRejectedValue(new DyqrApiErrorMock("plan limit", 402));
+    const quota = await service
+      .createLink({ targetUrl: "https://example.com/a" })
+      .catch((cause: unknown) => cause);
+    expect(quota).toMatchObject({ kind: "quota", status: 402 });
   });
 
   it("getQrImage 透传 contentType 与 bytes", async () => {

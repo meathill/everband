@@ -1,3 +1,4 @@
+export * from "./asset.ts";
 export * from "./auth.ts";
 export * from "./event-status.ts";
 export * from "./ids.ts";

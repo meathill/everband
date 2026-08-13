@@ -51,7 +51,7 @@ export function OrgLayoutSkeleton(): React.ReactElement {
           </div>
         </div>
         <div className="flex flex-col gap-2 px-2">
-          {["overview", "events", "rehearsals", "members", "finance"].map((key) => (
+          {["overview", "events", "rehearsals", "members", "equipment", "finance"].map((key) => (
             <Skeleton key={key} className="h-8 w-full rounded-md" />
           ))}
         </div>

@@ -140,6 +140,7 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
   // 组织切换器保持在侧栏顶部；日常运营与底部工具都有稳定入口
   await expect(page.getByRole("button", { name: "Sidebar Test Band" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Equipment" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Finance" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Notifications" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
