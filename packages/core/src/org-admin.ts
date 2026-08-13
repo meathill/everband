@@ -3,6 +3,7 @@
 
 import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
+import { canGrantStaffAccess, canTransferOwnership } from "@everband/domain";
 import { and, count, eq } from "drizzle-orm";
 import { recordAudit } from "./audit.ts";
 
@@ -163,6 +164,130 @@ export async function deleteTermCore(
     objectType: "term",
     objectId: termId,
     summary: { name: current.name },
+  });
+  return { ok: true };
+}
+
+// ---- staff 授权位与 owner 转移（PRD §3.2，staff 管理只限 owner）----
+// 权限本身由 server 层 requireMembership(OWNER_ROLES) 保证，这里只做数据级校验。
+
+export interface MembershipRow {
+  id: string;
+  role: "owner" | "staff" | "parent";
+  status: "invited" | "active" | "suspended" | "removed";
+  staffAccess: boolean;
+  invitedEmail: string;
+}
+
+export async function getMembershipRow(
+  db: Database,
+  orgId: string,
+  membershipId: string,
+): Promise<MembershipRow | null> {
+  const rows = await db
+    .select({
+      id: schema.memberships.id,
+      role: schema.memberships.role,
+      status: schema.memberships.status,
+      staffAccess: schema.memberships.staffAccess,
+      invitedEmail: schema.memberships.invitedEmail,
+    })
+    .from(schema.memberships)
+    .where(
+      and(eq(schema.memberships.id, membershipId), eq(schema.memberships.organizationId, orgId)),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * 授予/撤销 staff 授权位（parent 身份上叠加的运营权限）。
+ *
+ * 规则：目标必须是 active 的 parent 身份（role = staff 的成员权限来自角色本身，
+ * owner 是最高权限，两者都不能被这个操作改动）；grant/revoke 幂等，
+ * 状态已满足时直接返回成功。每次变更写审计。
+ */
+export async function setStaffAccessCore(
+  db: Database,
+  orgId: string,
+  targetMembershipId: string,
+  staffAccess: boolean,
+  actorMembershipId: string,
+): Promise<OrgWriteResult> {
+  const target = await getMembershipRow(db, orgId, targetMembershipId);
+  if (!target) {
+    return { ok: false, error: "Membership not found." };
+  }
+  if (target.status !== "active") {
+    return { ok: false, error: "Only active members can be granted or revoked staff access." };
+  }
+  if (!canGrantStaffAccess(target.role)) {
+    return { ok: false, error: "Staff access can only be set on parent members." };
+  }
+  if (target.staffAccess === staffAccess) {
+    return { ok: true };
+  }
+
+  await db
+    .update(schema.memberships)
+    .set({ staffAccess })
+    .where(eq(schema.memberships.id, targetMembershipId));
+  await recordAudit(db, {
+    organizationId: orgId,
+    actorMembershipId,
+    action: staffAccess ? "membership.staff_granted" : "membership.staff_revoked",
+    objectType: "membership",
+    objectId: targetMembershipId,
+    summary: { email: target.invitedEmail, staffAccess },
+  });
+  return { ok: true };
+}
+
+/**
+ * 转移 owner 权限。
+ *
+ * 规则（PRD §3.2）：目标必须是 active 且具备 staff 权限（role = staff 或
+ * staffAccess = true）的成员；转移后目标成为新 owner，原 owner 自动变为 staff
+ * （staffAccess 保持原值——owner 的授权位本就无意义）。组织始终只保留一个 owner。
+ */
+export async function transferOwnershipCore(
+  db: Database,
+  orgId: string,
+  targetMembershipId: string,
+  actorMembershipId: string,
+): Promise<OrgWriteResult> {
+  const target = await getMembershipRow(db, orgId, targetMembershipId);
+  if (!target) {
+    return { ok: false, error: "Membership not found." };
+  }
+  if (!canTransferOwnership(target)) {
+    return {
+      ok: false,
+      error: "Ownership can only be transferred to an active staff member.",
+    };
+  }
+
+  await db.batch([
+    db
+      .update(schema.memberships)
+      .set({ role: "owner" })
+      .where(eq(schema.memberships.id, targetMembershipId)),
+    db
+      .update(schema.memberships)
+      .set({ role: "staff" })
+      .where(eq(schema.memberships.id, actorMembershipId)),
+  ]);
+  await recordAudit(db, {
+    organizationId: orgId,
+    actorMembershipId,
+    action: "membership.owner_transferred",
+    objectType: "membership",
+    objectId: targetMembershipId,
+    summary: {
+      fromMembershipId: actorMembershipId,
+      toMembershipId: targetMembershipId,
+      toEmail: target.invitedEmail,
+    },
   });
   return { ok: true };
 }

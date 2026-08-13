@@ -6,7 +6,7 @@ import {
   upsertSubmission,
 } from "@everband/core";
 import { schema } from "@everband/db";
-import { generateId, ID_PREFIXES } from "@everband/domain";
+import { generateId, hasStaffAccess, ID_PREFIXES } from "@everband/domain";
 import {
   createEventFormSchema,
   eventIdSchema,
@@ -136,7 +136,7 @@ export const submitEventForm = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Form not found." };
     }
     // 只有活动受众中的 parent 可以提交（staff 也可提交便于测试自己的表单）
-    const isStaff = ctx.role === "owner" || ctx.role === "staff";
+    const isStaff = hasStaffAccess(ctx.role, ctx.staffAccess);
     if (!isStaff) {
       const allowed = await canParentAccessEvent(db, data.orgId, ctx.user.id, form.eventId);
       if (!allowed) {

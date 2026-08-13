@@ -124,6 +124,7 @@ export async function activateInvitedMembership(
 export interface ActiveMembership {
   id: string;
   role: "owner" | "staff" | "parent";
+  staffAccess: boolean;
 }
 
 // 租户隔离的核心查询：org + user + status=active 三条件缺一不可
@@ -133,7 +134,11 @@ export async function findActiveMembership(
   userId: string,
 ): Promise<ActiveMembership | null> {
   const rows = await db
-    .select({ id: schema.memberships.id, role: schema.memberships.role })
+    .select({
+      id: schema.memberships.id,
+      role: schema.memberships.role,
+      staffAccess: schema.memberships.staffAccess,
+    })
     .from(schema.memberships)
     .where(
       and(

@@ -1,4 +1,5 @@
 import type { StaffOverviewData } from "@everband/core";
+import { hasStaffAccess } from "@everband/domain";
 import { Card, CardPanel } from "@everband/ui/components/card";
 import { overviewSearchSchema } from "@everband/validation";
 import { createFileRoute, getRouteApi, Link, redirect } from "@tanstack/react-router";
@@ -27,10 +28,10 @@ export const Route = createFileRoute("/o/$orgId/")({
 });
 
 function OrgOverview() {
-  const { org, role } = orgRoute.useLoaderData();
+  const { org, role, staffAccess } = orgRoute.useLoaderData();
   const { month, overview, terms } = Route.useLoaderData();
   const navigate = Route.useNavigate();
-  const isStaff = role === "owner" || role === "staff";
+  const isStaff = hasStaffAccess(role, staffAccess);
   const staffOverview = isStaff ? (overview as StaffOverviewData) : null;
 
   return (

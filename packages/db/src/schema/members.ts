@@ -21,10 +21,10 @@ export const households = sqliteTable(
       .references(() => organizations.id),
     name: text("name").notNull(),
     createdAt: integer("created_at").notNull(),
+    deletedAt: integer("deleted_at"),
   },
   (table) => [index("idx_households_org").on(table.organizationId)],
 );
-
 export const contacts = sqliteTable(
   "contacts",
   {
@@ -42,6 +42,7 @@ export const contacts = sqliteTable(
     // parent 接受邀请后关联登录身份
     userId: text("user_id").references(() => users.id),
     createdAt: integer("created_at").notNull(),
+    deletedAt: integer("deleted_at"),
   },
   (table) => [
     uniqueIndex("uq_contacts_org_email").on(table.organizationId, table.email),
@@ -86,6 +87,7 @@ export const students = sqliteTable(
     statusChangedAt: integer("status_changed_at").notNull(),
     statusChangedByMembershipId: text("status_changed_by_membership_id"),
     createdAt: integer("created_at").notNull(),
+    deletedAt: integer("deleted_at"),
   },
   (table) => [
     index("idx_students_org_status").on(table.organizationId, table.status),

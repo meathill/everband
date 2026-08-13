@@ -11,6 +11,7 @@ import { schema } from "@everband/db";
 import {
   canTransitionEvent,
   generateId,
+  hasStaffAccess,
   ID_PREFIXES,
   localDateTimeToUtcMs,
   upcomingWindow,
@@ -170,7 +171,7 @@ export const getEventsPageData = createServerFn({ method: "GET" })
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
 
-    if (ctx.role === "owner" || ctx.role === "staff") {
+    if (hasStaffAccess(ctx.role, ctx.staffAccess)) {
       const list = await listOrgEventsCore(db, data.orgId, data, Date.now());
       return { mode: "staff" as const, list };
     }
@@ -200,7 +201,7 @@ export const getEventDetail = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
-    const isStaff = ctx.role === "owner" || ctx.role === "staff";
+    const isStaff = hasStaffAccess(ctx.role, ctx.staffAccess);
 
     if (!isStaff) {
       const allowed = await canParentAccessEvent(db, data.orgId, ctx.user.id, data.eventId);
@@ -254,5 +255,6 @@ export const getEventDetail = createServerFn({ method: "GET" })
       updates,
       attachments: attachmentRows,
       role: ctx.role,
+      staffAccess: ctx.staffAccess,
     };
   });

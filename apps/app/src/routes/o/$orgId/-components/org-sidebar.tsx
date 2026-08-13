@@ -1,3 +1,4 @@
+import { hasStaffAccess, type MembershipRole } from "@everband/domain";
 import {
   Menu,
   MenuItem,
@@ -81,7 +82,8 @@ export type OrgSummary = {
 
 export type OrgSidebarProps = {
   org: { id: string; name: string; type: string };
-  role: string;
+  role: MembershipRole;
+  staffAccess: boolean;
   email: string;
   orgs: OrgSummary[];
   unreadCount: number;
@@ -100,11 +102,12 @@ function useDismissOnNavigate(): () => void {
 export function OrgSidebar({
   org,
   role,
+  staffAccess,
   email,
   orgs,
   unreadCount,
 }: OrgSidebarProps): React.ReactElement {
-  const isStaff = role === "owner" || role === "staff";
+  const isStaff = hasStaffAccess(role, staffAccess);
 
   return (
     <Sidebar collapsible="icon">

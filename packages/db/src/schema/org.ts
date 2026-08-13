@@ -18,6 +18,8 @@ export const organizations = sqliteTable("organizations", {
   publicSummary: text("public_summary"),
   publicLogoAttachmentId: text("public_logo_attachment_id"),
   createdAt: integer("created_at").notNull(),
+  // 软删除（PRD §3.4）：业务实体不物理删除，统一用 deletedAt 标记
+  deletedAt: integer("deleted_at"),
 });
 
 export const memberships = sqliteTable(
@@ -33,6 +35,8 @@ export const memberships = sqliteTable(
     status: text("status", {
       enum: ["invited", "active", "suspended", "removed"],
     }).notNull(),
+    // staff 授权位：叠加在 parent 身份上的运营权限（PRD §3.2）；owner/staff 角色不需要
+    staffAccess: integer("staff_access", { mode: "boolean" }).notNull().default(false),
     invitedEmail: text("invited_email").notNull(),
     invitedByMembershipId: text("invited_by_membership_id"),
     acceptedAt: integer("accepted_at"),

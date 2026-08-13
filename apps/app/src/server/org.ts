@@ -1,10 +1,17 @@
-import { recordAudit, updateOrganizationCore } from "@everband/core";
+import {
+  recordAudit,
+  setStaffAccessCore,
+  transferOwnershipCore,
+  updateOrganizationCore,
+} from "@everband/core";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import {
   createOrganizationSchema,
   inviteStaffSchema,
   orgIdSchema,
+  setStaffAccessSchema,
+  transferOwnershipSchema,
   updateOrganizationSchema,
 } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
@@ -95,7 +102,13 @@ export const getOrgContext = createServerFn({ method: "GET" })
     if (!org) {
       throw new Error("Organization not found");
     }
-    return { org, role: ctx.role, membershipId: ctx.membershipId, email: ctx.user.email };
+    return {
+      org,
+      role: ctx.role,
+      staffAccess: ctx.staffAccess,
+      membershipId: ctx.membershipId,
+      email: ctx.user.email,
+    };
   });
 
 // 组织设置：改名与改时区，owner 专属
@@ -122,6 +135,7 @@ export const listOrgMemberships = createServerFn({ method: "GET" })
         id: schema.memberships.id,
         role: schema.memberships.role,
         status: schema.memberships.status,
+        staffAccess: schema.memberships.staffAccess,
         invitedEmail: schema.memberships.invitedEmail,
         acceptedAt: schema.memberships.acceptedAt,
         createdAt: schema.memberships.createdAt,
@@ -130,10 +144,35 @@ export const listOrgMemberships = createServerFn({ method: "GET" })
       .where(eq(schema.memberships.organizationId, data.orgId));
   });
 
+// 邀请 staff 只限 owner（PRD §3.2，staff 管理是 owner 专属）
 export const inviteStaff = createServerFn({ method: "POST" })
   .validator(inviteStaffSchema)
   .handler(async ({ data }) => {
     const db = getDb();
-    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const ctx = await requireMembership(db, data.orgId, OWNER_ROLES);
     return createInvite(db, ctx, data.email, "staff", getRequestUrl().origin);
+  });
+
+// 授予/撤销 parent 的 staff 授权位，owner 专属
+export const setStaffAccess = createServerFn({ method: "POST" })
+  .validator(setStaffAccessSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, OWNER_ROLES);
+    return setStaffAccessCore(
+      db,
+      data.orgId,
+      data.membershipId,
+      data.staffAccess,
+      ctx.membershipId,
+    );
+  });
+
+// 转移 owner 权限，owner 专属；原 owner 自动变 staff
+export const transferOwnership = createServerFn({ method: "POST" })
+  .validator(transferOwnershipSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, OWNER_ROLES);
+    return transferOwnershipCore(db, data.orgId, data.membershipId, ctx.membershipId);
   });

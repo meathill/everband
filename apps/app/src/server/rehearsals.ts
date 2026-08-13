@@ -12,7 +12,7 @@ import {
   recordAudit,
 } from "@everband/core";
 import { schema } from "@everband/db";
-import { generateId, ID_PREFIXES } from "@everband/domain";
+import { generateId, hasStaffAccess, ID_PREFIXES } from "@everband/domain";
 import {
   cancelOccurrenceSchema,
   cancelSwapRequestSchema,
@@ -73,7 +73,7 @@ export const getRehearsalOverview = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const db = getDb();
     const ctx = await requireMembership(db, data.orgId);
-    const isStaff = ctx.role === "owner" || ctx.role === "staff";
+    const isStaff = hasStaffAccess(ctx.role, ctx.staffAccess);
     const now = Date.now();
 
     const occurrences = await db
@@ -162,6 +162,7 @@ export const getRehearsalOverview = createServerFn({ method: "GET" })
 
     return {
       role: ctx.role,
+      staffAccess: ctx.staffAccess,
       occurrences,
       assignments,
       myHouseholds,

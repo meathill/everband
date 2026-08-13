@@ -1,3 +1,4 @@
+import { hasStaffAccess } from "@everband/domain";
 import { createFileRoute, getRouteApi, redirect } from "@tanstack/react-router";
 import type React from "react";
 import { z } from "zod";
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/o/$orgId/rehearsals")({
   loader: async ({ params }): Promise<Loaded> => {
     try {
       const overview = await getRehearsalOverview({ data: { orgId: params.orgId } });
-      const isStaff = overview.role === "owner" || overview.role === "staff";
+      const isStaff = hasStaffAccess(overview.role, overview.staffAccess);
       if (!isStaff) {
         return { ...overview, terms: [], series: [], isStaff };
       }

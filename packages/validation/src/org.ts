@@ -67,8 +67,23 @@ export const inviteStaffSchema = z.object({
   email: emailSchema,
 });
 
+// staff 授权位（PRD §3.2）：owner 在 parent 身份上授予/撤销 staff 运营权限
+export const setStaffAccessSchema = z.object({
+  orgId: z.string().min(1),
+  membershipId: z.string().min(1),
+  staffAccess: z.boolean(),
+});
+
+// owner 转移（PRD §3.2）：目标必须是 active 且具备 staff 权限的成员
+export const transferOwnershipSchema = z.object({
+  orgId: z.string().min(1),
+  membershipId: z.string().min(1),
+});
+
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type InviteStaffInput = z.infer<typeof inviteStaffSchema>;
+export type SetStaffAccessInput = z.infer<typeof setStaffAccessSchema>;
+export type TransferOwnershipInput = z.infer<typeof transferOwnershipSchema>;
 
 // 公开主页（PRD §5.1 组织公开主页字段）
 export const publicSlugSchema = z

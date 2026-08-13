@@ -157,7 +157,7 @@ function SettingsPanel({
   if (section === "general")
     return <OrganizationSettingsForm isOwner={role === "owner"} org={org} />;
   if (section === "staff-access")
-    return <StaffSettingsSection members={data.members} orgId={orgId} />;
+    return <StaffSettingsSection isOwner={role === "owner"} members={data.members} orgId={orgId} />;
   if (section === "terms") return <TermsSettingsSection orgId={orgId} terms={data.terms} />;
   if (section === "public-profile")
     return <PublicProfileSection data={data.publicProfile} orgId={orgId} timezone={org.timezone} />;

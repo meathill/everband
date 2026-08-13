@@ -49,7 +49,7 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 
 | 角色 | 说明 | 首版核心权限 |
 | --- | --- | --- |
-| Organization Owner | 创建组织的成人，通常是委员会负责人 | 管理组织设置、staff、成员、分组、活动、排练、通知和审计 |
+| Organization Owner | 创建组织的成人，通常是委员会负责人 | 管理组织设置、staff、成员、分组、活动、排练、通知和审计；可邀请/撤销 staff、transfer owner |
 | Staff | 属于委员会、负责运营组织的成人 | 管理成员、分组、活动、排练、表单和通知；不能删除审计记录 |
 | Parent | 学生的家长或照护者 | 查看自己相关的活动和排练，下载授权附件，提交表单，查看和申请换班 |
 | Student | 参加组织的未成年人 | 首版不创建独立账号，由 parent 管理其资料 |
@@ -59,8 +59,12 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 - 组织创建者自动成为该组织的 `Organization Owner`。
 - 一个成人账号可以加入多个组织；每个组织中的权限由该组织的 membership 决定。
 - 一个组织可以有多个 staff。
+- **Staff 权限可以叠加在 Parent 身份上**：`membership.role` 保存基础身份（`owner | staff | parent`），`staffAccess` 授权位让 parent 获得 staff 运营权限；移除授权位后恢复为普通 parent 可见性。Owner 隐式拥有 staff 权限。
 - Parent 只能访问其 membership 所属组织，以及与其家庭/学生关系相关的内容。
-- Staff 可以管理本组织的运营数据，但不能跨组织访问数据。
+- Staff（含被授予 `staffAccess` 的 parent）可以管理本组织的运营数据，但不能跨组织访问数据。
+- **Staff 管理只限 Owner**：邀请 staff、授予/撤销 `staffAccess`、transfer owner、移除成员、删除组织均只有 Owner 可执行；Staff 可以邀请 parent、管理运营数据。
+- **Owner 转移（transfer）**：目标必须是本组织 active 且具备 staff 权限（`role = staff` 或 `staffAccess = true`）的成员；转移后原 Owner 自动变为 Staff（保留 staff 权限），目标变为新 Owner。组织不能没有 Owner：唯一 Owner 离开组织必须先 transfer。
+- 邀请 parent 时只邀请学生的 parent/guardian 联系人，不邀请 emergency 联系人；同一联系人因多个学生只产生一次邀请。
 - 所有服务端查询必须按 `organizationId` 和当前 membership 权限进行授权，不能只依赖前端路由隐藏。
 - 学生资料、家长联系方式和活动信息不公开展示；首版不支持公开活动页。
 - 组织可选择开启一个只读的组织公开主页（名称、简介、logo、加入入口），由 staff 维护展示字段；这不等同于公开活动页，活动详情、排练、helper roster 依然不对外公开。
@@ -69,9 +73,17 @@ Everband 是一个面向小型社区组织的多组织 SaaS。它首先解决由
 
 - 首版使用邮箱 magic link/OTP，无密码登录，不支持 Google/Microsoft 社交登录。
 - Organization Owner 通过产品入口创建组织。
-- Owner/Staff 通过邀请加入 staff 或 parent。
+- Owner 邀请 staff；Owner/Staff 邀请 parent。
+- 邀请发出时已记录 `contact.email`，用户必须使用**同一个邮箱**注册/登录才能通过邀请链接自动激活 membership（`invited → active`）；换邮箱无法匹配既有邀请。
 - CSV 导入可以先创建待邀请的学生、家庭和联系人记录；真正访问应用仍需完成邮箱邀请。
 - 登录链接、邀请链接和 OTP 必须有过期时间、一次性使用约束和请求频率限制。
+
+### 3.4 删除与软删除边界
+
+- 业务实体（organization / household / contact / student）统一使用 `deletedAt` 软删除标记，不做物理删除。
+- Membership 的生命周期用状态机表达（`invited / active / suspended / removed`），不新增 `deletedAt`。
+- 审计记录（audit_entries）和附件永不删除。
+- Owner 不默认是 parent：创建组织时不为 Owner 自动建立 household/contact；Owner 要关联自己的孩子时，走正常流程创建 household + contact（可填自己或他人），联系人邮箱匹配到 Owner 账号后自然获得 parent 可见性。
 
 ## 4. 产品边界
 
@@ -564,8 +576,8 @@ QrCode
 
 必须实现的状态约束：
 
-- Student：`interested | active | withdrawn | archived`。
-- Membership：`invited | active | suspended | removed`。
+- Membership：`invited | active | suspended | removed`；`role: owner | staff | parent` 为基础身份，`staffAccess` 为叠加授权位；仅 Owner 可授予/撤销 `staffAccess`、transfer owner（目标须为 active 且具备 staff 权限，转移后原 Owner 变 Staff）。
+- Student：`interested | active | withdrawn | archived`；业务实体软删除用 `deletedAt`。
 - Event：`draft | published | cancelled | completed`。
 - EventUpdate：`draft | published`。
 - EventForm：`open | closed`。

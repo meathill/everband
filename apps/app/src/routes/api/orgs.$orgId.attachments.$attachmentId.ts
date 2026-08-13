@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { canParentAccessEvent } from "@everband/core";
 import { schema } from "@everband/db";
+import { hasStaffAccess } from "@everband/domain";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "~/server/context.ts";
@@ -24,7 +25,10 @@ export const Route = createFileRoute("/api/orgs/$orgId/attachments/$attachmentId
         }
 
         const memberships = await db
-          .select({ role: schema.memberships.role })
+          .select({
+            role: schema.memberships.role,
+            staffAccess: schema.memberships.staffAccess,
+          })
           .from(schema.memberships)
           .where(
             and(
@@ -54,7 +58,7 @@ export const Route = createFileRoute("/api/orgs/$orgId/attachments/$attachmentId
           return NOT_FOUND();
         }
 
-        const isStaff = membership.role === "owner" || membership.role === "staff";
+        const isStaff = hasStaffAccess(membership.role, membership.staffAccess);
         if (!isStaff) {
           // parent：只有活动受众内的附件可下载
           if (attachment.ownerType !== "event" && attachment.ownerType !== "event_update") {

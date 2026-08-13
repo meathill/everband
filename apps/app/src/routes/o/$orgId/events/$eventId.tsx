@@ -1,5 +1,4 @@
-import type { EventStatus } from "@everband/domain";
-import { formatOrgDateTime } from "@everband/domain";
+import { type EventStatus, formatOrgDateTime, hasStaffAccess } from "@everband/domain";
 import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
 import { toastManager } from "@everband/ui/components/toast";
@@ -26,7 +25,7 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
     try {
       const input = { data: { eventId: params.eventId, orgId: params.orgId } };
       const [detail, formData] = await Promise.all([getEventDetail(input), getEventForm(input)]);
-      const isStaff = detail.role === "owner" || detail.role === "staff";
+      const isStaff = hasStaffAccess(detail.role, detail.staffAccess);
       const results =
         isStaff && formData.form
           ? await listFormResults({ data: { formId: formData.form.id, orgId: params.orgId } })
@@ -43,10 +42,11 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
 const orgRoute = getRouteApi("/o/$orgId");
 
 function EventDetailPage(): React.ReactElement {
-  const { event, updates, attachments, role, formData, results } = Route.useLoaderData();
+  const { event, updates, attachments, role, staffAccess, formData, results } =
+    Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
-  const isStaff = role === "owner" || role === "staff";
+  const isStaff = hasStaffAccess(role, staffAccess);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (

@@ -1,6 +1,6 @@
 import { findActiveMembership } from "@everband/core";
 import type { Database } from "@everband/db";
-import type { MembershipRole } from "@everband/domain";
+import { hasStaffAccess, type MembershipRole } from "@everband/domain";
 import { getSessionUser, type SessionUser } from "./session.ts";
 
 // 鉴权链（PRD §8.4）：session → membership(active) → role。
@@ -26,8 +26,10 @@ export interface OrgContext {
   organizationId: string;
   membershipId: string;
   role: MembershipRole;
+  staffAccess: boolean;
 }
 
+// roles 传 STAFF_ROLES 时，被授予 staffAccess 的 parent 同样放行（PRD §3.2）
 export async function requireMembership(
   db: Database,
   orgId: string,
@@ -38,7 +40,9 @@ export async function requireMembership(
   if (!membership) {
     throw new AuthError("forbidden");
   }
-  if (roles && !roles.includes(membership.role)) {
+  const staffAllowed =
+    roles?.includes("staff") && hasStaffAccess(membership.role, membership.staffAccess);
+  if (roles && !(roles.includes(membership.role) || staffAllowed)) {
     throw new AuthError("forbidden");
   }
   return {
@@ -46,9 +50,10 @@ export async function requireMembership(
     organizationId: orgId,
     membershipId: membership.id,
     role: membership.role,
+    staffAccess: membership.staffAccess,
   };
 }
 
 export const STAFF_ROLES = ["owner", "staff"] as const;
-// 组织级设置（改名、改时区）只有 owner 能动，staff 不行
+// 组织级设置（改名、改时区）与 staff 管理（邀请 staff、授权位、transfer）只有 owner 能动
 export const OWNER_ROLES = ["owner"] as const;

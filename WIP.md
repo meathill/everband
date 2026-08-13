@@ -36,6 +36,12 @@
   feedback.meathill.com/api/feedbacks，appId=everband-landing）与 /about 页面；
   删除 api.contact.ts 与 Turnstile 依赖，header/footer 导航与 sitemap/SEO 同步更新，
   e2e 新增表单提交 mock 断言；已部署生产并冒烟验证
+- 组织角色模型定稿（2026-08-13，进行中）：确认 9 条组织方式（创建即 owner、邀请家长/staff、
+  邀请链接自动入 band、staff 可叠加 parent、owner transfer、全量审计、软删除）。
+  落地：memberships 加 staff_access 授权位、四张业务表加 deleted_at 迁移、
+  core 加 setStaffAccessCore/transferOwnershipCore + 审计、
+  server 接口（inviteStaff 限 owner）、StaffSettingsSection 行操作（set/revoke/transfer）、
+  guards 支持 staffAccess、单测覆盖角色转换与 transfer 规则
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
 （普通单测 66 + Worker 集成测试 100 + e2e 19 场景、双视口 52 例）。

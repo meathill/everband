@@ -32,11 +32,18 @@ export const Route = createFileRoute("/o/$orgId")({
 });
 
 function OrgLayout() {
-  const { org, role, email, orgs, sidebarOpen, unreadCount } = Route.useLoaderData();
+  const { org, role, staffAccess, email, orgs, sidebarOpen, unreadCount } = Route.useLoaderData();
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
-      <OrgSidebar org={org} role={role} email={email} orgs={orgs} unreadCount={unreadCount} />
+      <OrgSidebar
+        org={org}
+        role={role}
+        staffAccess={staffAccess}
+        email={email}
+        orgs={orgs}
+        unreadCount={unreadCount}
+      />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
           <SidebarTrigger />
