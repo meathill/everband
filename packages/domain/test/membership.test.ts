@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canActAs,
   canGrantStaffAccess,
   canTransferOwnership,
   hasStaffAccess,
@@ -23,6 +24,31 @@ describe("hasStaffAccess", () => {
     expect(isStaffRole("owner")).toBe(true);
     expect(isStaffRole("staff")).toBe(true);
     expect(isStaffRole("parent")).toBe(false);
+  });
+});
+
+describe("canActAs（guards 权限判定）", () => {
+  const STAFF = ["owner", "staff"] as const;
+  const OWNER = ["owner"] as const;
+  const PARENT = ["parent"] as const;
+
+  it("owner 通过所有角色清单", () => {
+    expect(canActAs("owner", false, OWNER)).toBe(true);
+    expect(canActAs("owner", false, STAFF)).toBe(true);
+    expect(canActAs("owner", false, PARENT)).toBe(false);
+  });
+
+  it("staff 通过 staff 清单但不通过 owner 清单", () => {
+    expect(canActAs("staff", false, STAFF)).toBe(true);
+    expect(canActAs("staff", false, OWNER)).toBe(false);
+    expect(canActAs("staff", true, OWNER)).toBe(false);
+  });
+
+  it("parent + staffAccess 通过 staff 清单，普通 parent 不行", () => {
+    expect(canActAs("parent", true, STAFF)).toBe(true);
+    expect(canActAs("parent", false, STAFF)).toBe(false);
+    expect(canActAs("parent", true, OWNER)).toBe(false);
+    expect(canActAs("parent", true, PARENT)).toBe(true);
   });
 });
 

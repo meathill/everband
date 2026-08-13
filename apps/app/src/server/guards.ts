@@ -1,6 +1,6 @@
 import { findActiveMembership } from "@everband/core";
 import type { Database } from "@everband/db";
-import { hasStaffAccess, type MembershipRole } from "@everband/domain";
+import { canActAs, type MembershipRole } from "@everband/domain";
 import { getSessionUser, type SessionUser } from "./session.ts";
 
 // 鉴权链（PRD §8.4）：session → membership(active) → role。
@@ -40,9 +40,7 @@ export async function requireMembership(
   if (!membership) {
     throw new AuthError("forbidden");
   }
-  const staffAllowed =
-    roles?.includes("staff") && hasStaffAccess(membership.role, membership.staffAccess);
-  if (roles && !(roles.includes(membership.role) || staffAllowed)) {
+  if (roles && !canActAs(membership.role, membership.staffAccess, roles)) {
     throw new AuthError("forbidden");
   }
   return {

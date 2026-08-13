@@ -145,6 +145,32 @@ describe("租户隔离（findActiveMembership）", () => {
     expect(await findActiveMembership(db, orgId, userId)).not.toBeNull();
   });
 
+  it("staff 授权位随 membership 返回，供 guards 判定运营权限", async () => {
+    const { orgId, userId } = await seedOrgWithOwner();
+    const email = uniqueEmail();
+    const parentUserId = await ensureUser(db, email, NOW);
+    await db.insert(schema.memberships).values({
+      id: generateId(ID_PREFIXES.membership),
+      organizationId: orgId,
+      userId: parentUserId,
+      role: "parent",
+      status: "active",
+      staffAccess: true,
+      invitedEmail: email,
+      acceptedAt: NOW,
+      createdAt: NOW,
+    });
+
+    const membership = await findActiveMembership(db, orgId, parentUserId);
+    expect(membership).not.toBeNull();
+    expect(membership?.role).toBe("parent");
+    expect(membership?.staffAccess).toBe(true);
+
+    const ownerMembership = await findActiveMembership(db, orgId, userId);
+    expect(ownerMembership?.role).toBe("owner");
+    expect(ownerMembership?.staffAccess).toBe(false);
+  });
+
   it("激活邀请幂等：第二次激活返回 null 不重复生效", async () => {
     const { orgId } = await seedOrgWithOwner();
     const email = uniqueEmail();

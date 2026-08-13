@@ -16,6 +16,19 @@ export function isStaffRole(role: MembershipRole): boolean {
   return role === "owner" || role === "staff";
 }
 
+// 权限判定：请求的角色清单命中，或请求的是 staff 操作且该成员具备 staff 权限。
+// guards.requireMembership 的接线逻辑，抽成纯函数便于单测。
+export function canActAs(
+  role: MembershipRole,
+  staffAccess: boolean,
+  requiredRoles: readonly MembershipRole[],
+): boolean {
+  return (
+    requiredRoles.includes(role) ||
+    (requiredRoles.includes("staff") && hasStaffAccess(role, staffAccess))
+  );
+}
+
 const TRANSITIONS: Record<MembershipStatus, readonly MembershipStatus[]> = {
   invited: ["active", "removed"],
   active: ["suspended", "removed"],

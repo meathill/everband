@@ -142,6 +142,68 @@ describe("setStaffAccessCore（staff 授权位）", () => {
   });
 });
 
+describe("软删除列（迁移 0010）", () => {
+  it("organization/household/contact/student 都有 deleted_at 且可写", async () => {
+    const { orgId } = await seedOrg();
+    const householdId = generateId(ID_PREFIXES.household);
+    const contactId = generateId(ID_PREFIXES.contact);
+    const studentId = generateId(ID_PREFIXES.student);
+
+    await db.batch([
+      db
+        .update(schema.organizations)
+        .set({ deletedAt: NOW })
+        .where(eq(schema.organizations.id, orgId)),
+      db.insert(schema.households).values({
+        id: householdId,
+        organizationId: orgId,
+        name: "Soft-deleted Household",
+        createdAt: NOW,
+        deletedAt: NOW,
+      }),
+      db.insert(schema.contacts).values({
+        id: contactId,
+        organizationId: orgId,
+        householdId,
+        name: "Soft-deleted Contact",
+        email: `${unique("gone")}@test.local`,
+        createdAt: NOW,
+        deletedAt: NOW,
+      }),
+      db.insert(schema.students).values({
+        id: studentId,
+        organizationId: orgId,
+        householdId,
+        name: "Soft-deleted Student",
+        status: "withdrawn",
+        statusChangedAt: NOW,
+        createdAt: NOW,
+        deletedAt: NOW,
+      }),
+    ]);
+
+    const rows = await Promise.all([
+      db.select({ deletedAt: schema.organizations.deletedAt }).from(schema.organizations),
+      db.select({ deletedAt: schema.households.deletedAt }).from(schema.households),
+      db.select({ deletedAt: schema.contacts.deletedAt }).from(schema.contacts),
+      db.select({ deletedAt: schema.students.deletedAt }).from(schema.students),
+    ]);
+    for (const result of rows) {
+      expect(result.some((row) => row.deletedAt === NOW)).toBe(true);
+    }
+  });
+
+  it("membership 的 staff_access 默认 false", async () => {
+    const { orgId } = await seedOrg();
+    const target = await insertMembership(orgId, { role: "parent" });
+    const rows = await db
+      .select({ staffAccess: schema.memberships.staffAccess })
+      .from(schema.memberships)
+      .where(eq(schema.memberships.id, target));
+    expect(rows[0]?.staffAccess).toBe(false);
+  });
+});
+
 describe("transferOwnershipCore（owner 转移）", () => {
   it("转移给 active staff：目标变 owner，原 owner 变 staff，记录审计", async () => {
     const { orgId, ownerMembershipId } = await seedOrg();
