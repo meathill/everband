@@ -27,6 +27,11 @@
   - 生产回归修复（2026-08-12）：defaultPendingComponent 引发全站 hydration mismatch
     （#418，`<html>` 节点）——已移除，改为公开路由级 pendingComponent +
     defaultStaleTime 60s；本地生产构建 + 登录态验证 0 418
+- D1 读取复制 + SEO 优化（2026-08-13）：生产启用 D1 read replication（dashboard），
+  app/tasks 接入 Sessions API（`withSession("first-primary")`，dev/miniflare 回退普通绑定）；
+  Landing 全套 OG/Twitter/canonical/JSON-LD + og:image 生成脚本 + robots/sitemap，
+  App 站默认 noindex + 公开页动态 head + robots Disallow；单测 100 条、e2e 52 例全绿，
+  已部署生产并冒烟验证
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
-（普通单测 66 + Worker 集成测试 97 + e2e 18 场景、双视口 36 例）。
+（普通单测 66 + Worker 集成测试 100 + e2e 19 场景、双视口 52 例）。

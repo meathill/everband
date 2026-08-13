@@ -23,6 +23,9 @@ const newOrgSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/new-org")({
+  head: () => ({
+    meta: [{ title: "Create your organization — Everband" }],
+  }),
   validateSearch: newOrgSearchSchema,
   loaderDeps: ({ search }) => ({ intent: search.intent }),
   // 通用入口只负责 onboarding；已有组织的用户不应再次落入创建表单。

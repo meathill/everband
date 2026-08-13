@@ -26,7 +26,9 @@
     // 生产真实发送；本地 dev 由 .dev.vars 覆盖为 dev（落 /dev/outbox）
     "EMAIL_MODE": "cloudflare",
     "EMAIL_FROM_ADDRESS": "no-reply@meathill.com",
-    "EMAIL_FROM_NAME": "Everband"
+    "EMAIL_FROM_NAME": "Everband",
+    // 生产启用 D1 read replication（Sessions API）；本地 dev 不设置，回退普通绑定
+    "ENVIRONMENT": "production"
   },
   "send_email": [
     {

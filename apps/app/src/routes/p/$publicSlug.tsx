@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { APP_BASE_URL } from "~/lib/site.ts";
 import { getPublicPage } from "~/server/public.ts";
 
 // 组织公开主页（PRD §6.6）：无需登录；只展示白名单字段。
 // 关闭或不存在 → 统一"暂未开放"，不泄露组织是否存在。
+// head 使用 loaderData（SSR 时 loader 先于 head 执行）：动态 title/description/OG 服务端输出，
+// 供扫码/分享链接预览；应用站默认 noindex（root），SEO 职责在 landing 站。
 export const Route = createFileRoute("/p/$publicSlug")({
   loader: async ({ params }) => {
     try {
@@ -10,6 +13,28 @@ export const Route = createFileRoute("/p/$publicSlug")({
     } catch {
       return { page: null };
     }
+  },
+  head: ({ loaderData, params }) => {
+    const page = loaderData?.page ?? null;
+    const displayName = page?.displayName ?? "Everband";
+    const description =
+      page?.summary ??
+      (page
+        ? "Members and parents sign in from their invitation email."
+        : "This page isn't available right now.");
+    const url = `${APP_BASE_URL}/p/${params.publicSlug}`;
+    return {
+      meta: [
+        { title: `${displayName} — Everband` },
+        { name: "description", content: description },
+        { property: "og:title", content: `${displayName} — Everband` },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:site_name", content: "Everband" },
+        { property: "og:image", content: `${APP_BASE_URL}/og-image.png` },
+        { property: "og:url", content: url },
+      ],
+    };
   },
   component: PublicPage,
 });

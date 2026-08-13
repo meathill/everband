@@ -24,8 +24,9 @@
 - [ ] roster 手工替换/锁定 UI（schema 已支持 manual/isLocked）
 - [x] staff Overview 仪表盘（2026-08-10 已完成）：四卡聚合 + 导航入口，
       parent Home 完整内容仍待做
-- [ ] Landing 多页面拆分与 SEO 细化（2026-08-10 部分完成：已抽 SiteHeader/SiteFooter，
-      新增 /privacy /terms；营销板块拆分与 SEO 细化仍留）
+- [x] Landing 多页面拆分与 SEO 细化（2026-08-13 完成：已抽 SiteHeader/SiteFooter、
+      新增 /privacy /terms；OG/Twitter/canonical/JSON-LD/og:image/robots/sitemap/
+      应用站 noindex 与公开页动态 head 全部上线）
 - [ ] Cloudflare Workflows：活动提醒等真正长周期任务（排练展开为幂等同步执行，暂不需要）
 
 ## 近期扩展（PRD §4.3，设计已定稿）

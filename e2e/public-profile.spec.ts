@@ -36,6 +36,21 @@ test("公开主页开启/二维码/关闭后统一降级", async ({ page, browse
   await expect(anonPage.getByRole("heading", { name: "Public Page Test Band" })).toBeVisible();
   await expect(anonPage.getByText("A test band for the public page.")).toBeVisible();
 
+  // 公开页动态 head：title/OG 服务端输出（扫码分享预览场景）
+  await expect(anonPage).toHaveTitle("Public Page Test Band — Everband");
+  await expect(anonPage.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    "Public Page Test Band — Everband",
+  );
+  await expect(anonPage.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "A test band for the public page.",
+  );
+  await expect(anonPage.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    /og-image\.png/,
+  );
+
   // 关闭公开主页
   await pressButton(page, "Close public page");
   await expect(page.getByText("Status: not open")).toBeVisible();

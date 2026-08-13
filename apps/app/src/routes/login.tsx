@@ -22,6 +22,9 @@ const OTP_LENGTH = 6;
 const OTP_SLOT_KEYS = Array.from({ length: OTP_LENGTH }, (_, index) => `otp-slot-${index}`);
 
 export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [{ title: "Sign in — Everband" }],
+  }),
   // 非法 redirect 参数静默丢弃（防开放重定向），登录仍可完成
   validateSearch: z.object({ redirect: redirectPathSchema.optional().catch(undefined) }),
   component: LoginPage,

@@ -12,7 +12,19 @@ export const Route = createFileRoute("/terms")({
         name: "description",
         content: "The terms that govern your use of Everband.",
       },
+      { property: "og:title", content: "Terms of Service — Everband" },
+      {
+        property: "og:description",
+        content: "The terms that govern your use of Everband.",
+      },
+      { property: "og:url", content: "https://everband.meathill.com/terms" },
+      { name: "twitter:title", content: "Terms of Service — Everband" },
+      {
+        name: "twitter:description",
+        content: "The terms that govern your use of Everband.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://everband.meathill.com/terms" }],
   }),
   component: TermsPage,
 });

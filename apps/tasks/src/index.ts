@@ -16,6 +16,8 @@ interface Env {
   EMAIL?: SendEmailBinding;
   EMAIL_FROM_ADDRESS?: string;
   EMAIL_FROM_NAME?: string;
+  // 生产显式标记 production（wrangler.jsonc vars），启用 D1 read replication session
+  ENVIRONMENT?: string;
 }
 
 export interface ImportJobMessage {
@@ -36,7 +38,10 @@ export default {
   },
 
   async queue(batch: MessageBatch<TaskMessage>, env: Env): Promise<void> {
-    const db = createDb(env.DB);
+    // 生产走 D1 Sessions API（read replication 顺序一致）；本地 dev/miniflare 不支持 withSession
+    const db = createDb(
+      env.ENVIRONMENT === "production" ? env.DB.withSession("first-primary") : env.DB,
+    );
 
     if (batch.queue === "everband-email-sends") {
       const sender = chooseEmailSender(

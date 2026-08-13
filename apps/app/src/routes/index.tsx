@@ -2,6 +2,16 @@ import { Button } from "@everband/ui/components/button";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Everband — run your community band without the spreadsheets" },
+      {
+        name: "description",
+        content:
+          "Members, events, rehearsals and parent rosters for community bands, teams and clubs. One place instead of spreadsheets, group emails and lost attachments.",
+      },
+    ],
+  }),
   component: Home,
 });
 

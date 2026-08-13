@@ -334,3 +334,40 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
 - **pending 加载态不要配 `pendingMinMs`**：它强制"一旦显示至少停留 N ms"，会阻塞导航提交，
   每次页面切换变慢（实测 42 测试的 e2e 套件总时长 +40s+，还能把整体拖过超时临界）。
   用 `pendingMs`（延迟显示，快速跳转不闪骨架）即可，慢导航本身不会"闪"。
+
+## D1 read replication 与 SEO（2026-08-13）
+
+### D1 Sessions API 接入（read replication）
+
+- **启用方式**：read replication 在 Cloudflare Dashboard → D1 → 数据库 → Settings 开启，
+  wrangler CLI 无此命令，REST API 需要 D1:Edit token。开启后**必须**用 Sessions API，
+  否则所有查询仍走主库。
+- **接入点设计**：全项目 D1 入口收敛在 `packages/db` 的 `createDb`（app 的 `getDb()`、
+  tasks 的 queue handler）。drizzle 的 D1 driver 运行时只依赖 client 的 `prepare`/`batch`，
+  `D1DatabaseSession` 恰好两者都有 → `createDb` 加联合类型 + 断言即可，core 层 60 个函数
+  与全部 server fn 零改动。类型来自 `@cloudflare/workers-types`（已含 `withSession`）。
+- **约束选择 `"first-primary"`**：每请求首查（通常是 session 校验）走主库 → 跨请求强一致
+  （写后读必见），请求内后续查询顺序一致且可路由就近副本。未做 bookmark header 往返：
+  TanStack Start 的 server fn 模式下 header/cookie 传播侵入大，而本项目量级下收益可忽略。
+- **miniflare 不支持 `withSession`**（v5.20260804 实测 0 命中）：本地 dev 与 vitest 必须回退
+  普通 `env.DB`。app 用 `import.meta.env.DEV` 判断；tasks 无 vite，用 wrangler var
+  `ENVIRONMENT=production`（.dev.vars 不设即 dev 行为，安全缺省）。
+- **验证**：`meta.served_by_region` / `served_by_primary` 字段可区分副本/主库服务；
+  Dashboard → D1 → 数据库 metrics 按区域查看副本分流效果。
+
+### Landing/App SEO 结构
+
+- **head 合并机制**（TanStack Router v1.140+）：meta 按 `name`/`property` 去重且**子路由优先**
+  （父路由兜底）；`links` 不去重（flatMap）→ **canonical 只能每页各自定义，不要放 root**。
+  `head` 是 `Awaitable`，可拿到 `loaderData`/`params` → 公开页动态 title/description/OG
+  服务端输出（SSR 时 loader 先于 head 执行）。
+- **JSON-LD**：head 的 `{"script:ld+json": [...]}` 自动渲染为
+  `<script type="application/ld+json">`（内建 escapeHtml）。
+- **og:image**：`scripts/generate-og-image.py`（Pillow，1200×630，渐变底 + lockup），
+  由 `generate-favicon.ts` 统一生成到两个 app 的 public。
+- **App 站 robots 全 Disallow**：登录后台无 SEO 价值，公开页（/p/）承担扫码分享场景
+  （noindex 全局但 OG 照常输出，社交预览不受 noindex 影响）。营销职责全部由 landing 承担。
+- **e2e 端口坑**：本地 3001 可能被其他项目占用（实测 TaoMenu），playwright 的
+  `reuseExistingServer` 会误连陌生进程。landing webServer 用
+  `vite dev --port 3101 --strictPort` 独立端口，`pnpm run dev -- --port` 会被 vite
+  解析错误（config 的 port 抢先），必须 `pnpm exec vite dev --port N`。

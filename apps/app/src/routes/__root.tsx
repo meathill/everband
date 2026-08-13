@@ -9,6 +9,13 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Everband" },
+      {
+        name: "description",
+        content:
+          "Members, events, rehearsals and parent rosters for community bands, teams and clubs.",
+      },
+      // 应用站为登录后台：默认不收录，公开页/登录页无需搜索引擎流量
+      { name: "robots", content: "noindex, nofollow" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

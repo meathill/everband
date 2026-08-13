@@ -7,6 +7,9 @@ import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { listMyOrganizations } from "~/server/org.ts";
 
 export const Route = createFileRoute("/select-org")({
+  head: () => ({
+    meta: [{ title: "Select organization — Everband" }],
+  }),
   loader: async () => {
     try {
       return { orgs: await listMyOrganizations() };

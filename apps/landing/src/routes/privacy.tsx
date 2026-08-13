@@ -14,7 +14,21 @@ export const Route = createFileRoute("/privacy")({
         content:
           "How Everband collects, uses and protects information for community bands, teams and clubs.",
       },
+      { property: "og:title", content: "Privacy Policy — Everband" },
+      {
+        property: "og:description",
+        content:
+          "How Everband collects, uses and protects information for community bands, teams and clubs.",
+      },
+      { property: "og:url", content: "https://everband.meathill.com/privacy" },
+      { name: "twitter:title", content: "Privacy Policy — Everband" },
+      {
+        name: "twitter:description",
+        content:
+          "How Everband collects, uses and protects information for community bands, teams and clubs.",
+      },
     ],
+    links: [{ rel: "canonical", href: "https://everband.meathill.com/privacy" }],
   }),
   component: PrivacyPage,
 });

@@ -29,10 +29,20 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
   ],
-  webServer: {
-    command: "pnpm -C apps/app run dev",
-    port: 3000,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: "pnpm -C apps/app run dev",
+      port: 3000,
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      // landing SEO 断言：起营销站 dev server（SSR 输出与生产 prerender 同构）。
+      // 独立端口 + strictPort：本地 3001 可能被其他项目占用，避免误连
+      command: "pnpm -C apps/landing exec vite dev --port 3101 --strictPort",
+      port: 3101,
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+  ],
 });
