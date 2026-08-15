@@ -34,6 +34,8 @@ export const emailSends = sqliteTable(
     kind: text("kind").notNull(),
     subject: text("subject").notNull(),
     body: text("body").notNull(),
+    // 抄送（群发时每封邮件同一地址，比如经办 staff 留底）
+    cc: text("cc"),
     objectType: text("object_type").notNull(),
     objectId: text("object_id").notNull(),
     requestedByMembershipId: text("requested_by_membership_id").notNull(),

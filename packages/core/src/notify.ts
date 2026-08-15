@@ -1,6 +1,7 @@
 // 通知与邮件 fan-out 核心（PRD §5.5）。
 // prepareEmailSend：生产侧一次性落"任务 + 受众快照"（dedupKey 幂等）；
-// processEmailSend：消费侧逐收件人发送（消费前状态检查，重投不重发）。
+// processEmailRecipient：消费侧逐收件人发送（queue 消息 = 一封邮件，
+// 重投不重发，投递 2 次失败标 failed，最后一条消息触发任务终态汇总）。
 
 import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
@@ -8,14 +9,17 @@ import { generateId, ID_PREFIXES } from "@everband/domain";
 import type { EmailSender } from "@everband/integrations/email";
 import type { ListResult, NotificationFilter } from "@everband/validation";
 import { toOffset } from "@everband/validation";
-import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import type { AudienceContact } from "./events.ts";
+import { resolveEventAudienceContacts } from "./events.ts";
 
 export interface PrepareEmailSendInput {
   organizationId: string;
   kind: string;
   subject: string;
   body: string;
+  // 抄送；群发时每封邮件同一地址（例如经办 staff 留底）
+  cc?: string;
   objectType: string;
   objectId: string;
   dedupKey: string;
@@ -57,6 +61,7 @@ export async function prepareEmailSend(
     kind: input.kind,
     subject: input.subject,
     body: input.body,
+    cc: input.cc ?? null,
     objectType: input.objectType,
     objectId: input.objectId,
     requestedByMembershipId: input.requestedByMembershipId,
@@ -83,73 +88,137 @@ export async function prepareEmailSend(
   return { sendId, created: true, queuedCount: queued.length, suppressedCount: suppressed.length };
 }
 
-// 消费者：逐收件人发送。重投递安全——只处理仍为 queued 的收件人。
-export async function processEmailSend(
+// 投递上限：一条收件人消息最多尝试 2 次（首次 + 1 次重试），仍失败即标 failed 终态
+export const MAX_SEND_ATTEMPTS = 2;
+
+// 终态失败：重试不会改变结果，直接标 failed，不浪费投递机会
+const PERMANENT_SEND_ERROR_PREFIXES = [
+  "E_RECIPIENT_SUPPRESSED",
+  "E_RECIPIENT_NOT_ALLOWED",
+  "E_VALIDATION_ERROR",
+  "E_FIELD_MISSING",
+  "E_SENDER_NOT_VERIFIED",
+  "E_SENDER_DOMAIN_NOT_AVAILABLE",
+  "E_CONTENT_TOO_LARGE",
+  "E_HEADER",
+];
+
+// 错误分级：临时错误（限流/瞬时故障）允许重试；其余（含未知错误）也重试一次，
+// 由 MAX_SEND_ATTEMPTS 兜底，避免偶发网络问题直接判死
+export function isRetryableSendError(error: string): boolean {
+  return !PERMANENT_SEND_ERROR_PREFIXES.some((prefix) => error.startsWith(prefix));
+}
+
+export type ProcessEmailRecipientOutcome = "sent" | "failed" | "retryable" | "skipped";
+
+/**
+ * 消费者：处理单个收件人（queue 消息 = 一封邮件，平台负责并行与重投）。
+ * 重投安全——状态非 queued 直接跳过；投递失败按错误分级：
+ * 终态错误标 failed；临时错误在未达到 MAX_SEND_ATTEMPTS 前保持 queued（返回
+ * retryable 让调用方重试），次数耗尽标 failed。
+ * 每个收件人处理完做一次"任务收尾检查"：无剩余 queued 时幂等覆盖写终态汇总。
+ */
+export async function processEmailRecipient(
   db: Database,
   sender: EmailSender,
-  sendId: string,
-  now: number,
-): Promise<{ processed: boolean }> {
-  const claimed = await db
-    .update(schema.emailSends)
-    .set({ status: "processing" })
-    .where(
-      and(
-        eq(schema.emailSends.id, sendId),
-        inArray(schema.emailSends.status, ["queued", "processing"]),
-      ),
-    )
-    .returning({
-      id: schema.emailSends.id,
-      subject: schema.emailSends.subject,
-      body: schema.emailSends.body,
-      kind: schema.emailSends.kind,
-    });
-  const send = claimed[0];
-  if (!send) {
-    return { processed: false };
-  }
-
+  input: { sendId: string; recipientId: string; attempts: number; now: number },
+): Promise<{ outcome: ProcessEmailRecipientOutcome; error?: string }> {
   const recipients = await db
-    .select({ id: schema.emailSendRecipients.id, email: schema.emailSendRecipients.email })
+    .select({
+      id: schema.emailSendRecipients.id,
+      email: schema.emailSendRecipients.email,
+      status: schema.emailSendRecipients.status,
+    })
     .from(schema.emailSendRecipients)
     .where(
       and(
-        eq(schema.emailSendRecipients.sendId, sendId),
-        eq(schema.emailSendRecipients.status, "queued"),
+        eq(schema.emailSendRecipients.id, input.recipientId),
+        eq(schema.emailSendRecipients.sendId, input.sendId),
       ),
-    );
-
-  for (const recipient of recipients) {
-    const result = await sender.send({
-      to: recipient.email,
-      subject: send.subject,
-      text: send.body,
-      kind: send.kind,
-    });
-    await db
-      .update(schema.emailSendRecipients)
-      .set(
-        result.ok
-          ? { status: "sent", sentAt: now, attemptCount: 1 }
-          : { status: "failed", error: result.error, attemptCount: 1 },
-      )
-      .where(eq(schema.emailSendRecipients.id, recipient.id));
+    )
+    .limit(1);
+  const recipient = recipients[0];
+  if (recipient?.status !== "queued") {
+    return { outcome: "skipped" };
   }
 
-  // 汇总终态：任何 queued 之外的组合 → succeeded / partial / failed
+  const sends = await db
+    .select({
+      subject: schema.emailSends.subject,
+      body: schema.emailSends.body,
+      cc: schema.emailSends.cc,
+      kind: schema.emailSends.kind,
+    })
+    .from(schema.emailSends)
+    .where(eq(schema.emailSends.id, input.sendId))
+    .limit(1);
+  const send = sends[0];
+  if (!send) {
+    await markRecipientFailed(db, input.sendId, recipient.id, "send task missing");
+    return { outcome: "failed", error: "send task missing" };
+  }
+
+  const result = await sender.send({
+    to: recipient.email,
+    subject: send.subject,
+    text: send.body,
+    html: undefined,
+    cc: send.cc ?? undefined,
+    kind: send.kind,
+  });
+  if (result.ok) {
+    await db
+      .update(schema.emailSendRecipients)
+      .set({ status: "sent", sentAt: input.now, attemptCount: input.attempts })
+      .where(eq(schema.emailSendRecipients.id, recipient.id));
+    await finalizeEmailSendIfDone(db, input.sendId);
+    return { outcome: "sent" };
+  }
+
+  // 失败分级：终态直接 failed；临时错误 2 次内返回 retryable，耗尽后 failed
+  const retryable = isRetryableSendError(result.error);
+  if (!retryable || input.attempts >= MAX_SEND_ATTEMPTS) {
+    await markRecipientFailed(db, input.sendId, recipient.id, result.error);
+    return { outcome: "failed", error: result.error };
+  }
+  await db
+    .update(schema.emailSendRecipients)
+    .set({ attemptCount: input.attempts })
+    .where(eq(schema.emailSendRecipients.id, recipient.id));
+  return { outcome: "retryable", error: result.error };
+}
+
+async function markRecipientFailed(
+  db: Database,
+  sendId: string,
+  recipientId: string,
+  error: string,
+): Promise<void> {
+  await db
+    .update(schema.emailSendRecipients)
+    .set({ status: "failed", error, attemptCount: MAX_SEND_ATTEMPTS })
+    .where(eq(schema.emailSendRecipients.id, recipientId));
+  await finalizeEmailSendIfDone(db, sendId);
+}
+
+// 任务收尾：无剩余 queued/processing 收件人时，覆盖写终态汇总。
+// 幂等覆盖写 → 并发下多个收件人消息同时收尾也安全；最后一条必然触发。
+async function finalizeEmailSendIfDone(db: Database, sendId: string): Promise<void> {
   const rows = await db
     .select({ status: schema.emailSendRecipients.status })
     .from(schema.emailSendRecipients)
     .where(eq(schema.emailSendRecipients.sendId, sendId));
+  const pending = rows.filter((row) => row.status === "queued").length;
+  if (pending > 0) {
+    return;
+  }
   const sent = rows.filter((row) => row.status === "sent").length;
   const failed = rows.filter((row) => row.status === "failed").length;
   const finalStatus = failed === 0 ? "succeeded" : sent === 0 ? "failed" : "partial";
   await db
     .update(schema.emailSends)
-    .set({ status: finalStatus, sentCount: sent, failedCount: failed, finishedAt: now })
+    .set({ status: finalStatus, sentCount: sent, failedCount: failed, finishedAt: Date.now() })
     .where(eq(schema.emailSends.id, sendId));
-  return { processed: true };
 }
 
 // 站内通知：按 membership 批量写入
@@ -310,4 +379,94 @@ export async function membershipsForEmails(
       ),
     );
   return rows;
+}
+
+// ---------------------------------------------------------------------------
+// 群发受众（群发邮件）
+// ---------------------------------------------------------------------------
+
+export interface AudienceSelection {
+  /** 目标 group 的 id 列表（active 学生） */
+  groupIds?: string[];
+  /** 目标学生的 id 列表（active 学生） */
+  studentIds?: string[];
+  /** 目标 event（复用其受众规则：isOrgWide 或 eventGroups） */
+  eventId?: string;
+}
+
+/**
+ * 群发受众：group / student / event 三种来源取并集，只含 active 学生的联系人，
+ * 按最终邮箱去重（PRD §5.1）。退订与 RSVP 排除由调用方另行叠加。
+ */
+export async function resolveAudienceContactsForSelection(
+  db: Database,
+  orgId: string,
+  selection: AudienceSelection,
+): Promise<AudienceContact[]> {
+  const byEmail = new Map<string, AudienceContact>();
+
+  if (selection.eventId) {
+    for (const contact of await resolveEventAudienceContacts(db, orgId, selection.eventId)) {
+      if (!byEmail.has(contact.email)) {
+        byEmail.set(contact.email, contact);
+      }
+    }
+  }
+
+  const idParts: SQL[] = [];
+  if (selection.groupIds?.length) {
+    idParts.push(inArray(schema.students.groupId, selection.groupIds));
+  }
+  if (selection.studentIds?.length) {
+    idParts.push(inArray(schema.students.id, selection.studentIds));
+  }
+  if (idParts.length > 0) {
+    const rows = await db
+      .select({
+        contactId: schema.contacts.id,
+        email: schema.contacts.email,
+        name: schema.contacts.name,
+      })
+      .from(schema.students)
+      .innerJoin(schema.studentContacts, eq(schema.studentContacts.studentId, schema.students.id))
+      .innerJoin(schema.contacts, eq(schema.contacts.id, schema.studentContacts.contactId))
+      .where(
+        and(
+          eq(schema.students.organizationId, orgId),
+          eq(schema.students.status, "active"),
+          or(...idParts),
+        ),
+      );
+    for (const row of rows) {
+      if (!byEmail.has(row.email)) {
+        byEmail.set(row.email, row);
+      }
+    }
+  }
+
+  return [...byEmail.values()];
+}
+
+/**
+ * 已提交指定 event 主表单（如 RSVP）的 active 家长邮箱。
+ * 催办场景：从收件人里剔除这些人，只发给没交表单的家庭。
+ */
+export async function submittedFormEmailsForEvent(
+  db: Database,
+  orgId: string,
+  eventId: string,
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ email: schema.memberships.invitedEmail })
+    .from(schema.formSubmissions)
+    .innerJoin(schema.eventForms, eq(schema.eventForms.id, schema.formSubmissions.formId))
+    .innerJoin(schema.memberships, eq(schema.memberships.id, schema.formSubmissions.membershipId))
+    .where(
+      and(
+        eq(schema.eventForms.organizationId, orgId),
+        eq(schema.eventForms.eventId, eventId),
+        eq(schema.memberships.status, "active"),
+      ),
+    );
+  return new Set(rows.map((row) => row.email));
 }

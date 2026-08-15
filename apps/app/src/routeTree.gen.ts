@@ -21,6 +21,7 @@ import { Route as OOrgIdRouteRouteImport } from './routes/o/$orgId/route'
 import { Route as PPublicSlugRouteImport } from './routes/p/$publicSlug'
 import { Route as OOrgIdIndexRouteImport } from './routes/o/$orgId/index'
 import { Route as OOrgIdAccountRouteImport } from './routes/o/$orgId/account'
+import { Route as OOrgIdEmailsRouteImport } from './routes/o/$orgId/emails'
 import { Route as OOrgIdFinanceRouteImport } from './routes/o/$orgId/finance'
 import { Route as OOrgIdGroupsRouteImport } from './routes/o/$orgId/groups'
 import { Route as OOrgIdImportRouteImport } from './routes/o/$orgId/import'
@@ -92,6 +93,11 @@ const OOrgIdAccountRoute = OOrgIdAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
+const OOrgIdEmailsRoute = OOrgIdEmailsRouteImport.update({
+  id: '/emails',
+  path: '/emails',
+  getParentRoute: () => OOrgIdRouteRoute,
+} as any)
 const OOrgIdFinanceRoute = OOrgIdFinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
+  '/o/$orgId/emails': typeof OOrgIdEmailsRoute
   '/o/$orgId/finance': typeof OOrgIdFinanceRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
+  '/o/$orgId/emails': typeof OOrgIdEmailsRoute
   '/o/$orgId/finance': typeof OOrgIdFinanceRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/p/$publicSlug': typeof PPublicSlugRoute
   '/o/$orgId/account': typeof OOrgIdAccountRoute
+  '/o/$orgId/emails': typeof OOrgIdEmailsRoute
   '/o/$orgId/finance': typeof OOrgIdFinanceRoute
   '/o/$orgId/groups': typeof OOrgIdGroupsRoute
   '/o/$orgId/import': typeof OOrgIdImportRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/p/$publicSlug'
     | '/o/$orgId/account'
+    | '/o/$orgId/emails'
     | '/o/$orgId/finance'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/p/$publicSlug'
     | '/o/$orgId/account'
+    | '/o/$orgId/emails'
     | '/o/$orgId/finance'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/p/$publicSlug'
     | '/o/$orgId/account'
+    | '/o/$orgId/emails'
     | '/o/$orgId/finance'
     | '/o/$orgId/groups'
     | '/o/$orgId/import'
@@ -390,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdAccountRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
+    '/o/$orgId/emails': {
+      id: '/o/$orgId/emails'
+      path: '/emails'
+      fullPath: '/o/$orgId/emails'
+      preLoaderRoute: typeof OOrgIdEmailsRouteImport
+      parentRoute: typeof OOrgIdRouteRoute
+    }
     '/o/$orgId/finance': {
       id: '/o/$orgId/finance'
       path: '/finance'
@@ -465,6 +484,7 @@ declare module '@tanstack/react-router' {
 
 interface OOrgIdRouteRouteChildren {
   OOrgIdAccountRoute: typeof OOrgIdAccountRoute
+  OOrgIdEmailsRoute: typeof OOrgIdEmailsRoute
   OOrgIdFinanceRoute: typeof OOrgIdFinanceRoute
   OOrgIdGroupsRoute: typeof OOrgIdGroupsRoute
   OOrgIdImportRoute: typeof OOrgIdImportRoute
@@ -479,6 +499,7 @@ interface OOrgIdRouteRouteChildren {
 
 const OOrgIdRouteRouteChildren: OOrgIdRouteRouteChildren = {
   OOrgIdAccountRoute: OOrgIdAccountRoute,
+  OOrgIdEmailsRoute: OOrgIdEmailsRoute,
   OOrgIdFinanceRoute: OOrgIdFinanceRoute,
   OOrgIdGroupsRoute: OOrgIdGroupsRoute,
   OOrgIdImportRoute: OOrgIdImportRoute,

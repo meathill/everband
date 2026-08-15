@@ -1,5 +1,6 @@
 import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
+import { Checkbox } from "@everband/ui/components/checkbox";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everband/ui/components/empty";
 import {
   Select,
@@ -14,6 +15,7 @@ import { GROUP_STATUS_FILTERS, groupsListSchema } from "@everband/validation";
 import {
   ArchiveIcon,
   ArrowCounterClockwiseIcon,
+  EnvelopeSimpleIcon,
   PencilSimpleIcon,
   PlusIcon,
   UsersIcon,
@@ -58,6 +60,20 @@ function GroupsPage(): React.ReactElement {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<GroupFormValues | undefined>(undefined);
   const [membersGroup, setMembersGroup] = useState<{ id: string; name: string } | null>(null);
+  // 多选状态（群发入口）：选中 group id 集合
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelected(groupId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }
 
   function openCreate() {
     setEditing(undefined);
@@ -88,16 +104,34 @@ function GroupsPage(): React.ReactElement {
     return true;
   }
 
+  const selectedGroups = groups.filter((group) => selectedIds.has(group.id));
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-semibold text-3xl text-foreground tracking-tight">Groups</h1>
 
       <DataTableToolbar
         actions={
-          <Button onClick={openCreate}>
-            <PlusIcon />
-            New group
-          </Button>
+          <>
+            <Button
+              disabled={selectedGroups.length === 0}
+              onClick={() =>
+                navigate({
+                  to: "/o/$orgId/emails",
+                  params: { orgId },
+                  search: { groups: selectedGroups.map((group) => group.id) },
+                })
+              }
+              variant="outline"
+            >
+              <EnvelopeSimpleIcon />
+              Email{selectedGroups.length > 0 ? ` ${selectedGroups.length}` : ""}
+            </Button>
+            <Button onClick={openCreate}>
+              <PlusIcon />
+              New group
+            </Button>
+          </>
         }
         onRefresh={() => router.invalidate()}
       >
@@ -130,9 +164,16 @@ function GroupsPage(): React.ReactElement {
               className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm"
               key={group.id}
             >
-              <span className="flex items-center gap-2">
-                <span className="font-medium text-foreground">{group.name}</span>
-                {group.status === "archived" && <Badge variant="secondary">Archived</Badge>}
+              <span className="flex min-w-0 flex-1 items-center gap-3">
+                <Checkbox
+                  aria-label={`Select ${group.name}`}
+                  checked={selectedIds.has(group.id)}
+                  onCheckedChange={() => toggleSelected(group.id)}
+                />
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-medium text-foreground">{group.name}</span>
+                  {group.status === "archived" && <Badge variant="secondary">Archived</Badge>}
+                </span>
               </span>
               <GroupActions group={group} onMembers={openMembers} onRename={openRename} run={run} />
             </li>

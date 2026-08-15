@@ -4,6 +4,7 @@ import { Button } from "@everband/ui/components/button";
 import { toastManager } from "@everband/ui/components/toast";
 import {
   CheckCircleIcon,
+  EnvelopeSimpleIcon,
   PaperPlaneTiltIcon,
   PencilSimpleIcon,
   ProhibitIcon,
@@ -48,6 +49,7 @@ function EventDetailPage(): React.ReactElement {
   const { orgId } = Route.useParams();
   const isStaff = hasStaffAccess(role, staffAccess);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <div className="flex flex-col gap-8">
@@ -74,6 +76,13 @@ function EventDetailPage(): React.ReactElement {
           <StatusActions
             eventId={event.id}
             onEdit={() => setIsDrawerOpen(true)}
+            onEmailAudience={() =>
+              router.navigate({
+                to: "/o/$orgId/emails",
+                params: { orgId },
+                search: { event: event.id, excludeForm: true },
+              })
+            }
             orgId={orgId}
             status={event.status}
             title={event.title}
@@ -133,12 +142,14 @@ function StatusActions({
   status,
   title,
   onEdit,
+  onEmailAudience,
 }: {
   eventId: string;
   orgId: string;
   status: EventStatus;
   title: string;
   onEdit: () => void;
+  onEmailAudience: () => void;
 }): React.ReactElement {
   const router = useRouter();
 
@@ -160,6 +171,10 @@ function StatusActions({
 
   return (
     <div className="flex flex-wrap gap-2 pt-2">
+      <Button onClick={onEmailAudience} variant="outline">
+        <EnvelopeSimpleIcon />
+        Email audience
+      </Button>
       {isEditable && (
         <Button onClick={onEdit} variant="outline">
           <PencilSimpleIcon />

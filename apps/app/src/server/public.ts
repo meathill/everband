@@ -36,7 +36,7 @@ export const getPublicPage = createServerFn({ method: "GET" })
       .where(eq(schema.organizations.publicSlug, data.slug))
       .limit(1);
     const org = rows[0];
-    if (!org || !org.publicProfileEnabled) {
+    if (!org?.publicProfileEnabled) {
       return null;
     }
     // 只暴露展示字段白名单

@@ -27,3 +27,14 @@ export const notificationIdSchema = z.object({
   orgId: z.string().min(1),
   notificationId: z.string().min(1),
 });
+
+// 群发写信页的 URL 参数：三个来源取并集，event 可叠加 RSVP 表单排除。
+// 数组参数由 TanStack Router 序列化为 groups[]=a&groups[]=b。
+export const emailComposeSearchSchema = z.object({
+  groups: z.array(z.string().min(1)).optional(),
+  students: z.array(z.string().min(1)).optional(),
+  event: z.string().min(1).optional(),
+  excludeForm: z.boolean().optional(),
+});
+
+export type EmailComposeSearch = z.output<typeof emailComposeSearchSchema>;

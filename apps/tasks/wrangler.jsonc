@@ -44,9 +44,12 @@
         "dead_letter_queue": "everband-dlq"
       },
       {
+        // 逐收件人消息：batch 内顺序处理，max_concurrency 决定并行度；
+        // 首次 + 1 次重试 = 共投递 2 次；DLQ 仅兜底意外崩溃
         "queue": "everband-email-sends",
-        "max_batch_size": 1,
-        "max_retries": 3,
+        "max_batch_size": 50,
+        "max_retries": 1,
+        "max_concurrency": 10,
         "dead_letter_queue": "everband-dlq"
       }
     ]

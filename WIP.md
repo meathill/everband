@@ -36,30 +36,36 @@
   feedback.meathill.com/api/feedbacks，appId=everband-landing）与 /about 页面；
   删除 api.contact.ts 与 Turnstile 依赖，header/footer 导航与 sitemap/SEO 同步更新，
   e2e 新增表单提交 mock 断言；已部署生产并冒烟验证
-- 组织角色模型定稿（2026-08-13，进行中）：确认 9 条组织方式（创建即 owner、邀请家长/staff、
+- 组织角色模型定稿（2026-08-13）：确认 9 条组织方式（创建即 owner、邀请家长/staff、
   邀请链接自动入 band、staff 可叠加 parent、owner transfer、全量审计、软删除）。
   落地：memberships 加 staff_access 授权位、四张业务表加 deleted_at 迁移、
   core 加 setStaffAccessCore/transferOwnershipCore + 审计、
   server 接口（inviteStaff 限 owner）、StaffSettingsSection 行操作（set/revoke/transfer）、
   guards 支持 staffAccess、单测覆盖角色转换与 transfer 规则
+- 表单交互与信息架构调整（2026-08-15）：field 间距统一、DatePicker、Events 默认全量、
+  表格 refresh、隐藏 Rehearsals/Finance、Group 完整恢复与成员管理、Members 去直接编辑、
+  用户菜单版本号与反馈入口；单测 211、e2e 44 例全绿
 
-验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
-（普通单测 66 + Worker 集成测试 100 + e2e 19 场景、双视口 52 例）。
+## 当前任务：群发邮件（2026-08-15）
 
-## 当前任务：表单交互与信息架构调整（2026-08-15）
+目标：选中一个或多个 group / member / event 受众 → 跳转写信页
+（Subject + CC + 富文本正文 + 可多选/取消的收件人列表）→ queue 逐封分发发送。
+邮件管线改为 queue 驱动逐收件人消息（非串行），投递 2 次失败即标 failed。
 
-- [x] 表单 field 间距统一 gap-2（FramePanel 相邻 field 规则）
-- [x] 新增 DatePicker 组件（coss With Input + Close on Select 模式），
-      Event 表单日期时间拆分、Terms/账本日期换组件
-- [x] Events 表格默认全部数据（time=all，startsAtUtc desc）
-- [x] 所有表格右上角加 refresh（DataTableToolbar onRefresh）
-- [x] 隐藏 Rehearsals / Finance 侧边栏入口与 Overview 卡片
-- [x] 完整恢复 Group：Groups 页、侧边栏入口、成员分组（表格列/筛选/表单选组）、
-      Event 受众选择（isOrgWide + groupIds）
-- [x] Group 成员管理：Groups 页行内成员抽屉（添加无分组学生 / 移出），
-      core 支持 group=unassigned，Members 筛选加 Unassigned 选项
-- [x] Members 列表去直接编辑：状态/分组改为只读展示，编辑收敛到抽屉
-      （抽屉内支持状态机变更 + 换组）
-- [x] 左下角用户菜单：只读版本号（vite 注入 git 短 hash）+ Send feedback
-      入口（提交到 feedback.meathill.com/api/feedbacks，appId=everband-app）
-- [x] 验收：format/typecheck/build 全绿、单测 211、e2e 44 例全绿、生产部署冒烟完成
+- [x] 迁移 0011：email_sends 加 cc、dev_outbox 加 cc
+- [x] integrations/email 与 core/email-sender：cc 支持
+- [x] core/notify：prepareEmailSend 加 cc；processEmailSend → processEmailRecipient
+      （错误分级 + 2 次上限 + 收尾汇总）
+- [x] core/notify：resolveAudienceContactsForSelection（groupIds/studentIds/eventId
+      union + 邮箱去重）+ RSVP 表单排除
+- [x] tasks consumer 适配逐收件人消息 + wrangler max_batch_size=50/max_retries=1/
+      max_concurrency=10
+- [x] server：sendUpdateEmail 适配逐收件人入队；getEmailComposeData/sendBulkEmail
+      （服务端重算受众白名单防伪造、dedupKey=SHA-256 内容+收件人）
+- [x] validation：emailComposeSearchSchema
+- [x] 富文本编辑器组件（TipTap 3 + StarterKit）+ 写信页 /o/$orgId/emails
+- [x] 入口：Groups/Members 多选 checkbox + Email 按钮；Event 详情 Email audience 按钮
+      （默认带 RSVP 排除）；DataTable 通用 selection 支持
+- [x] 测试：集成 119 例（逐封消费/错误分级/受众解析/RSVP/dedup）、
+      e2e 新增群发主链路（选组 → 写信 → 微调收件人 → 发送 → 历史），66 例全绿
+- [ ] 部署：先 `wrangler d1 migrations apply --remote`（0011）再部署 app/tasks

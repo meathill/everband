@@ -4,10 +4,13 @@ import {
   markAllNotificationsReadCore,
   markNotificationReadCore,
   prepareEmailSend,
-  processEmailSend,
+  processEmailRecipient,
+  resolveAudienceContactsForSelection,
+  submittedFormEmailsForEvent,
 } from "@everband/core";
 import { createDb, schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
+import type { EmailSender, SendResult } from "@everband/integrations/email";
 import { MockEmailSender } from "@everband/integrations/email";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
@@ -67,6 +70,56 @@ async function seedNotification(
     createdAt,
   });
   return id;
+}
+
+// 学生 + 联系人：多个学生可共享同一邮箱（去重场景，共享时复用 contactId），
+// group 可为 null（未分组）
+async function seedStudent(
+  orgId: string,
+  groupId: string | null,
+  contactEmails: string[],
+  sharedContactId?: string,
+): Promise<{ studentId: string; contactId: string }> {
+  const householdId = generateId(ID_PREFIXES.household);
+  await db.insert(schema.households).values({
+    id: householdId,
+    organizationId: orgId,
+    name: unique("HH"),
+    createdAt: NOW,
+  });
+  const studentId = generateId(ID_PREFIXES.student);
+  await db.insert(schema.students).values({
+    id: studentId,
+    organizationId: orgId,
+    householdId,
+    name: unique("S"),
+    status: "active",
+    groupId,
+    statusChangedAt: NOW,
+    createdAt: NOW,
+  });
+  let firstContactId = sharedContactId;
+  for (const email of contactEmails) {
+    const contactId = firstContactId ?? generateId(ID_PREFIXES.contact);
+    if (!firstContactId) {
+      await db.insert(schema.contacts).values({
+        id: contactId,
+        organizationId: orgId,
+        householdId,
+        name: unique("C"),
+        email,
+        createdAt: NOW,
+      });
+    }
+    firstContactId = contactId;
+    await db.insert(schema.studentContacts).values({
+      organizationId: orgId,
+      studentId,
+      contactId,
+      relationship: "parent",
+    });
+  }
+  return { studentId, contactId: firstContactId };
 }
 
 describe("notifications inbox", () => {
@@ -130,7 +183,7 @@ describe("notifications inbox", () => {
   });
 });
 
-describe("prepareEmailSend（快照 + 幂等 + 退订）", () => {
+describe("prepareEmailSend（快照 + 幂等 + 退订 + cc）", () => {
   it("dedupKey 相同的第二次请求不创建新任务", async () => {
     const { orgId, membershipId } = await seedOrg();
     const dedupKey = unique("dk");
@@ -153,7 +206,7 @@ describe("prepareEmailSend（快照 + 幂等 + 退订）", () => {
     expect(second.sendId).toBe(first.sendId);
   });
 
-  it("退订地址进入快照但标记 suppressed", async () => {
+  it("退订地址进入快照但标记 suppressed；cc 存入任务", async () => {
     const { orgId, membershipId } = await seedOrg();
     const optedOut = `${unique("opt")}@test.local`;
     const normal = `${unique("n")}@test.local`;
@@ -164,6 +217,7 @@ describe("prepareEmailSend（快照 + 幂等 + 退订）", () => {
         kind: "event-update",
         subject: "S",
         body: "B",
+        cc: "cc@test.local",
         objectType: "event_update",
         objectId: "upd_y",
         dedupKey: unique("dk"),
@@ -182,11 +236,42 @@ describe("prepareEmailSend（快照 + 幂等 + 退订）", () => {
     expect(rows).toHaveLength(2);
     expect(rows.find((r) => r.email === optedOut)?.status).toBe("suppressed");
     expect(rows.find((r) => r.email === normal)?.status).toBe("queued");
+    const sends = await db
+      .select({ cc: schema.emailSends.cc })
+      .from(schema.emailSends)
+      .where(eq(schema.emailSends.id, result.sendId));
+    expect(sends[0]?.cc).toBe("cc@test.local");
   });
 });
 
-describe("processEmailSend（消费幂等 + partial 汇总）", () => {
-  it("发送成功后重投不重发；suppressed 不发送", async () => {
+async function recipientRows(sendId: string) {
+  return db
+    .select({ id: schema.emailSendRecipients.id, email: schema.emailSendRecipients.email })
+    .from(schema.emailSendRecipients)
+    .where(eq(schema.emailSendRecipients.sendId, sendId));
+}
+
+function findRecipientRow(
+  rows: { id: string; email: string }[],
+  email: string,
+): { id: string; email: string } {
+  const row = rows.find((candidate) => candidate.email === email);
+  if (!row) {
+    throw new Error(`missing recipient row: ${email}`);
+  }
+  return row;
+}
+
+// 固定错误 sender：可重试/终态错误各测各的
+class FixedErrorSender implements EmailSender {
+  constructor(private readonly error: string) {}
+  async send(): Promise<SendResult> {
+    return { ok: false, error: this.error };
+  }
+}
+
+describe("processEmailRecipient（逐收件人 + 错误分级 + 收尾汇总）", () => {
+  it("发送成功（含 cc）；重投不重发；suppressed 不发送；收尾 succeeded", async () => {
     const { orgId, membershipId } = await seedOrg();
     const optedOut = `${unique("s")}@test.local`;
     const normal = `${unique("m")}@test.local`;
@@ -194,11 +279,12 @@ describe("processEmailSend（消费幂等 + partial 汇总）", () => {
       db,
       {
         organizationId: orgId,
-        kind: "event-update",
+        kind: "bulk",
         subject: "S",
         body: "B",
-        objectType: "event_update",
-        objectId: "upd_z",
+        cc: "cc@test.local",
+        objectType: "bulk",
+        objectId: "obj",
         dedupKey: unique("dk"),
         audience: audienceOf(optedOut, normal),
         suppressedEmails: new Set([optedOut]),
@@ -206,20 +292,32 @@ describe("processEmailSend（消费幂等 + partial 汇总）", () => {
       },
       NOW,
     );
+    const rows = await recipientRows(prepared.sendId);
+    const normalRow = findRecipientRow(rows, normal);
 
     const sender = new MockEmailSender();
-    await processEmailSend(db, sender, prepared.sendId, NOW);
+    const result = await processEmailRecipient(db, sender, {
+      sendId: prepared.sendId,
+      recipientId: normalRow.id,
+      attempts: 1,
+      now: NOW,
+    });
+    expect(result.outcome).toBe("sent");
     expect(sender.sent).toHaveLength(1);
     expect(sender.sent[0]?.to).toBe(normal);
+    expect(sender.sent[0]?.cc).toBe("cc@test.local");
 
-    // 模拟重投：状态回 processing 再消费一次 → 不再发送
-    await db
-      .update(schema.emailSends)
-      .set({ status: "processing" })
-      .where(eq(schema.emailSends.id, prepared.sendId));
-    await processEmailSend(db, sender, prepared.sendId, NOW + 1);
+    // 重投同一条消息：状态非 queued → 直接跳过
+    const again = await processEmailRecipient(db, sender, {
+      sendId: prepared.sendId,
+      recipientId: normalRow.id,
+      attempts: 2,
+      now: NOW + 1,
+    });
+    expect(again.outcome).toBe("skipped");
     expect(sender.sent).toHaveLength(1);
 
+    // suppressed 的收件人没有消息，但任务汇总要收敛
     const sends = await db
       .select()
       .from(schema.emailSends)
@@ -228,7 +326,112 @@ describe("processEmailSend（消费幂等 + partial 汇总）", () => {
     expect(sends[0]?.sentCount).toBe(1);
   });
 
-  it("部分失败 → partial，失败原因保留", async () => {
+  it("终态错误（E_RECIPIENT_SUPPRESSED）首次投递即 failed，不重试", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const prepared = await prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: "S",
+        body: "B",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: unique("dk"),
+        audience: audienceOf(`${unique("a")}@test.local`),
+        suppressedEmails: new Set<string>(),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+    const rows = await recipientRows(prepared.sendId);
+    const row = rows[0];
+    if (!row) {
+      throw new Error("missing recipient row");
+    }
+
+    const result = await processEmailRecipient(
+      db,
+      new FixedErrorSender("E_RECIPIENT_SUPPRESSED: bounce"),
+      {
+        sendId: prepared.sendId,
+        recipientId: row.id,
+        attempts: 1,
+        now: NOW,
+      },
+    );
+    expect(result.outcome).toBe("failed");
+
+    const failed = await db
+      .select({
+        status: schema.emailSendRecipients.status,
+        error: schema.emailSendRecipients.error,
+      })
+      .from(schema.emailSendRecipients)
+      .where(eq(schema.emailSendRecipients.id, row.id));
+    expect(failed[0]?.status).toBe("failed");
+    expect(failed[0]?.error).toBe("E_RECIPIENT_SUPPRESSED: bounce");
+  });
+
+  it("临时错误：第一次 retryable 保持 queued，第二次 failed", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const prepared = await prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: "S",
+        body: "B",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: unique("dk"),
+        audience: audienceOf(`${unique("a")}@test.local`),
+        suppressedEmails: new Set<string>(),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+    const rows = await recipientRows(prepared.sendId);
+    const row = rows[0];
+    if (!row) {
+      throw new Error("missing recipient row");
+    }
+    const sender = new FixedErrorSender("E_RATE_LIMIT_EXCEEDED: slow down");
+
+    const first = await processEmailRecipient(db, sender, {
+      sendId: prepared.sendId,
+      recipientId: row.id,
+      attempts: 1,
+      now: NOW,
+    });
+    expect(first.outcome).toBe("retryable");
+    const afterFirst = await db
+      .select({
+        status: schema.emailSendRecipients.status,
+        attemptCount: schema.emailSendRecipients.attemptCount,
+      })
+      .from(schema.emailSendRecipients)
+      .where(eq(schema.emailSendRecipients.id, row.id));
+    expect(afterFirst[0]?.status).toBe("queued");
+    expect(afterFirst[0]?.attemptCount).toBe(1);
+
+    const second = await processEmailRecipient(db, sender, {
+      sendId: prepared.sendId,
+      recipientId: row.id,
+      attempts: 2,
+      now: NOW + 1,
+    });
+    expect(second.outcome).toBe("failed");
+
+    const sends = await db
+      .select({ status: schema.emailSends.status, failedCount: schema.emailSends.failedCount })
+      .from(schema.emailSends)
+      .where(eq(schema.emailSends.id, prepared.sendId));
+    expect(sends[0]?.status).toBe("failed");
+    expect(sends[0]?.failedCount).toBe(1);
+  });
+
+  it("部分失败 → partial：最后一条收件人消息触发汇总", async () => {
     const { orgId, membershipId } = await seedOrg();
     const a = `${unique("a")}@test.local`;
     const b = `${unique("b")}@test.local`;
@@ -236,11 +439,11 @@ describe("processEmailSend（消费幂等 + partial 汇总）", () => {
       db,
       {
         organizationId: orgId,
-        kind: "event-update",
+        kind: "bulk",
         subject: "S",
         body: "B",
-        objectType: "event_update",
-        objectId: "upd_p",
+        objectType: "bulk",
+        objectId: "obj",
         dedupKey: unique("dk"),
         audience: audienceOf(a, b),
         suppressedEmails: new Set<string>(),
@@ -248,10 +451,32 @@ describe("processEmailSend（消费幂等 + partial 汇总）", () => {
       },
       NOW,
     );
+    const rows = await recipientRows(prepared.sendId);
+    const rowA = findRecipientRow(rows, a);
+    const rowB = findRecipientRow(rows, b);
 
-    const sender = new MockEmailSender();
-    sender.failNext = true; // 第一封失败，第二封成功
-    await processEmailSend(db, sender, prepared.sendId, NOW);
+    // 先处理失败的一封（attempts=2，rate limit 仍失败 → failed）
+    const failResult = await processEmailRecipient(
+      db,
+      new FixedErrorSender("E_RATE_LIMIT_EXCEEDED: nope"),
+      { sendId: prepared.sendId, recipientId: rowA.id, attempts: 2, now: NOW },
+    );
+    expect(failResult.outcome).toBe("failed");
+
+    // 此时还有 b 未处理，任务不收敛
+    const pending = await db
+      .select({ status: schema.emailSends.status })
+      .from(schema.emailSends)
+      .where(eq(schema.emailSends.id, prepared.sendId));
+    expect(pending[0]?.status).toBe("queued");
+
+    const okResult = await processEmailRecipient(db, new MockEmailSender(), {
+      sendId: prepared.sendId,
+      recipientId: rowB.id,
+      attempts: 1,
+      now: NOW,
+    });
+    expect(okResult.outcome).toBe("sent");
 
     const sends = await db
       .select()
@@ -260,11 +485,197 @@ describe("processEmailSend（消费幂等 + partial 汇总）", () => {
     expect(sends[0]?.status).toBe("partial");
     expect(sends[0]?.sentCount).toBe(1);
     expect(sends[0]?.failedCount).toBe(1);
+  });
+});
 
-    const failedRows = await db
-      .select()
-      .from(schema.emailSendRecipients)
-      .where(eq(schema.emailSendRecipients.sendId, prepared.sendId));
-    expect(failedRows.find((r) => r.status === "failed")?.error).toBe("mock failure");
+describe("resolveAudienceContactsForSelection（三来源并集 + 邮箱去重）", () => {
+  it("group 来源：只含该组 active 学生；多学生共享邮箱去重", async () => {
+    const { orgId } = await seedOrg();
+    const groupId = generateId(ID_PREFIXES.group);
+    await db.insert(schema.groups).values({
+      id: groupId,
+      organizationId: orgId,
+      name: unique("G"),
+      status: "active",
+      createdAt: NOW,
+    });
+    const sharedEmail = `${unique("a")}@test.local`;
+    const first = await seedStudent(orgId, groupId, [sharedEmail]);
+    // 另一个学生共享同一邮箱（共享 contact，业务上归并）
+    await seedStudent(orgId, groupId, [sharedEmail], first.contactId);
+    // 未分组学生不属于该 group
+    await seedStudent(orgId, null, [`${unique("x")}@test.local`]);
+
+    const contacts = await resolveAudienceContactsForSelection(db, orgId, { groupIds: [groupId] });
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0]?.email).toBe(sharedEmail);
+  });
+
+  it("student 来源 + group 来源取并集去重", async () => {
+    const { orgId } = await seedOrg();
+    const groupId = generateId(ID_PREFIXES.group);
+    await db.insert(schema.groups).values({
+      id: groupId,
+      organizationId: orgId,
+      name: unique("G"),
+      status: "active",
+      createdAt: NOW,
+    });
+    const gEmail = `${unique("g")}@test.local`;
+    const sEmail = `${unique("s")}@test.local`;
+    const inGroup = await seedStudent(orgId, groupId, [gEmail]);
+    const solo = await seedStudent(orgId, null, [sEmail]);
+
+    const contacts = await resolveAudienceContactsForSelection(db, orgId, {
+      groupIds: [groupId],
+      studentIds: [solo.studentId, inGroup.studentId],
+    });
+    expect(new Set(contacts.map((c) => c.email))).toEqual(new Set([sEmail, gEmail]));
+  });
+
+  it("event 来源：复用事件受众规则（eventGroups）", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const groupId = generateId(ID_PREFIXES.group);
+    await db.insert(schema.groups).values({
+      id: groupId,
+      organizationId: orgId,
+      name: unique("G"),
+      status: "active",
+      createdAt: NOW,
+    });
+    const inAudience = `${unique("ev")}@test.local`;
+    const outside = `${unique("no")}@test.local`;
+    await seedStudent(orgId, groupId, [inAudience]);
+    await seedStudent(orgId, null, [outside]);
+
+    const eventId = generateId(ID_PREFIXES.event);
+    await db.insert(schema.events).values({
+      id: eventId,
+      organizationId: orgId,
+      title: unique("Evt"),
+      startsAtUtc: NOW,
+      isOrgWide: false,
+      status: "published",
+      createdByMembershipId: membershipId,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    await db.insert(schema.eventGroups).values({
+      organizationId: orgId,
+      eventId,
+      groupId,
+    });
+
+    const contacts = await resolveAudienceContactsForSelection(db, orgId, { eventId });
+    expect(contacts.map((c) => c.email)).toEqual([inAudience]);
+  });
+});
+
+describe("submittedFormEmailsForEvent（RSVP 排除）", () => {
+  it("返回已提交该 event 表单的 active 家长邮箱", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const parentMembershipId = generateId(ID_PREFIXES.membership);
+    const parentEmail = `${unique("parent")}@test.local`;
+    await db.insert(schema.memberships).values({
+      id: parentMembershipId,
+      organizationId: orgId,
+      role: "parent",
+      status: "active",
+      invitedEmail: parentEmail,
+      createdAt: NOW,
+    });
+
+    const eventId = generateId(ID_PREFIXES.event);
+    await db.insert(schema.events).values({
+      id: eventId,
+      organizationId: orgId,
+      title: unique("Evt"),
+      startsAtUtc: NOW,
+      isOrgWide: true,
+      status: "published",
+      createdByMembershipId: membershipId,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    const formId = generateId(ID_PREFIXES.eventForm);
+    await db.insert(schema.eventForms).values({
+      id: formId,
+      organizationId: orgId,
+      eventId,
+      kind: "rsvp",
+      status: "open",
+      createdByMembershipId: membershipId,
+      createdAt: NOW,
+    });
+    await db.insert(schema.formSubmissions).values({
+      id: generateId(ID_PREFIXES.formSubmission),
+      organizationId: orgId,
+      formId,
+      membershipId: parentMembershipId,
+      payloadJson: "{}",
+      submittedAt: NOW,
+      updatedAt: NOW,
+    });
+
+    const emails = await submittedFormEmailsForEvent(db, orgId, eventId);
+    expect(emails).toEqual(new Set([parentEmail]));
+  });
+
+  it("只统计 active 成员；其他 event 的提交不影响", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const suspendedMembershipId = generateId(ID_PREFIXES.membership);
+    await db.insert(schema.memberships).values({
+      id: suspendedMembershipId,
+      organizationId: orgId,
+      role: "parent",
+      status: "suspended",
+      invitedEmail: `${unique("gone")}@test.local`,
+      createdAt: NOW,
+    });
+
+    const eventId = generateId(ID_PREFIXES.event);
+    await db.insert(schema.events).values({
+      id: eventId,
+      organizationId: orgId,
+      title: unique("Evt"),
+      startsAtUtc: NOW,
+      isOrgWide: true,
+      status: "published",
+      createdByMembershipId: membershipId,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+    const formId = generateId(ID_PREFIXES.eventForm);
+    await db.insert(schema.eventForms).values({
+      id: formId,
+      organizationId: orgId,
+      eventId,
+      kind: "rsvp",
+      status: "open",
+      createdByMembershipId: membershipId,
+      createdAt: NOW,
+    });
+    // 两个提交：active 的 owner + suspended 的家长；只有 active 的会返回
+    await db.insert(schema.formSubmissions).values({
+      id: generateId(ID_PREFIXES.formSubmission),
+      organizationId: orgId,
+      formId,
+      membershipId,
+      payloadJson: "{}",
+      submittedAt: NOW,
+      updatedAt: NOW,
+    });
+    await db.insert(schema.formSubmissions).values({
+      id: generateId(ID_PREFIXES.formSubmission),
+      organizationId: orgId,
+      formId,
+      membershipId: suspendedMembershipId,
+      payloadJson: "{}",
+      submittedAt: NOW,
+      updatedAt: NOW,
+    });
+
+    const emails = await submittedFormEmailsForEvent(db, orgId, eventId);
+    expect(emails.size).toBe(1);
   });
 });

@@ -463,7 +463,7 @@ test("Member 状态与分组编辑收敛到编辑抽屉", async ({ page }) => {
 });
 
 test("左下角 Feedback 入口提交到 feedback.meathill.com", async ({ page }) => {
-  const orgId = await createOrganization(page, `Feedback ${Date.now()}`);
+  await createOrganization(page, `Feedback ${Date.now()}`);
   let submitted: { url: string; body: unknown } | null = null;
   await page.route("**/api/feedbacks", async (route) => {
     submitted = { url: route.request().url(), body: route.request().postDataJSON() };
@@ -496,4 +496,72 @@ test("左下角 Feedback 入口提交到 feedback.meathill.com", async ({ page }
     version: "dev",
   });
   expect(body.contact).toMatch(/@test\.local/);
+});
+
+test("群发邮件：选组 → 写信页 → 收件人微调 → 发送入队 → 历史可见", async ({ page }) => {
+  const orgId = await createOrganization(page, `Email ${Date.now()}`);
+  const groupName = `Email Group ${Date.now()}`;
+  const contactEmail = uniqueEmail("e2e-email");
+
+  // 建组 + 一个带联系人的学生
+  await page.goto(`/o/${orgId}/groups`);
+  await pressButton(page, "New group");
+  await fillField(page.locator("#group-name"), groupName);
+  await pressButton(page, "Create group");
+  await expect(page.getByText(groupName, { exact: true })).toBeVisible();
+
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Add student");
+  await fillField(page.locator("#student-name"), "Email Student");
+  await fillField(page.locator("#contact-name"), "Email Contact");
+  await fillField(page.locator("#contact-email"), contactEmail);
+  await pressButton(page, "Add student");
+  await expect(page.getByText("Email Student", { exact: true })).toBeVisible();
+
+  // 通过组成员抽屉把学生加进组
+  await page.goto(`/o/${orgId}/groups`);
+  await pressButton(page, `Members of ${groupName}`);
+  await chooseOption(
+    page,
+    page.getByRole("combobox", { name: "Unassigned student" }),
+    "Email Student",
+  );
+  await pressButton(page, "Add");
+  await expect(page.getByText("Members (1)", { exact: true })).toBeVisible();
+  await pressButton(page, "Done");
+
+  // 勾选组 → Email 按钮 → 写信页
+  const groupCheckbox = page.getByRole("checkbox", { name: `Select ${groupName}` });
+  await waitForHydration(groupCheckbox);
+  await groupCheckbox.click();
+  await expect(groupCheckbox).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Email 1", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails`));
+
+  // 写信页：来源、收件人列表与计数
+  await expect(page.getByRole("heading", { name: "Email", exact: true })).toBeVisible();
+  await expect(page.getByText(contactEmail, { exact: true })).toBeVisible();
+  await expect(page.getByText("1 of 1 selected", { exact: true })).toBeVisible();
+
+  // 取消勾选再勾回（收件人微调路径）
+  const rowCheckbox = page.getByRole("checkbox", { name: /^Include / });
+  await waitForHydration(rowCheckbox);
+  await rowCheckbox.click();
+  await expect(page.getByText("0 of 1 selected", { exact: true })).toBeVisible();
+  await rowCheckbox.click();
+  await expect(page.getByText("1 of 1 selected", { exact: true })).toBeVisible();
+
+  // 填内容并发送（dev 模式落 outbox，入队即返回）
+  await fillField(page.locator("#email-subject"), "Rehearsal reminder");
+  await page.locator('[contenteditable="true"]').fill("Please RSVP by Friday.");
+  await page.getByRole("button", { name: "Send email", exact: true }).first().click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Send email", exact: true })
+    .click();
+  await expect(page.getByText(/Email queued for 1 recipient/)).toBeVisible();
+
+  // 发送历史可见（queued ≠ delivered 如实展示）
+  await page.goto(`/o/${orgId}/settings?section=email-delivery`);
+  await expect(page.getByText("Rehearsal reminder", { exact: true })).toBeVisible();
 });

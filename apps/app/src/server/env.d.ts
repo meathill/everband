@@ -8,7 +8,8 @@ declare module "cloudflare:workers" {
     DB: D1Database;
     FILES: R2Bucket;
     IMPORT_QUEUE: Queue<{ importJobId: string; r2Key: string }>;
-    EMAIL_QUEUE: Queue<{ sendId: string }>;
+    // 逐收件人消息：一封邮件一条消息（queue 驱动并行，投递 2 次上限）
+    EMAIL_QUEUE: Queue<{ sendId: string; recipientId: string }>;
     // dev（本地 .dev.vars）| mock（CI）| cloudflare（生产真实发送）
     EMAIL_MODE?: string;
     // Email Service send_email binding（结构化最小面，见 core/email-sender.ts）

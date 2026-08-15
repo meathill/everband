@@ -9,7 +9,7 @@ import {
 } from "@everband/ui/components/select";
 import type { StudentStatusFilter } from "@everband/validation";
 import { STUDENT_STATUS_FILTERS, studentsListSchema } from "@everband/validation";
-import { PlusIcon } from "@phosphor-icons/react";
+import { EnvelopeSimpleIcon, PlusIcon } from "@phosphor-icons/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
@@ -65,6 +65,8 @@ function MembersPage(): React.ReactElement {
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<OrgStudentRow | undefined>(undefined);
+  // 多选状态（群发入口）：翻页不清空，选中的学生 id 集合
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   function openCreate() {
     setEditing(undefined);
@@ -94,10 +96,26 @@ function MembersPage(): React.ReactElement {
 
       <DataTableToolbar
         actions={
-          <Button onClick={openCreate}>
-            <PlusIcon />
-            Add student
-          </Button>
+          <>
+            <Button
+              disabled={selectedIds.size === 0}
+              onClick={() =>
+                navigate({
+                  to: "/o/$orgId/emails",
+                  params: { orgId },
+                  search: { students: [...selectedIds] },
+                })
+              }
+              variant="outline"
+            >
+              <EnvelopeSimpleIcon />
+              Email{selectedIds.size > 0 ? ` ${selectedIds.size}` : ""}
+            </Button>
+            <Button onClick={openCreate}>
+              <PlusIcon />
+              Add student
+            </Button>
+          </>
         }
         defaultQuery={search.q}
         onQueryChange={listSearch.setQuery}
@@ -146,10 +164,12 @@ function MembersPage(): React.ReactElement {
       <MembersTable
         isFiltered={isFiltered}
         onEdit={openEdit}
+        onSelectionChange={setSelectedIds}
         onSortChange={listSearch.setSort}
         order={search.order}
         orgId={orgId}
         rows={list.items}
+        selectedIds={selectedIds}
         sort={search.sort}
       />
 

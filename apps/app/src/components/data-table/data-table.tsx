@@ -1,3 +1,4 @@
+import { Checkbox } from "@everband/ui/components/checkbox";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everband/ui/components/empty";
 import {
   Table,
@@ -32,6 +33,11 @@ export type DataTableProps<T> = {
   sort?: string;
   order?: SortOrder;
   onSortChange?: (sort: string, order: SortOrder) => void;
+  /** 可选：多选。选中状态由页面持有（翻页保留已选 ID，不随页清空） */
+  selectedIds?: ReadonlySet<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
+  /** 行的复选框无障碍标签（如 "Select Alice"） */
+  selectionLabel?: (row: T) => string;
   className?: string;
 };
 
@@ -48,6 +54,9 @@ export function DataTable<T>({
   sort,
   order = "asc",
   onSortChange,
+  selectedIds,
+  onSelectionChange,
+  selectionLabel,
   className,
 }: DataTableProps<T>): React.ReactElement {
   function handleSort(column: DataTableColumn<T>): void {
@@ -61,10 +70,49 @@ export function DataTable<T>({
     onSortChange(column.key, nextOrder);
   }
 
+  const hasSelection = Boolean(onSelectionChange);
+  const pageKeys = rows.map(rowKey);
+  const selected = selectedIds ?? new Set<string>();
+  const allSelected = pageKeys.length > 0 && pageKeys.every((key) => selected.has(key));
+  const someSelected = !allSelected && pageKeys.some((key) => selected.has(key));
+
+  function togglePage(checked: boolean) {
+    const next = new Set(selected);
+    for (const key of pageKeys) {
+      if (checked) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+    }
+    onSelectionChange?.(next);
+  }
+
+  function toggleRow(row: T, checked: boolean) {
+    const next = new Set(selected);
+    const key = rowKey(row);
+    if (checked) {
+      next.add(key);
+    } else {
+      next.delete(key);
+    }
+    onSelectionChange?.(next);
+  }
+
   return (
     <Table className={className} variant="card">
       <TableHeader>
         <TableRow>
+          {hasSelection && (
+            <TableHead className="w-10">
+              <Checkbox
+                aria-label="Select all rows"
+                checked={allSelected}
+                indeterminate={someSelected}
+                onCheckedChange={togglePage}
+              />
+            </TableHead>
+          )}
           {columns.map((column) => {
             const isActive = sort === column.key;
             const isSortable = Boolean(column.sortable && onSortChange);
@@ -95,13 +143,25 @@ export function DataTable<T>({
       <TableBody>
         {rows.length === 0 ? (
           <TableRow>
-            <TableCell className="whitespace-normal p-0" colSpan={columns.length}>
+            <TableCell
+              className="whitespace-normal p-0"
+              colSpan={columns.length + (hasSelection ? 1 : 0)}
+            >
               {empty ?? <DataTableEmpty />}
             </TableCell>
           </TableRow>
         ) : (
           rows.map((row) => (
             <TableRow key={rowKey(row)}>
+              {hasSelection && (
+                <TableCell className="w-10">
+                  <Checkbox
+                    aria-label={selectionLabel?.(row) ?? "Select row"}
+                    checked={selected.has(rowKey(row))}
+                    onCheckedChange={(checked) => toggleRow(row, checked)}
+                  />
+                </TableCell>
+              )}
               {columns.map((column) => (
                 <TableCell className={cn(column.className)} key={column.key}>
                   {column.render(row)}

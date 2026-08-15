@@ -3,7 +3,7 @@
 
 import {
   chooseEmailSender,
-  processEmailSend,
+  processEmailRecipient,
   processImportJob,
   type SendEmailBinding,
 } from "@everband/core";
@@ -27,6 +27,7 @@ export interface ImportJobMessage {
 
 export interface EmailSendMessage {
   sendId: string;
+  recipientId: string;
 }
 
 type TaskMessage = ImportJobMessage | EmailSendMessage;
@@ -56,12 +57,28 @@ export default {
           : undefined,
       );
       for (const message of batch.messages) {
-        const { sendId } = message.body as EmailSendMessage;
+        // queue 消息 = 一封邮件；platform 负责并行调度（max_concurrency）
+        // 与重投（max_retries=1）。幂等与错误分级在 core 内完成。
+        const { sendId, recipientId } = message.body as EmailSendMessage;
         try {
-          await processEmailSend(db, sender, sendId, Date.now());
-          message.ack();
+          const { outcome } = await processEmailRecipient(db, sender, {
+            sendId,
+            recipientId,
+            attempts: message.attempts,
+            now: Date.now(),
+          });
+          if (outcome === "retryable") {
+            console.warn("email send retryable, will retry", { sendId, recipientId });
+            message.retry();
+          } else {
+            message.ack();
+          }
         } catch (cause) {
-          console.error("email send failed, will retry", { sendId, cause });
+          console.error("email send failed unexpectedly, will retry", {
+            sendId,
+            recipientId,
+            cause,
+          });
           message.retry();
         }
       }

@@ -394,3 +394,29 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
   指示与实际排序不一致。
 - **DataTableToolbar onRefresh**：右上角刷新按钮（ArrowClockwiseIcon + router.invalidate），
   series-section 无 toolbar 时直接在页头按钮组加同款按钮。
+
+## 群发邮件与逐封分发管线（2026-08-15）
+
+- **邮件管线从"任务消息 + 消费者串行"改为"queue 驱动逐收件人消息"**：
+  一条 queue 消息 = 一封邮件（`{ sendId, recipientId }`）。平台负责并行
+  （consumer `max_concurrency: 10`）与重投（`max_retries: 1`），消费侧不再需要
+  自建并发。batch 内逐条处理（`max_batch_size: 50`），有效并行度由 concurrency 决定。
+- **投递 2 次语义**：`message.attempts` 从 1 开始，首次失败（可重试错误）retry 一次，
+  attempts=2 仍失败 → core 直接标 `failed` 并 ack，不进 DLQ；DLQ 只兜底消费者崩溃等
+  意外。错误分级在 `isRetryableSendError`：E_RECIPIENT_SUPPRESSED 等终态错误首次即
+  failed 不重试；限流（E_RATE_LIMIT_EXCEEDED 等）与未知错误走 2 次上限。
+- **任务终态收尾**：每封处理完重查剩余 queued 数，为 0 时幂等覆盖写
+  `email_sends` 汇总（succeeded/partial/failed）——并发下最后一条必然触发，无竞态。
+  与旧的"消费前 claim + 一次性汇总"（会在大任务里长时间占住任务状态）完全不同。
+- **生产入队用 `queue.sendBatch`**：单次上限 100 条，收件人多分批循环。
+- **群发 dedupKey = SHA-256(subject|cc|html|排序后收件人邮箱)**：相同内容 + 相同收件人
+  集合的重复发送自动跳过（防手滑）；催办换收件人 → key 变化 → 正常发送。dedupKey 是
+  SQLite uniqueIndex，长字符串会超索引长度上限（999 字节），所以必须哈希成短串。
+- **sendBulkEmail 服务端重算受众做白名单**：客户端提交的每个收件人必须在服务端
+  解析出的受众内（groups/students/event + excludeForm 同参数），防伪造任意地址群发。
+- **TipTap 3 SSR 注意**：`useEditor` 必须 `immediatelyRender: false`，SSR 输出空容器，
+  挂载后渲染（hydration mismatch 来源）。编辑器是内容可编辑区，表单提交要自己从
+  `editor.getHTML()/getText()` 取（不走 FormData）。
+- **迁移 0011 手工添加**（与 0010 同法）：`email_sends.cc`、`dev_outbox.cc` 可空列，
+  wrangler d1 migrations apply 执行，schema 同步在 packages/db。部署顺序：先
+  `apply --remote` 再部署 worker（向后兼容的加列，无读取顺序要求）。

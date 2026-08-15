@@ -29,6 +29,9 @@ export interface MembersTableProps {
   onEdit: (row: OrgStudentRow) => void;
   /** 有筛选条件时空态文案不同：没有结果 ≠ 还没录过学生 */
   isFiltered: boolean;
+  /** 多选（群发入口）：选中状态由页面持有，翻页保留 */
+  selectedIds: ReadonlySet<string>;
+  onSelectionChange: (ids: Set<string>) => void;
 }
 
 type RunAction = (
@@ -44,6 +47,8 @@ export function MembersTable({
   onSortChange,
   onEdit,
   isFiltered,
+  selectedIds,
+  onSelectionChange,
 }: MembersTableProps): React.ReactElement {
   const router = useRouter();
 
@@ -109,10 +114,13 @@ export function MembersTable({
     <DataTable
       columns={columns}
       empty={<MembersEmpty isFiltered={isFiltered} />}
+      onSelectionChange={onSelectionChange}
       onSortChange={onSortChange}
       order={order}
       rowKey={(row) => row.id}
       rows={rows}
+      selectedIds={selectedIds}
+      selectionLabel={(row) => `Select ${row.name}`}
       sort={sort}
     />
   );

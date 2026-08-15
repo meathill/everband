@@ -5,11 +5,7 @@
 
 import { DyqrApiError, DyqrClient } from "@dyqr/sdk";
 
-export class ShortLinkError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
+export class ShortLinkError extends Error {}
 
 export interface CreatedShortLink {
   alias: string;

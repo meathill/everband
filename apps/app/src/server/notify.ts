@@ -7,16 +7,48 @@ import {
   membershipsForEmails,
   prepareEmailSend,
   recordAudit,
+  resolveAudienceContactsForSelection,
   resolveEventAudienceContacts,
+  submittedFormEmailsForEvent,
 } from "@everband/core";
-import { schema } from "@everband/db";
-import { notificationIdSchema, notificationsPageSchema, orgIdSchema } from "@everband/validation";
+import { type Database, schema } from "@everband/db";
+import {
+  emailComposeSearchSchema,
+  notificationIdSchema,
+  notificationsPageSchema,
+  orgIdSchema,
+} from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";
+
+// 队列消息 = 一封邮件（与 tasks consumer 的 EmailSendMessage 一致）
+interface EmailSendMessage {
+  sendId: string;
+  recipientId: string;
+}
+
+// sendBatch 单次上限 100 条，收件人多的任务分批入队
+async function enqueueEmailRecipients(db: Database, sendId: string): Promise<void> {
+  const recipients = await db
+    .select({ id: schema.emailSendRecipients.id })
+    .from(schema.emailSendRecipients)
+    .where(
+      and(
+        eq(schema.emailSendRecipients.sendId, sendId),
+        eq(schema.emailSendRecipients.status, "queued"),
+      ),
+    );
+  const messages: { body: EmailSendMessage }[] = recipients.map((recipient) => ({
+    body: { sendId, recipientId: recipient.id },
+  }));
+  for (let i = 0; i < messages.length; i += 100) {
+    await env.EMAIL_QUEUE.sendBatch(messages.slice(i, i + 100));
+  }
+}
 
 // staff 明确触发：给 update 的受众发邮件（PRD §6.4 步骤 8-9）
 export const sendUpdateEmail = createServerFn({ method: "POST" })
@@ -127,7 +159,7 @@ export const sendUpdateEmail = createServerFn({ method: "POST" })
         suppressed: prepared.suppressedCount,
       },
     });
-    await env.EMAIL_QUEUE.send({ sendId: prepared.sendId });
+    await enqueueEmailRecipients(db, prepared.sendId);
     return { ok: true as const, deduplicated: false, sendId: prepared.sendId };
   });
 
@@ -217,4 +249,208 @@ export const getMyEmailPreference = createServerFn({ method: "GET" })
       .where(eq(schema.memberships.id, ctx.membershipId))
       .limit(1);
     return { optOut: rows[0]?.optOut ?? false };
+  });
+
+// ---------------------------------------------------------------------------
+// 群发邮件（写信页）
+// ---------------------------------------------------------------------------
+
+// 写信页数据：解析受众 + 退订/RSVP 排除。收件人列表给全量（无分页），
+// 家长按邮箱去重后的数量级（数百）一次返回即可。
+export const getEmailComposeData = createServerFn({ method: "GET" })
+  .validator(emailComposeSearchSchema.extend({ orgId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const db = getDb();
+    await requireMembership(db, data.orgId, STAFF_ROLES);
+
+    const selection = {
+      groupIds: data.groups ?? [],
+      studentIds: data.students ?? [],
+      eventId: data.event,
+    };
+    const [all, formEmails] = await Promise.all([
+      resolveAudienceContactsForSelection(db, data.orgId, selection),
+      data.excludeForm && data.event
+        ? submittedFormEmailsForEvent(db, data.orgId, data.event)
+        : Promise.resolve(new Set<string>()),
+    ]);
+    const memberships = await membershipsForEmails(
+      db,
+      data.orgId,
+      all.map((contact) => contact.email),
+    );
+    const suppressedEmails = new Set(
+      memberships.filter((m) => m.operationalEmailOptOut).map((m) => m.email),
+    );
+
+    const eventTitle = data.event
+      ? (
+          await db
+            .select({ title: schema.events.title })
+            .from(schema.events)
+            .where(eq(schema.events.id, data.event))
+            .limit(1)
+        )[0]?.title
+      : undefined;
+
+    return {
+      recipients: all.filter(
+        (contact) => !suppressedEmails.has(contact.email) && !formEmails.has(contact.email),
+      ),
+      excludedByFormCount: all.filter((contact) => formEmails.has(contact.email)).length,
+      suppressedCount: all.filter((contact) => suppressedEmails.has(contact.email)).length,
+      eventTitle,
+    };
+  });
+
+// 群发 dedupKey：内容 + 收件人集合一致即视为同一封（防手滑重复发送）。
+// 催办场景换收件人 → key 变化 → 正常发送；内容/收件人完全相同的重复提交会被跳过。
+async function bulkEmailDedupKey(input: {
+  subject: string;
+  cc: string;
+  html: string;
+  recipients: { email: string }[];
+}): Promise<string> {
+  const emails = input.recipients
+    .map((recipient) => recipient.email)
+    .sort()
+    .join(",");
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${input.subject}\n${input.cc}\n${input.html}\n${emails}`),
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return `bulk:${hex}`;
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const bulkRecipientSchema = z.object({
+  contactId: z.string(),
+  email: z.string().toLowerCase().pipe(z.email()),
+  name: z.string(),
+});
+
+export const sendBulkEmail = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      orgId: z.string().min(1),
+      subject: z.string().trim().min(1).max(200),
+      cc: z
+        .string()
+        .trim()
+        .optional()
+        .refine((value) => !value || z.email().safeParse(value).success, "Invalid CC email"),
+      html: z.string(),
+      text: z.string(),
+      groups: z.array(z.string().min(1)).optional(),
+      students: z.array(z.string().min(1)).optional(),
+      event: z.string().min(1).optional(),
+      excludeForm: z.boolean().optional(),
+      recipients: z.array(bulkRecipientSchema).min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const now = Date.now();
+
+    // 服务端重算受众做白名单：客户端只能发送真实受众 ∩ 自己提交的收件人，
+    // 防止伪造任意地址群发（TOCTOU 无实际风险：受众变化只会让合法收件人更少）
+    const selection = {
+      groupIds: data.groups ?? [],
+      studentIds: data.students ?? [],
+      eventId: data.event,
+    };
+    const [allowed, formEmails] = await Promise.all([
+      resolveAudienceContactsForSelection(db, data.orgId, selection),
+      data.excludeForm && data.event
+        ? submittedFormEmailsForEvent(db, data.orgId, data.event)
+        : Promise.resolve(new Set<string>()),
+    ]);
+    const allowedEmails = new Set(allowed.map((contact) => contact.email));
+    const invalid = data.recipients.filter((recipient) => !allowedEmails.has(recipient.email));
+    if (invalid.length > 0) {
+      return { ok: false as const, error: "Some recipients are outside the resolved audience." };
+    }
+    const subject = data.subject.trim();
+    const html = data.html.trim();
+    const text = data.text.trim();
+    if (!html && !text) {
+      return { ok: false as const, error: "Message body is required." };
+    }
+
+    // 退订过滤：群发是运营邮件，尊重偏好（与 update 邮件一致）
+    const memberships = await membershipsForEmails(
+      db,
+      data.orgId,
+      data.recipients.map((recipient) => recipient.email),
+    );
+    const suppressedEmails = new Set(
+      memberships.filter((m) => m.operationalEmailOptOut).map((m) => m.email),
+    );
+
+    const cc = data.cc ?? "";
+    const dedupKey = await bulkEmailDedupKey({
+      subject,
+      cc,
+      html,
+      recipients: data.recipients,
+    });
+    const prepared = await prepareEmailSend(
+      db,
+      {
+        organizationId: data.orgId,
+        kind: "bulk",
+        subject,
+        body: text || htmlToText(html),
+        cc: cc || undefined,
+        objectType: "bulk",
+        objectId: dedupKey,
+        dedupKey,
+        audience: data.recipients,
+        suppressedEmails,
+        requestedByMembershipId: ctx.membershipId,
+      },
+      now,
+    );
+    if (!prepared.created) {
+      return {
+        ok: true as const,
+        deduplicated: true,
+        sendId: prepared.sendId,
+        queuedCount: 0,
+        suppressedCount: prepared.suppressedCount,
+      };
+    }
+
+    await recordAudit(db, {
+      organizationId: data.orgId,
+      actorMembershipId: ctx.membershipId,
+      action: "email_send.requested",
+      objectType: "email_send",
+      objectId: prepared.sendId,
+      summary: {
+        kind: "bulk",
+        recipientCount: data.recipients.length,
+        queued: prepared.queuedCount,
+        suppressed: prepared.suppressedCount,
+        excludedByForm: formEmails.size,
+      },
+    });
+    await enqueueEmailRecipients(db, prepared.sendId);
+    return {
+      ok: true as const,
+      deduplicated: false,
+      sendId: prepared.sendId,
+      queuedCount: prepared.queuedCount,
+      suppressedCount: prepared.suppressedCount,
+    };
   });

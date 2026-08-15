@@ -10,6 +10,8 @@ export interface OutgoingEmail {
   subject: string;
   text: string;
   html?: string;
+  // 抄送；群发时每封邮件同一地址（例如经办 staff 留底）
+  cc?: string;
   // 邮件类别（invite/magic-link/event-update/swap-result...），用于审计与偏好过滤
   kind: string;
 }

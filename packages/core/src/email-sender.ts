@@ -21,6 +21,7 @@ export class DevEmailSender implements EmailSender {
       toEmail: message.to,
       subject: message.subject,
       body: message.text,
+      cc: message.cc ?? null,
       kind: message.kind,
       createdAt: Date.now(),
     });
@@ -37,6 +38,7 @@ export interface SendEmailBinding {
     subject: string;
     text: string;
     html?: string;
+    cc?: string;
   }): Promise<unknown>;
 }
 
@@ -57,6 +59,7 @@ export class CloudflareEmailSender implements EmailSender {
         subject: message.subject,
         text: message.text,
         html: message.html,
+        cc: message.cc,
       });
       return { ok: true };
     } catch (cause) {

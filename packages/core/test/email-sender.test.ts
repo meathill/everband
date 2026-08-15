@@ -48,10 +48,16 @@ describe("CloudflareEmailSender", () => {
     fromName: "Everband",
   });
 
-  it("发送成功返回 ok:true", async () => {
+  it("发送成功返回 ok:true（含 cc 透传）", async () => {
     const send = vi.fn().mockResolvedValue(undefined);
     const sender = new CloudflareEmailSender(options({ send }));
-    const result = await sender.send({ to: "a@b.c", subject: "Hi", text: "body", kind: "invite" });
+    const result = await sender.send({
+      to: "a@b.c",
+      subject: "Hi",
+      text: "body",
+      cc: "cc@b.c",
+      kind: "invite",
+    });
     expect(result).toEqual({ ok: true });
     expect(send).toHaveBeenCalledWith({
       to: "a@b.c",
@@ -59,6 +65,7 @@ describe("CloudflareEmailSender", () => {
       subject: "Hi",
       text: "body",
       html: undefined,
+      cc: "cc@b.c",
     });
   });
 
@@ -81,13 +88,14 @@ describe("CloudflareEmailSender", () => {
 });
 
 describe("DevEmailSender", () => {
-  it("写入 dev_outbox 并返回 ok:true", async () => {
+  it("写入 dev_outbox 并返回 ok:true（含 cc）", async () => {
     const { db, insert, values } = fakeDb();
     const sender = new DevEmailSender(db);
     const result = await sender.send({
       to: "a@b.c",
       subject: "Hi",
       text: "body",
+      cc: "cc@b.c",
       kind: "magic-link",
     });
     expect(result).toEqual({ ok: true });
@@ -97,6 +105,7 @@ describe("DevEmailSender", () => {
       toEmail: "a@b.c",
       subject: "Hi",
       body: "body",
+      cc: "cc@b.c",
       kind: "magic-link",
     });
     expect(record.id).toMatch(/^send/);

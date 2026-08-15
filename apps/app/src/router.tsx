@@ -1,5 +1,4 @@
 import { createRouter, Link } from "@tanstack/react-router";
-import { FullPageLoader } from "~/components/page-loaders.tsx";
 import { routeTree } from "./routeTree.gen.ts";
 
 // 与 /p/$publicSlug 降级页同风格的 404（issue #5）
