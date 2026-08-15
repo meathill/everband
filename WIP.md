@@ -56,4 +56,4 @@
 - [x] 隐藏 Rehearsals / Finance 侧边栏入口与 Overview 卡片
 - [x] 完整恢复 Group：Groups 页、侧边栏入口、成员分组（表格列/筛选/表单选组）、
       Event 受众选择（isOrgWide + groupIds）
-- [ ] 验收：format/typecheck/build 全绿、单测 210、e2e 相关子集全绿、生产部署
+- [x] 验收：format/typecheck/build 全绿、单测 210、e2e 相关子集全绿、生产部署冒烟完成
