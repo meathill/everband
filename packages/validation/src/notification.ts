@@ -28,9 +28,14 @@ export const notificationIdSchema = z.object({
   notificationId: z.string().min(1),
 });
 
-// 群发写信页的 URL 参数：三个来源取并集，event 可叠加 RSVP 表单排除。
+// 群发写信页的 URL 参数：三种受众来源取并集，event 可叠加 RSVP 表单排除。
 // 数组参数由 TanStack Router 序列化为 groups[]=a&groups[]=b。
+// 无任何来源参数且未显式 compose/draft 时，页面显示"邮件中心"列表（草稿 + 发送历史）。
 export const emailComposeSearchSchema = z.object({
+  /** 显式进入写信视图（新建邮件，不带受众来源） */
+  compose: z.boolean().optional(),
+  /** 恢复指定草稿（列表视图点击草稿卡片进入） */
+  draft: z.string().min(1).optional(),
   groups: z.array(z.string().min(1)).optional(),
   students: z.array(z.string().min(1)).optional(),
   event: z.string().min(1).optional(),

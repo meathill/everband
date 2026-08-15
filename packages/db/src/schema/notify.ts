@@ -80,3 +80,28 @@ export const emailSendRecipients = sqliteTable(
     index("idx_email_recipients_send_status").on(table.sendId, table.status),
   ],
 );
+
+// 群发写信草稿：每个 membership 每组织一条（写信页自动保存，防丢失）。
+// 收件人与受众选择序列化为 JSON，恢复草稿时原样加载。
+export const emailDrafts = sqliteTable(
+  "email_drafts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    membershipId: text("membership_id").notNull(),
+    subject: text("subject").notNull(),
+    cc: text("cc"),
+    html: text("html").notNull(),
+    text: text("text").notNull(),
+    recipientsJson: text("recipients_json").notNull(),
+    selectionJson: text("selection_json").notNull(),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_email_drafts_org_member").on(table.organizationId, table.membershipId),
+    index("idx_email_drafts_org_updated").on(table.organizationId, table.updatedAt),
+  ],
+);

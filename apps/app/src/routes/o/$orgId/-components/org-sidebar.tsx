@@ -27,6 +27,7 @@ import {
   CalendarBlankIcon,
   CaretUpDownIcon,
   CheckIcon,
+  EnvelopeSimpleIcon,
   GearIcon,
   type Icon,
   PaperPlaneTiltIcon,
@@ -47,6 +48,7 @@ import { logout } from "~/server/auth.ts";
 type OrgNavPath =
   | "/o/$orgId"
   | "/o/$orgId/events"
+  | "/o/$orgId/emails"
   | "/o/$orgId/notifications"
   | "/o/$orgId/members"
   | "/o/$orgId/groups"
@@ -63,6 +65,7 @@ type NavItem = {
 const STAFF_MAIN_ITEMS: NavItem[] = [
   { to: "/o/$orgId", label: "Overview", icon: SquaresFourIcon, exact: true },
   { to: "/o/$orgId/events", label: "Events", icon: CalendarBlankIcon },
+  { to: "/o/$orgId/emails", label: "Emails", icon: EnvelopeSimpleIcon },
   { to: "/o/$orgId/members", label: "Members", icon: UsersIcon },
   { to: "/o/$orgId/groups", label: "Groups", icon: UsersThreeIcon },
 ];

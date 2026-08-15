@@ -68,4 +68,9 @@
       （默认带 RSVP 排除）；DataTable 通用 selection 支持
 - [x] 测试：集成 119 例（逐封消费/错误分级/受众解析/RSVP/dedup）、
       e2e 新增群发主链路（选组 → 写信 → 微调收件人 → 发送 → 历史），66 例全绿
-- [ ] 部署：先 `wrangler d1 migrations apply --remote`（0011）再部署 app/tasks
+- [x] 邮件 UI 第二轮（2026-08-15）：Emails 移入侧边栏（邮件中心：草稿 + 发送历史，
+      Settings 移除 Email delivery tab）；写信页全宽、输入框白色背景（Input/Textarea
+      组件 bg-background → bg-card）、收件人单行 truncate；草稿自动保存（debounce 1s，
+      每成员一条，迁移 0012）、离开未保存询问（beforeunload + 链接点击捕获拦截）、
+      发送后删草稿；集成 124 例、e2e 68 例全绿
+- [ ] 部署：先 `wrangler d1 migrations apply --remote`（0011、0012）再部署 app/tasks

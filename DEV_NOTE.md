@@ -420,3 +420,26 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
 - **迁移 0011 手工添加**（与 0010 同法）：`email_sends.cc`、`dev_outbox.cc` 可空列，
   wrangler d1 migrations apply 执行，schema 同步在 packages/db。部署顺序：先
   `apply --remote` 再部署 worker（向后兼容的加列，无读取顺序要求）。
+
+## 邮件中心与草稿（2026-08-15 第二轮）
+
+- **Emails 是双视图路由**：无任何 search 参数 → 邮件中心（草稿 + 发送历史，
+  历史从 Settings 的 email-delivery tab 移入）；有 `compose`/`groups`/`students`/
+  `event`/`draft` 任一参数 → 写信视图。Settings 已移除 email-delivery 段。
+- **草稿自动保存**：写信视图内容变化后 debounce 1s 静默 `saveEmailDraft`（每成员每
+  组织一条，unique(org, membership)，重复保存覆盖）。有内容（subject/cc/body/收件人
+  任一非空）才落草稿，纯空白页不建。发送成功删除草稿。
+- **离开拦截的两段式实现**（TanStack Router 无内置 blocker）：`beforeunload` 挡
+  刷新/关页；`document` click 捕获阶段拦 `<a>`（preventDefault + confirm）挡站内
+  导航。只在自己 dirty（当前 key ≠ 最后保存 key）时挂载。键序列化
+  subject/cc/html/text/收件人排序集合。
+- **loader 缓存陷阱**：默认 staleTime 60s——写信视图保存草稿/发送后必须
+  `router.invalidate()`，否则返回邮件中心看到的是旧缓存（草稿/历史不出现）。
+  本项目其他列表页靠刷新按钮规避，写信页是"写完回列表"的时序场景，必须主动失效。
+- **恢复草稿用收件人快照**：draft 模式不再重新解析受众（学生可能已换组），直接用
+  保存时的 recipients；发送白名单仍按草稿 selection 重新解析校验。
+- **Input/Textarea 背景改 bg-card**（白色）：原 bg-background 与 FramePanel 同色，
+  在 emerald 主题（米白）下输入框看起来像透明/禁用。bg-card = --bg-elevated 纯白，
+  是全站语义正确的"表面"。dark 模式不受影响（dark:bg-input/32 保留）。
+- **迁移 0012 手工添加**：email_drafts 表（与 0010/0011 同法）。部署顺序：先
+  apply --remote 再部署。

@@ -7,7 +7,6 @@ export const SETTINGS_SECTIONS = [
   "terms",
   "public-profile",
   "data-import",
-  "email-delivery",
 ] as const;
 
 export const settingsSearchSchema = importJobsListSchema.extend({

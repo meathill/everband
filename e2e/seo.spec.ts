@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForHydration } from "./helpers.ts";
 
 // SEO 断言：营销站（landing, :3101，见 playwright.config.ts）head 完整性 + robots/sitemap；
 // 应用站（:3000）登录后台默认 noindex。
@@ -112,6 +113,8 @@ test.describe("landing SEO", () => {
     });
 
     await page.goto(`${LANDING}/contact`);
+    // 水合前提交会走原生 GET（onSubmit 未挂载）——必须先等 React 接管
+    await waitForHydration(page.locator("#contact-name"));
     await page.fill("#contact-name", "Test User");
     await page.fill("#contact-email", "test@example.com");
     await page.fill("#contact-message", "Hello Everband!");

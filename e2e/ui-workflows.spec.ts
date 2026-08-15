@@ -551,9 +551,10 @@ test("群发邮件：选组 → 写信页 → 收件人微调 → 发送入队 �
   await rowCheckbox.click();
   await expect(page.getByText("1 of 1 selected", { exact: true })).toBeVisible();
 
-  // 填内容并发送（dev 模式落 outbox，入队即返回）
+  // 填内容（等草稿自动保存，验证发送后草稿被清理）并发送（dev 模式落 outbox，入队即返回）
   await fillField(page.locator("#email-subject"), "Rehearsal reminder");
   await page.locator('[contenteditable="true"]').fill("Please RSVP by Friday.");
+  await expect(page.getByText("Draft saved", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Send email", exact: true }).first().click();
   await page
     .getByRole("alertdialog")
@@ -561,7 +562,33 @@ test("群发邮件：选组 → 写信页 → 收件人微调 → 发送入队 �
     .click();
   await expect(page.getByText(/Email queued for 1 recipient/)).toBeVisible();
 
-  // 发送历史可见（queued ≠ delivered 如实展示）
-  await page.goto(`/o/${orgId}/settings?section=email-delivery`);
+  // 发送后回到邮件中心，发送历史可见（queued ≠ delivered 如实展示）
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails$`));
   await expect(page.getByText("Rehearsal reminder", { exact: true })).toBeVisible();
+});
+
+test("群发草稿：写信自动保存、列表可恢复、恢复后内容完整", async ({ page }) => {
+  const orgId = await createOrganization(page, `Email draft ${Date.now()}`);
+
+  // 新建邮件（无受众来源，纯草稿）
+  await page.goto(`/o/${orgId}/emails`);
+  await pressButton(page, "New email");
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails\\?compose=true`));
+
+  // 写内容 → debounce 1s 自动保存
+  await fillField(page.locator("#email-subject"), "Draft subject");
+  await page.locator('[contenteditable="true"]').fill("Draft body content");
+  await expect(page.getByText("Draft saved", { exact: true })).toBeVisible();
+
+  // 回列表：草稿卡片出现
+  await pressButton(page, "All emails");
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails$`));
+  await expect(page.getByText("Drafts", { exact: true })).toBeVisible();
+  await expect(page.getByText("Draft subject", { exact: true })).toBeVisible();
+
+  // 恢复草稿：内容回填
+  await page.getByText("Draft subject", { exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails\\?draft=`));
+  await expect(page.locator("#email-subject")).toHaveValue("Draft subject");
+  await expect(page.locator('[contenteditable="true"]')).toContainText("Draft body content");
 });

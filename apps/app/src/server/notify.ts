@@ -1,6 +1,9 @@
 import { env } from "cloudflare:workers";
 import {
   createNotifications,
+  deleteEmailDraftCore,
+  deleteMemberDraftsCore,
+  listEmailDraftsCore,
   listNotificationsCore,
   markAllNotificationsReadCore,
   markNotificationReadCore,
@@ -9,6 +12,7 @@ import {
   recordAudit,
   resolveAudienceContactsForSelection,
   resolveEventAudienceContacts,
+  saveEmailDraftCore,
   submittedFormEmailsForEvent,
 } from "@everband/core";
 import { type Database, schema } from "@everband/db";
@@ -445,6 +449,8 @@ export const sendBulkEmail = createServerFn({ method: "POST" })
         excludedByForm: formEmails.size,
       },
     });
+    // 发送完成即清空该成员的草稿（可能尚未自动保存，按成员清理最稳）
+    await deleteMemberDraftsCore(db, data.orgId, ctx.membershipId);
     await enqueueEmailRecipients(db, prepared.sendId);
     return {
       ok: true as const,
@@ -453,4 +459,62 @@ export const sendBulkEmail = createServerFn({ method: "POST" })
       queuedCount: prepared.queuedCount,
       suppressedCount: prepared.suppressedCount,
     };
+  });
+
+// ---------------------------------------------------------------------------
+// 写信草稿（自动保存 + 恢复）
+// ---------------------------------------------------------------------------
+
+export const saveEmailDraft = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      orgId: z.string().min(1),
+      subject: z.string().max(200),
+      cc: z.string().max(200).optional(),
+      html: z.string(),
+      text: z.string(),
+      recipients: z.array(bulkRecipientSchema),
+      selection: z.object({
+        groups: z.array(z.string()).optional(),
+        students: z.array(z.string()).optional(),
+        event: z.string().optional(),
+        excludeForm: z.boolean().optional(),
+      }),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const result = await saveEmailDraftCore(
+      db,
+      data.orgId,
+      ctx.membershipId,
+      {
+        subject: data.subject,
+        cc: data.cc ?? "",
+        html: data.html,
+        text: data.text,
+        recipients: data.recipients,
+        selection: data.selection,
+      },
+      Date.now(),
+    );
+    return { ok: true as const, draftId: result.draftId };
+  });
+
+export const listEmailDrafts = createServerFn({ method: "GET" })
+  .validator(orgIdSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    return listEmailDraftsCore(db, data.orgId, ctx.membershipId);
+  });
+
+export const deleteEmailDraft = createServerFn({ method: "POST" })
+  .validator(z.object({ orgId: z.string().min(1), draftId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    await deleteEmailDraftCore(db, data.orgId, ctx.membershipId, data.draftId);
+    return { ok: true as const };
   });

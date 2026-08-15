@@ -17,11 +17,9 @@ import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { PublicProfileSection } from "~/components/public-profile-section.tsx";
 import { listImportJobs } from "~/server/import.ts";
 import { listTerms } from "~/server/members.ts";
-import { listEmailSends } from "~/server/notify.ts";
 import { listOrgMemberships } from "~/server/org.ts";
 import { getPublicProfileSettings } from "~/server/public.ts";
 import { DataImportSettingsSection } from "./-components/data-import-settings-section.tsx";
-import { EmailSendsTable } from "./-components/email-sends-table.tsx";
 import { OrganizationSettingsForm } from "./-components/organization-settings-form.tsx";
 import { StaffSettingsSection } from "./-components/staff-settings-section.tsx";
 import { TermsSettingsSection } from "./-components/terms-settings-section.tsx";
@@ -32,7 +30,6 @@ const SECTION_LABELS: Record<SettingsSection, string> = {
   terms: "Terms",
   "public-profile": "Public profile",
   "data-import": "Data import",
-  "email-delivery": "Email delivery",
 };
 
 export const Route = createFileRoute("/o/$orgId/settings")({
@@ -40,14 +37,13 @@ export const Route = createFileRoute("/o/$orgId/settings")({
   loaderDeps: ({ search }) => search,
   loader: async ({ params, deps }) => {
     try {
-      const [members, terms, publicProfile, jobs, sends] = await Promise.all([
+      const [members, terms, publicProfile, jobs] = await Promise.all([
         listOrgMemberships({ data: { orgId: params.orgId } }),
         listTerms({ data: { orgId: params.orgId } }),
         getPublicProfileSettings({ data: { orgId: params.orgId } }),
         listImportJobs({ data: { orgId: params.orgId, ...deps } }),
-        listEmailSends({ data: { orgId: params.orgId } }),
       ]);
-      return { members, terms, publicProfile, jobs, sends };
+      return { members, terms, publicProfile, jobs };
     } catch {
       throw redirect({ to: "/o/$orgId", params: { orgId: params.orgId } });
     }
@@ -146,7 +142,6 @@ function SettingsPanel({
     terms: Awaited<ReturnType<typeof listTerms>>;
     publicProfile: Awaited<ReturnType<typeof getPublicProfileSettings>>;
     jobs: Awaited<ReturnType<typeof listImportJobs>>;
-    sends: Awaited<ReturnType<typeof listEmailSends>>;
   };
   onPageChange: (page: number) => void;
   org: { id: string; name: string; timezone: string };
@@ -161,14 +156,12 @@ function SettingsPanel({
   if (section === "terms") return <TermsSettingsSection orgId={orgId} terms={data.terms} />;
   if (section === "public-profile")
     return <PublicProfileSection data={data.publicProfile} orgId={orgId} timezone={org.timezone} />;
-  if (section === "data-import")
-    return (
-      <DataImportSettingsSection
-        jobs={data.jobs}
-        onPageChange={onPageChange}
-        orgId={orgId}
-        timezone={org.timezone}
-      />
-    );
-  return <EmailSendsTable rows={data.sends} timezone={org.timezone} />;
+  return (
+    <DataImportSettingsSection
+      jobs={data.jobs}
+      onPageChange={onPageChange}
+      orgId={orgId}
+      timezone={org.timezone}
+    />
+  );
 }
