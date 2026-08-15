@@ -16,6 +16,7 @@ import {
   ArrowCounterClockwiseIcon,
   PencilSimpleIcon,
   PlusIcon,
+  UsersIcon,
 } from "@phosphor-icons/react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type React from "react";
@@ -24,6 +25,7 @@ import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
 import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
 import { listGroups, updateGroup } from "~/server/members.ts";
 import { GroupFormDrawer, type GroupFormValues } from "./-components/group-form-drawer.tsx";
+import { GroupMembersDrawer } from "./-components/group-members-drawer.tsx";
 
 export const Route = createFileRoute("/o/$orgId/groups")({
   validateSearch: groupsListSchema,
@@ -55,6 +57,7 @@ function GroupsPage(): React.ReactElement {
   const router = useRouter();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<GroupFormValues | undefined>(undefined);
+  const [membersGroup, setMembersGroup] = useState<{ id: string; name: string } | null>(null);
 
   function openCreate() {
     setEditing(undefined);
@@ -64,6 +67,10 @@ function GroupsPage(): React.ReactElement {
   function openRename(group: GroupRow) {
     setEditing({ id: group.id, name: group.name });
     setIsDrawerOpen(true);
+  }
+
+  function openMembers(group: GroupRow) {
+    setMembersGroup({ id: group.id, name: group.name });
   }
 
   // 行内操作：失败弹错误 toast 且不关闭确认框，成功刷新 loader 后再 toast
@@ -127,7 +134,7 @@ function GroupsPage(): React.ReactElement {
                 <span className="font-medium text-foreground">{group.name}</span>
                 {group.status === "archived" && <Badge variant="secondary">Archived</Badge>}
               </span>
-              <GroupActions group={group} onRename={openRename} run={run} />
+              <GroupActions group={group} onMembers={openMembers} onRename={openRename} run={run} />
             </li>
           ))}
         </ul>
@@ -139,21 +146,37 @@ function GroupsPage(): React.ReactElement {
         open={isDrawerOpen}
         orgId={orgId}
       />
+      <GroupMembersDrawer
+        group={membersGroup}
+        onOpenChange={(open) => !open && setMembersGroup(null)}
+        open={membersGroup !== null}
+        orgId={orgId}
+      />
     </div>
   );
 }
 
 function GroupActions({
   group,
+  onMembers,
   onRename,
   run,
 }: {
   group: GroupRow;
+  onMembers: (group: GroupRow) => void;
   onRename: (group: GroupRow) => void;
   run: (status: "active" | "archived", group: GroupRow) => Promise<boolean>;
 }): React.ReactElement {
   return (
     <span className="flex items-center gap-1">
+      <Button
+        aria-label={`Members of ${group.name}`}
+        onClick={() => onMembers(group)}
+        size="icon"
+        variant="ghost"
+      >
+        <UsersIcon />
+      </Button>
       <Button
         aria-label={`Rename ${group.name}`}
         onClick={() => onRename(group)}

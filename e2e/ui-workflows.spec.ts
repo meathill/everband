@@ -369,3 +369,67 @@ test("Groups 全流程：建组、成员分组、事件受众", async ({ page })
   await page.getByRole("link", { name: "Group event", exact: true }).click();
   await expect(page.getByText(`Audience: ${groupName}`)).toBeVisible();
 });
+
+test("Group 成员管理：添加无分组学生与移出", async ({ page }) => {
+  const orgId = await createOrganization(page, `Group members ${Date.now()}`);
+  const groupName = `Brass ${Date.now()}`;
+
+  // 建组 + 两个无分组学生
+  await page.goto(`/o/${orgId}/groups`);
+  await pressButton(page, "New group");
+  await fillField(page.locator("#group-name"), groupName);
+  await pressButton(page, "Create group");
+  await expect(page.getByText(groupName, { exact: true })).toBeVisible();
+
+  async function addStudent(name: string): Promise<void> {
+    await page.goto(`/o/${orgId}/members`);
+    await pressButton(page, "Add student");
+    await fillField(page.locator("#student-name"), name);
+    await fillField(page.locator("#contact-name"), `${name} Contact`);
+    await fillField(page.locator("#contact-email"), uniqueEmail("e2e-group-member"));
+    await pressButton(page, "Add student");
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+  }
+  await addStudent("Member One");
+  await addStudent("Loose Student");
+
+  // 打开成员抽屉：成员区为空，无分组学生可选
+  await page.goto(`/o/${orgId}/groups`);
+  await pressButton(page, `Members of ${groupName}`);
+  await expect(page.getByRole("heading", { name: groupName })).toBeVisible();
+  await expect(page.getByText("Members (0)", { exact: true })).toBeVisible();
+  await expect(page.getByText("No members yet.")).toBeVisible();
+
+  // 添加 Member One
+  await chooseOption(
+    page,
+    page.getByRole("combobox", { name: "Unassigned student" }),
+    "Member One",
+  );
+  await pressButton(page, "Add");
+  await expect(page.getByText("Members (1)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Member One", { exact: true })).toBeVisible();
+
+  // 添加后列表移除该学生，只剩 Loose Student 可再选
+  await chooseOption(
+    page,
+    page.getByRole("combobox", { name: "Unassigned student" }),
+    "Loose Student",
+  );
+  await pressButton(page, "Add");
+  await expect(page.getByText("Members (2)", { exact: true })).toBeVisible();
+
+  // 移出 Member One 回到无分组
+  await page.getByRole("button", { name: "Move Member One out" }).click();
+  await expect(page.getByText("Members (1)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Member One", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("Loose Student", { exact: true })).toBeVisible();
+
+  // 关抽屉后在 Members 页确认 Loose Student 属于该组
+  await pressButton(page, "Done");
+  await page.goto(`/o/${orgId}/members`);
+  await expect(page.getByRole("combobox", { name: "Group for Loose Student" })).toHaveText(
+    groupName,
+  );
+  await expect(page.getByRole("combobox", { name: "Group for Member One" })).toHaveText("No group");
+});

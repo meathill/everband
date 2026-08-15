@@ -50,6 +50,7 @@ const STATUS_LABELS: Record<StudentStatusFilter, string> = {
 };
 
 const ALL_GROUPS = "all";
+const UNASSIGNED_GROUPS = "unassigned";
 
 function MembersPage(): React.ReactElement {
   const { list, groups } = Route.useLoaderData();
@@ -75,11 +76,17 @@ function MembersPage(): React.ReactElement {
     setIsDrawerOpen(true);
   }
 
-  const groupLabels: Record<string, string> = { [ALL_GROUPS]: "All groups" };
+  const groupLabels: Record<string, string> = {
+    [ALL_GROUPS]: "All groups",
+    [UNASSIGNED_GROUPS]: "Unassigned",
+  };
   for (const group of groups) {
     groupLabels[group.id] = group.name;
   }
-  const isFiltered = Boolean(search.q) || search.status !== "all" || search.group !== ALL_GROUPS;
+  const isFiltered =
+    Boolean(search.q) ||
+    search.status !== "all" ||
+    (search.group !== ALL_GROUPS && search.group !== UNASSIGNED_GROUPS);
 
   return (
     <div className="flex flex-col gap-6">
@@ -126,6 +133,7 @@ function MembersPage(): React.ReactElement {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_GROUPS}>All groups</SelectItem>
+            <SelectItem value={UNASSIGNED_GROUPS}>Unassigned</SelectItem>
             {groups.map((group) => (
               <SelectItem key={group.id} value={group.id}>
                 {group.name}

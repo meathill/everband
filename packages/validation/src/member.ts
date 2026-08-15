@@ -63,6 +63,11 @@ export const updateGroupSchema = z.object({
   status: z.enum(GROUP_STATUS_VALUES).optional(),
 });
 
+export const groupMembersSchema = z.object({
+  orgId: z.string().min(1),
+  groupId: z.string().min(1),
+});
+
 export const GROUP_STATUS_FILTERS = ["active", "archived", "all"] as const;
 export type GroupStatusFilter = (typeof GROUP_STATUS_FILTERS)[number];
 
@@ -86,7 +91,8 @@ export type StudentStatusFilter = (typeof STUDENT_STATUS_FILTERS)[number];
  *
  * 归档语义：`status="all"` 表示"所有在册学生"，**不含 archived**——archived 是历史记录，
  * 默认视图不该被它稀释；要看归档必须显式选 `status="archived"`（落实在 listStudentsCore）。
- * `group` 是 groupId 或 "all"。extend 出来的字段同样 .default().catch()。
+ * `group` 是 groupId、"all" 或 "unassigned"（无分组）。extend 出来的字段同样
+ * .default().catch()。
  */
 export const studentsListSchema = createListQuerySchema({
   sortFields: ["name", "createdAt", "status"],

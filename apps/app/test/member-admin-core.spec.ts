@@ -269,6 +269,17 @@ describe("listStudentsCore 搜索与筛选", () => {
     expect(result.total).toBe(1);
     expect(result.items[0]?.id).toBe(inA);
   });
+
+  it("group=unassigned 只返回无分组学生", async () => {
+    const seeded = await seed();
+    await seedStudent(seeded, { groupId: seeded.groupA });
+    const unassigned = await seedStudent(seeded, { groupId: null });
+
+    const result = await list(seeded, { group: "unassigned" });
+    expect(result.total).toBe(1);
+    expect(result.items[0]?.id).toBe(unassigned);
+    expect(result.items[0]?.groupId).toBeNull();
+  });
 });
 
 describe("updateStudentCore", () => {

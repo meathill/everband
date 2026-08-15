@@ -7,7 +7,7 @@ import type { StudentStatus } from "@everband/domain";
 import { validateStudentGroup } from "@everband/domain";
 import type { GroupStatus, ListResult, SortOrder, StudentStatusFilter } from "@everband/validation";
 import { toOffset } from "@everband/validation";
-import { and, asc, count, desc, eq, gte, inArray, ne, type SQL, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, ne, type SQL, sql } from "drizzle-orm";
 import { recordAudit } from "./audit.ts";
 
 export interface StudentContactRow {
@@ -36,7 +36,7 @@ export interface ListStudentsInput {
   order: SortOrder;
   q?: string;
   status: StudentStatusFilter;
-  /** groupId，或 "all" */
+  /** groupId，"all"（不限）或 "unassigned"（无分组） */
   group: string;
 }
 
@@ -70,7 +70,9 @@ export async function listStudentsCore(
   } else {
     conditions.push(eq(schema.students.status, input.status));
   }
-  if (input.group !== "all") {
+  if (input.group === "unassigned") {
+    conditions.push(isNull(schema.students.groupId));
+  } else if (input.group !== "all") {
     conditions.push(eq(schema.students.groupId, input.group));
   }
   if (input.q) {

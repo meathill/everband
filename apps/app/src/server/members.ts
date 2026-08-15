@@ -15,6 +15,7 @@ import {
   createGroupSchema,
   createStudentSchema,
   createTermSchema,
+  groupMembersSchema,
   inviteParentSchema,
   listGroupsSchema,
   orgIdSchema,
@@ -178,6 +179,26 @@ export const listGroups = createServerFn({ method: "GET" })
         ),
       )
       .orderBy(asc(schema.groups.name));
+  });
+
+// 分组抽屉：组成员 + 无分组学生（后者供"添加成员"选择）。status=all 排除归档学生。
+export const getGroupMembers = createServerFn({ method: "GET" })
+  .validator(groupMembersSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    await requireMembership(db, data.orgId, STAFF_ROLES);
+    const base = {
+      page: 1,
+      pageSize: 500,
+      sort: "name",
+      order: "asc" as const,
+      status: "all" as const,
+    };
+    const [members, unassigned] = await Promise.all([
+      listStudentsCore(db, data.orgId, { ...base, group: data.groupId }),
+      listStudentsCore(db, data.orgId, { ...base, group: "unassigned" }),
+    ]);
+    return { members: members.items, unassigned: unassigned.items };
   });
 
 export const createGroup = createServerFn({ method: "POST" })

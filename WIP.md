@@ -56,4 +56,6 @@
 - [x] 隐藏 Rehearsals / Finance 侧边栏入口与 Overview 卡片
 - [x] 完整恢复 Group：Groups 页、侧边栏入口、成员分组（表格列/筛选/表单选组）、
       Event 受众选择（isOrgWide + groupIds）
-- [x] 验收：format/typecheck/build 全绿、单测 210、e2e 相关子集全绿、生产部署冒烟完成
+- [x] Group 成员管理：Groups 页行内成员抽屉（添加无分组学生 / 移出），
+      core 支持 group=unassigned，Members 筛选加 Unassigned 选项
+- [x] 验收：format/typecheck/build 全绿、单测 211、e2e 相关子集全绿、生产部署冒烟完成
