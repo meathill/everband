@@ -58,4 +58,8 @@
       Event 受众选择（isOrgWide + groupIds）
 - [x] Group 成员管理：Groups 页行内成员抽屉（添加无分组学生 / 移出），
       core 支持 group=unassigned，Members 筛选加 Unassigned 选项
-- [x] 验收：format/typecheck/build 全绿、单测 211、e2e 相关子集全绿、生产部署冒烟完成
+- [x] Members 列表去直接编辑：状态/分组改为只读展示，编辑收敛到抽屉
+      （抽屉内支持状态机变更 + 换组）
+- [x] 左下角用户菜单：只读版本号（vite 注入 git 短 hash）+ Send feedback
+      入口（提交到 feedback.meathill.com/api/feedbacks，appId=everband-app）
+- [x] 验收：format/typecheck/build 全绿、单测 211、e2e 44 例全绿、生产部署冒烟完成

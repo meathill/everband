@@ -1,32 +1,28 @@
 import type { OrgStudentRow, StudentContactRow } from "@everband/core";
 import type { StudentStatus } from "@everband/domain";
+import { Badge, type BadgeProps } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everband/ui/components/empty";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@everband/ui/components/select";
 import { toastManager } from "@everband/ui/components/toast";
 import type { SortOrder } from "@everband/validation";
-import { STUDENT_STATUS_VALUES } from "@everband/validation";
 import { ArchiveIcon, PencilSimpleIcon } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
 import { DataTable, type DataTableColumn } from "~/components/data-table/data-table.tsx";
-import { inviteParent, updateStudent, updateStudentStatus } from "~/server/members.ts";
-import { type MemberFormGroup, STUDENT_STATUS_LABELS } from "./member-form-drawer.tsx";
+import { inviteParent, updateStudentStatus } from "~/server/members.ts";
+import { STUDENT_STATUS_LABELS } from "./member-form-drawer.tsx";
 
-/** Select 不接受空字符串，用哨兵值表示"不分组" */
-const NO_GROUP = "none";
+const STATUS_VARIANTS: Record<StudentStatus, BadgeProps["variant"]> = {
+  archived: "secondary",
+  active: "success",
+  interested: "outline",
+  withdrawn: "secondary",
+};
 
 export interface MembersTableProps {
   orgId: string;
   rows: OrgStudentRow[];
-  groups: MemberFormGroup[];
   sort: string;
   order: SortOrder;
   onSortChange: (sort: string, order: SortOrder) => void;
@@ -43,7 +39,6 @@ type RunAction = (
 export function MembersTable({
   orgId,
   rows,
-  groups,
   sort,
   order,
   onSortChange,
@@ -80,13 +75,22 @@ export function MembersTable({
       defaultOrder: "asc",
       header: "Status",
       key: "status",
-      render: (row) => <StatusCell orgId={orgId} row={row} run={run} />,
+      render: (row) => (
+        <Badge className="capitalize" variant={STATUS_VARIANTS[row.status]}>
+          {STUDENT_STATUS_LABELS[row.status]}
+        </Badge>
+      ),
       sortable: true,
     },
     {
       header: "Group",
       key: "group",
-      render: (row) => <GroupCell groups={groups} orgId={orgId} row={row} run={run} />,
+      render: (row) =>
+        row.groupName ? (
+          <span className="text-foreground">{row.groupName}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       header: "Contacts",
@@ -111,97 +115,6 @@ export function MembersTable({
       rows={rows}
       sort={sort}
     />
-  );
-}
-
-function StatusCell({
-  orgId,
-  row,
-  run,
-}: {
-  orgId: string;
-  row: OrgStudentRow;
-  run: RunAction;
-}): React.ReactElement {
-  // archived 是终态，状态机不允许再变
-  if (row.status === "archived") {
-    return <span className="text-muted-foreground text-sm">Archived</span>;
-  }
-  return (
-    <Select
-      items={STUDENT_STATUS_LABELS}
-      onValueChange={(value: StudentStatus | null) =>
-        value &&
-        value !== row.status &&
-        run(
-          () => updateStudentStatus({ data: { orgId, studentId: row.id, status: value } }),
-          "Status updated",
-        )
-      }
-      value={row.status}
-    >
-      <SelectTrigger aria-label={`Status for ${row.name}`} className="w-auto min-w-32" size="sm">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {STUDENT_STATUS_VALUES.map((value) => (
-          <SelectItem key={value} value={value}>
-            {STUDENT_STATUS_LABELS[value]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function GroupCell({
-  groups,
-  orgId,
-  row,
-  run,
-}: {
-  groups: MemberFormGroup[];
-  orgId: string;
-  row: OrgStudentRow;
-  run: RunAction;
-}): React.ReactElement {
-  if (row.status === "archived") {
-    return <span className="text-muted-foreground text-sm">{row.groupName ?? "—"}</span>;
-  }
-  // 选项 = 活跃分组 ∪ 当前分组（后者可能已归档，不带上就会显示成空）
-  const options = groups.some((group) => group.id === row.groupId)
-    ? groups
-    : row.groupId && row.groupName
-      ? [...groups, { id: row.groupId, name: row.groupName }]
-      : groups;
-  const labels: Record<string, string> = { [NO_GROUP]: "No group" };
-  for (const group of options) {
-    labels[group.id] = group.name;
-  }
-
-  return (
-    <Select
-      items={labels}
-      onValueChange={(value: string | null) => {
-        if (!value) return;
-        const groupId = value === NO_GROUP ? null : value;
-        if (groupId === (row.groupId ?? null)) return;
-        run(() => updateStudent({ data: { orgId, studentId: row.id, groupId } }), "Group updated");
-      }}
-      value={row.groupId ?? NO_GROUP}
-    >
-      <SelectTrigger aria-label={`Group for ${row.name}`} className="w-auto min-w-32" size="sm">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={NO_GROUP}>No group</SelectItem>
-        {options.map((group) => (
-          <SelectItem key={group.id} value={group.id}>
-            {group.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 

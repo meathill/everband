@@ -348,9 +348,11 @@ test("Groups 全流程：建组、成员分组、事件受众", async ({ page })
   await chooseOption(page, page.getByRole("combobox", { name: "Assigned group" }), groupName);
   await pressButton(page, "Add student");
   await expect(page.getByText("Group Student", { exact: true })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Group for Group Student" })).toHaveText(
-    groupName,
-  );
+  // 列表只读展示分组（编辑入口收敛到抽屉），行内不应再有换组下拉
+  await expect(
+    page.getByRole("row").filter({ has: page.getByText("Group Student") }),
+  ).toContainText(groupName);
+  await expect(page.getByRole("combobox", { name: "Group for Group Student" })).toHaveCount(0);
 
   // 事件受众选择指定分组
   await page.goto(`/o/${orgId}/events`);
@@ -425,11 +427,73 @@ test("Group 成员管理：添加无分组学生与移出", async ({ page }) => 
   await expect(page.getByText("Member One", { exact: true })).not.toBeVisible();
   await expect(page.getByText("Loose Student", { exact: true })).toBeVisible();
 
-  // 关抽屉后在 Members 页确认 Loose Student 属于该组
+  // 关抽屉后在 Members 页确认分组是只读展示且数据正确
   await pressButton(page, "Done");
   await page.goto(`/o/${orgId}/members`);
-  await expect(page.getByRole("combobox", { name: "Group for Loose Student" })).toHaveText(
-    groupName,
-  );
-  await expect(page.getByRole("combobox", { name: "Group for Member One" })).toHaveText("No group");
+  await expect(
+    page.getByRole("row").filter({ has: page.getByText("Loose Student") }),
+  ).toContainText(groupName);
+  await expect(
+    page.getByRole("row").filter({ has: page.getByText("Member One") }),
+  ).not.toContainText(groupName);
+});
+
+test("Member 状态与分组编辑收敛到编辑抽屉", async ({ page }) => {
+  const orgId = await createOrganization(page, `Member edit ${Date.now()}`);
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Add student");
+  await fillField(page.locator("#student-name"), "Status Student");
+  await fillField(page.locator("#contact-name"), "Status Contact");
+  await fillField(page.locator("#contact-email"), uniqueEmail("e2e-status"));
+  await pressButton(page, "Add student");
+  await expect(page.getByText("Status Student", { exact: true })).toBeVisible();
+
+  // 列表里没有行内状态/分组选择器，编辑只能从抽屉进
+  await expect(page.getByRole("combobox", { name: /Status for/ })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: /Group for/ })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Edit Status Student" }).click();
+  await expect(page.getByRole("heading", { name: "Edit student" })).toBeVisible();
+  await chooseOption(page, page.getByRole("combobox", { name: "Status" }), "Withdrawn");
+  await pressButton(page, "Save changes");
+  await expect(page.getByRole("heading", { name: "Edit student" })).not.toBeVisible();
+  await expect(
+    page.getByRole("row").filter({ has: page.getByText("Status Student") }),
+  ).toContainText("Withdrawn");
+});
+
+test("左下角 Feedback 入口提交到 feedback.meathill.com", async ({ page }) => {
+  const orgId = await createOrganization(page, `Feedback ${Date.now()}`);
+  let submitted: { url: string; body: unknown } | null = null;
+  await page.route("**/api/feedbacks", async (route) => {
+    submitted = { url: route.request().url(), body: route.request().postDataJSON() };
+    await route.fulfill({ status: 201, json: { success: true } });
+  });
+
+  // 用户菜单里有只读版本号与反馈入口
+  if ((page.viewportSize()?.width ?? 0) < 768) {
+    await openMobileSidebar(page);
+  }
+  await page.getByRole("button", { name: /@test\.local/ }).click();
+  await expect(page.getByText("Version dev", { exact: true })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Send feedback" }).click();
+
+  await expect(page.getByRole("heading", { name: "Send feedback" })).toBeVisible();
+  await page.fill("#feedback-content", "Bug report");
+  await page.getByRole("button", { name: "Send feedback" }).click();
+  await expect(page.getByText("we've received your feedback")).toBeVisible();
+
+  expect(submitted?.url).toBe("https://feedback.meathill.com/api/feedbacks");
+  const body = submitted?.body as {
+    appId?: string;
+    content?: string;
+    version?: string;
+    contact?: string;
+  };
+  expect(body).toMatchObject({
+    appId: "everband-app",
+    content: "Bug report",
+    version: "dev",
+  });
+  expect(body.contact).toMatch(/@test\.local/);
 });

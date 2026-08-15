@@ -12,13 +12,14 @@ import { RELATIONSHIPS, STUDENT_STATUS_VALUES } from "@everband/validation";
 import type React from "react";
 import { FormDrawer } from "~/components/form-drawer.tsx";
 import { useServerFormAction } from "~/hooks/use-server-form-action.ts";
-import { createStudent, updateStudent } from "~/server/members.ts";
+import { createStudent, updateStudent, updateStudentStatus } from "~/server/members.ts";
 
 /** 编辑模式下回填用的学生快照；不传即创建模式 */
 export interface MemberFormValues {
   id: string;
   name: string;
   groupId: string | null;
+  status: (typeof STUDENT_STATUS_VALUES)[number];
 }
 
 export interface MemberFormGroup {
@@ -58,8 +59,8 @@ function text(formData: FormData, key: string): string {
 /**
  * 创建 / 编辑学生共用的抽屉。全部字段非受控（`name` + FormData 读值，Select 自带隐藏 input）。
  *
- * 编辑模式只有 Student / Group 两个分区：状态变更走列表行内的下拉（要过状态机），
- * 联系人编辑不在本期范围内。
+ * 编辑模式改状态/换组都收敛到这里（列表只读，避免误操作）；状态走状态机
+ * （updateStudentStatusCore），姓名与分组走 updateStudent，联系人编辑不在本期范围内。
  */
 export function MemberFormDrawer({
   orgId,
@@ -84,12 +85,29 @@ export function MemberFormDrawer({
     successMessage: "Student updated",
     onSuccess: close,
   });
+  const updateStatus = useServerFormAction({
+    action: updateStudentStatus,
+  });
   const active = isEdit ? update : create;
 
   async function handleSubmit(formData: FormData) {
     const selected = String(formData.get("groupId") ?? NO_GROUP);
     const groupId = selected === NO_GROUP ? null : selected;
     if (student) {
+      const nextStatus = String(
+        formData.get("status") ?? student.status,
+      ) as (typeof STUDENT_STATUS_VALUES)[number];
+      if (nextStatus !== student.status) {
+        // 状态变更走状态机（含审计）；失败则不继续，错误显示在抽屉里
+        const ok = await updateStatus.submit({
+          orgId,
+          studentId: student.id,
+          status: nextStatus,
+        });
+        if (!ok) {
+          return;
+        }
+      }
       await update.submit({ orgId, studentId: student.id, name: text(formData, "name"), groupId });
       return;
     }
@@ -112,11 +130,11 @@ export function MemberFormDrawer({
     <FormDrawer
       description={
         isEdit
-          ? "Rename the student or move them to another group."
+          ? "Update the student's name, status or group."
           : "Students need one contact. An existing contact with the same email is reused."
       }
-      error={active.error}
-      isBusy={active.isBusy}
+      error={updateStatus.error ?? active.error}
+      isBusy={updateStatus.isBusy || active.isBusy}
       onOpenChange={onOpenChange}
       onSubmit={handleSubmit}
       open={open}
@@ -160,24 +178,31 @@ function MemberFormFields({
             required
           />
         </Field>
-        {!student && (
-          <Field>
-            <FieldLabel htmlFor="student-status">Status</FieldLabel>
-            <Select defaultValue="active" items={STUDENT_STATUS_LABELS} name="status">
-              <SelectTrigger id="student-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STUDENT_STATUS_VALUES.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {STUDENT_STATUS_LABELS[value]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>Use status to keep the active roster accurate.</FieldDescription>
-          </Field>
-        )}
+        <Field>
+          <FieldLabel htmlFor="student-status">Status</FieldLabel>
+          <Select
+            defaultValue={student?.status ?? "active"}
+            disabled={student?.status === "archived"}
+            items={STUDENT_STATUS_LABELS}
+            name="status"
+          >
+            <SelectTrigger id="student-status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STUDENT_STATUS_VALUES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {STUDENT_STATUS_LABELS[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            {student?.status === "archived"
+              ? "Archived is a final state and can no longer change."
+              : "Use status to keep the active roster accurate."}
+          </FieldDescription>
+        </Field>
       </FramePanel>
 
       {!student && (

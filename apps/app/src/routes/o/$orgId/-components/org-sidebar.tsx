@@ -29,6 +29,7 @@ import {
   CheckIcon,
   GearIcon,
   type Icon,
+  PaperPlaneTiltIcon,
   PlusIcon,
   SignOutIcon,
   SquaresFourIcon,
@@ -39,6 +40,7 @@ import {
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
+import { FeedbackDialog } from "~/components/feedback-dialog.tsx";
 import { logout } from "~/server/auth.ts";
 
 // 侧边栏可达的组织内路由；全部只需 orgId 参数，便于统一渲染与匹配
@@ -248,7 +250,7 @@ function UserMenu({
 }): React.ReactElement {
   const navigate = useNavigate();
   const dismiss = useDismissOnNavigate();
-  const [unusedState, setUnusedState] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   async function handleSignOut(): Promise<void> {
     await logout();
@@ -284,7 +286,15 @@ function UserMenu({
               <UserCircleIcon />
               <span>Account</span>
             </MenuLinkItem>
+            <MenuItem onClick={() => setIsFeedbackOpen(true)}>
+              <PaperPlaneTiltIcon />
+              <span>Send feedback</span>
+            </MenuItem>
             <MenuSeparator />
+            {/* 只读版本号：反馈问题时用户能看到当前部署对应的提交 */}
+            <MenuItem disabled>
+              <span className="text-muted-foreground text-xs">Version {__APP_VERSION__}</span>
+            </MenuItem>
             <MenuItem onClick={handleSignOut}>
               <SignOutIcon />
               <span>Sign out</span>
@@ -292,6 +302,7 @@ function UserMenu({
           </MenuPopup>
         </Menu>
       </SidebarMenuItem>
+      <FeedbackDialog email={email} onOpenChange={setIsFeedbackOpen} open={isFeedbackOpen} />
     </SidebarMenu>
   );
 }

@@ -144,7 +144,6 @@ function MembersPage(): React.ReactElement {
       </DataTableToolbar>
 
       <MembersTable
-        groups={groups}
         isFiltered={isFiltered}
         onEdit={openEdit}
         onSortChange={listSearch.setSort}

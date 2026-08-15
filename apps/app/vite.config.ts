@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { fileURLToPath, URL } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
@@ -5,7 +6,22 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+// 反馈提交时的版本标识：dev 显示 "dev"，构建时取 git 短 hash（可对应到发布点）
+function appVersion(): string {
+  if (process.env.NODE_ENV !== "production") {
+    return "dev";
+  }
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion()),
+  },
   server: {
     port: 3000,
     // miniflare 的 D1/缓存状态在 .wrangler/state 下，测试写入会触发 watch 风暴、
