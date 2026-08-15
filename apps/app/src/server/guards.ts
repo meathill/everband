@@ -27,6 +27,8 @@ export interface OrgContext {
   membershipId: string;
   role: MembershipRole;
   staffAccess: boolean;
+  /** 邀请邮箱：家长侧"发给我的邮件"按它过滤 */
+  email: string;
 }
 
 // roles 传 STAFF_ROLES 时，被授予 staffAccess 的 parent 同样放行（PRD §3.2）
@@ -49,6 +51,7 @@ export async function requireMembership(
     membershipId: membership.id,
     role: membership.role,
     staffAccess: membership.staffAccess,
+    email: membership.email,
   };
 }
 

@@ -73,4 +73,7 @@
       组件 bg-background → bg-card）、收件人单行 truncate；草稿自动保存（debounce 1s，
       每成员一条，迁移 0012）、离开未保存询问（beforeunload + 链接点击捕获拦截）、
       发送后删草稿；集成 124 例、e2e 68 例全绿
+- [x] 家长视角的邮件筛选（2026-08-15）：listEmailSends 按角色分支——staff 看全部，
+      parent 只看发给自己的（收件人快照按邀请邮箱匹配，排除 suppressed），只读列表
+      可展开看正文、无写信入口；侧边栏家长加 Emails；集成 127 例、e2e 70 例全绿
 - [ ] 部署：先 `wrangler d1 migrations apply --remote`（0011、0012）再部署 app/tasks

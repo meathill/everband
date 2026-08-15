@@ -443,3 +443,18 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
   是全站语义正确的"表面"。dark 模式不受影响（dark:bg-input/32 保留）。
 - **迁移 0012 手工添加**：email_drafts 表（与 0010/0011 同法）。部署顺序：先
   apply --remote 再部署。
+
+## 家长视角的邮件可见性（2026-08-15）
+
+- **listEmailSends 按角色分支**：server 层 `hasStaffAccess` 判断——staff 返回全部
+  （`listEmailSendsCore`）；parent 返回发给自己的（`listMySentEmailsCore`，收件人快照
+  `email_send_recipients.email` = membership.invitedEmail，排除 `suppressed`；
+  queued/sent/failed 如实显示）。不再 STAFF_ROLES 一刀切。
+- **家长没有写信与草稿能力**：emails 路由 loader 用 `listEmailDrafts`（staff-only）的
+  forbidden 抛错判定角色——家长调用必然 403，比在 loader 里另发请求省事；
+  parent 带 compose/groups/students/event 参数时 redirect 回列表视图。
+- **家长 UI 是只读列表**：subject + 时间 + `<details>` 折叠正文（body 为纯文本），
+  无 New email/草稿区；侧边栏 PARENT_MAIN_ITEMS 也加了 Emails 入口。
+- **匹配按邀请邮箱而非收件人快照之外的账号体系**：家长邮箱可能被修改，但
+  membership.invitedEmail 是邀请时地址，与发送快照一致的概率最高，且是唯一
+  与账号直接绑定的邮箱。

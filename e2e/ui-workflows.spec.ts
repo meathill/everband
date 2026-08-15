@@ -592,3 +592,53 @@ test("群发草稿：写信自动保存、列表可恢复、恢复后内容完�
   await expect(page.locator("#email-subject")).toHaveValue("Draft subject");
   await expect(page.locator('[contenteditable="true"]')).toContainText("Draft body content");
 });
+
+test("parent 在 Emails 页只看到发给自己的邮件，且没有写信入口", async ({ page }) => {
+  const orgId = await createOrganization(page, `Parent email ${Date.now()}`);
+  const studentName = `Email student ${Date.now()}`;
+  const parentEmail = uniqueEmail("e2e-parent-email");
+  const subject = `Parent message ${Date.now()}`;
+
+  // 加学生（联系人即家长邮箱）
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Add student");
+  await fillField(page.locator("#student-name"), studentName);
+  await fillField(page.locator("#contact-name"), "Parent Contact");
+  await fillField(page.locator("#contact-email"), parentEmail);
+  await pressButton(page, "Add student");
+  await expect(page.getByText(studentName, { exact: true })).toBeVisible();
+
+  // staff 从 Members 选中该学生发一封邮件
+  const rowCheckbox = page.getByRole("checkbox", { name: `Select ${studentName}` });
+  await waitForHydration(rowCheckbox);
+  await rowCheckbox.click();
+  await page.getByRole("button", { name: "Email 1", exact: true }).click();
+  await fillField(page.locator("#email-subject"), subject);
+  await page.locator('[contenteditable="true"]').fill("Only you can see this.");
+  await expect(page.getByText("Draft saved", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Send email", exact: true }).first().click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Send email", exact: true })
+    .click();
+  await expect(page.getByText(/Email queued for 1 recipient/)).toBeVisible();
+
+  // 邀请家长并接受
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Invite parent");
+  await expect(page.getByText("Invitation sent", { exact: true })).toBeVisible();
+  await page.goto("/dev/outbox");
+  const invite = page.locator('article[data-kind="invite"]', { hasText: parentEmail }).first();
+  await expect(invite).toBeVisible();
+  const inviteLink =
+    (await invite.locator("pre").innerText()).match(/http:\/\/[^\s]+\/invite\/[^\s]+/)?.[0] ?? "";
+  expect(inviteLink).toContain("/invite/");
+  await page.goto(inviteLink);
+
+  // 家长视角：Emails 页只有发给自己的邮件，可展开看正文；无写信按钮
+  await page.goto(`/o/${orgId}/emails`);
+  await expect(page.getByText(subject, { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New email" })).not.toBeVisible();
+  await page.getByText(subject, { exact: true }).click();
+  await expect(page.getByText("Only you can see this.", { exact: true })).toBeVisible();
+});

@@ -1,5 +1,7 @@
 import { env } from "cloudflare:test";
 import {
+  listEmailSendsCore,
+  listMySentEmailsCore,
   listNotificationsCore,
   markAllNotificationsReadCore,
   markNotificationReadCore,
@@ -677,5 +679,78 @@ describe("submittedFormEmailsForEvent（RSVP 排除）", () => {
 
     const emails = await submittedFormEmailsForEvent(db, orgId, eventId);
     expect(emails.size).toBe(1);
+  });
+});
+
+describe("listEmailSendsCore / listMySentEmailsCore（staff 全部，家长只看发给自己的）", () => {
+  async function seedSend(
+    orgId: string,
+    membershipId: string,
+    audienceEmails: string[],
+    dedupKey?: string,
+  ) {
+    return prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: unique("S"),
+        body: "body",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: dedupKey ?? unique("dk"),
+        audience: audienceOf(...audienceEmails),
+        suppressedEmails: new Set<string>(),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+  }
+
+  it("staff 视角看到全部发送任务；家长只看发给自己的且排除 suppressed", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const parentEmail = `${unique("parent")}@test.local`;
+    const otherEmail = `${unique("other")}@test.local`;
+    // 发给家长的一封（含另一个收件人）
+    const toParent = await seedSend(orgId, membershipId, [parentEmail, otherEmail]);
+    // 只有别人的一封（家长不可见）
+    await seedSend(orgId, membershipId, [otherEmail]);
+    // 家长被退订的一封（recipient 状态 suppressed，家长不可见）
+    await prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: unique("S"),
+        body: "body",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: unique("dk"),
+        audience: audienceOf(parentEmail),
+        suppressedEmails: new Set([parentEmail]),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+
+    const all = await listEmailSendsCore(db, orgId);
+    expect(all).toHaveLength(3);
+
+    const mine = await listMySentEmailsCore(db, orgId, parentEmail);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.id).toBe(toParent.sendId);
+  });
+
+  it("只看到本组织的邮件：同一邮箱在其他组织的发送不可见", async () => {
+    const orgA = await seedOrg();
+    const orgB = await seedOrg();
+    const email = `${unique("a")}@test.local`;
+    const inA = await seedSend(orgA.orgId, orgA.membershipId, [email]);
+    // orgB 也发过该邮箱 → 不影响 orgA 的家长视角
+    await seedSend(orgB.orgId, orgB.membershipId, [email]);
+
+    const mine = await listMySentEmailsCore(db, orgA.orgId, email);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.id).toBe(inA.sendId);
   });
 });

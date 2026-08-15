@@ -9,7 +9,7 @@ import { generateId, ID_PREFIXES } from "@everband/domain";
 import type { EmailSender } from "@everband/integrations/email";
 import type { ListResult, NotificationFilter } from "@everband/validation";
 import { toOffset } from "@everband/validation";
-import { and, asc, count, desc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, ne, or, type SQL } from "drizzle-orm";
 import type { AudienceContact } from "./events.ts";
 import { resolveEventAudienceContacts } from "./events.ts";
 
@@ -469,4 +469,65 @@ export async function submittedFormEmailsForEvent(
       ),
     );
   return new Set(rows.map((row) => row.email));
+}
+
+// ---------------------------------------------------------------------------
+// 发送历史（staff 看全部；家长只看发给自己的）
+// ---------------------------------------------------------------------------
+
+export type EmailSendRow = typeof schema.emailSends.$inferSelect;
+
+export async function listEmailSendsCore(db: Database, orgId: string): Promise<EmailSendRow[]> {
+  return db
+    .select()
+    .from(schema.emailSends)
+    .where(eq(schema.emailSends.organizationId, orgId))
+    .orderBy(desc(schema.emailSends.createdAt))
+    .limit(50);
+}
+
+/**
+ * 家长视角：发给指定邮箱的邮件（收件人快照匹配）。
+ * suppressed（退订没发出去的）不展示；queued/sent/failed 都如实显示。
+ * email_send_recipients 有 (sendId, email) 唯一约束，同一封不会重复出现。
+ */
+export async function listMySentEmailsCore(
+  db: Database,
+  orgId: string,
+  email: string,
+): Promise<EmailSendRow[]> {
+  return db
+    .selectDistinct({
+      id: schema.emailSends.id,
+      organizationId: schema.emailSends.organizationId,
+      kind: schema.emailSends.kind,
+      subject: schema.emailSends.subject,
+      body: schema.emailSends.body,
+      cc: schema.emailSends.cc,
+      objectType: schema.emailSends.objectType,
+      objectId: schema.emailSends.objectId,
+      requestedByMembershipId: schema.emailSends.requestedByMembershipId,
+      dedupKey: schema.emailSends.dedupKey,
+      status: schema.emailSends.status,
+      recipientCount: schema.emailSends.recipientCount,
+      sentCount: schema.emailSends.sentCount,
+      failedCount: schema.emailSends.failedCount,
+      suppressedCount: schema.emailSends.suppressedCount,
+      createdAt: schema.emailSends.createdAt,
+      finishedAt: schema.emailSends.finishedAt,
+    })
+    .from(schema.emailSends)
+    .innerJoin(
+      schema.emailSendRecipients,
+      eq(schema.emailSendRecipients.sendId, schema.emailSends.id),
+    )
+    .where(
+      and(
+        eq(schema.emailSends.organizationId, orgId),
+        eq(schema.emailSendRecipients.email, email),
+        ne(schema.emailSendRecipients.status, "suppressed"),
+      ),
+    )
+    .orderBy(desc(schema.emailSends.createdAt))
+    .limit(50);
 }

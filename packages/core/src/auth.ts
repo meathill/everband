@@ -125,6 +125,8 @@ export interface ActiveMembership {
   id: string;
   role: "owner" | "staff" | "parent";
   staffAccess: boolean;
+  // 邀请邮箱：parent 侧"发给我的邮件"按它过滤
+  email: string;
 }
 
 // 租户隔离的核心查询：org + user + status=active 三条件缺一不可
@@ -138,6 +140,7 @@ export async function findActiveMembership(
       id: schema.memberships.id,
       role: schema.memberships.role,
       staffAccess: schema.memberships.staffAccess,
+      email: schema.memberships.invitedEmail,
     })
     .from(schema.memberships)
     .where(

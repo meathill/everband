@@ -4,6 +4,8 @@ import {
   deleteEmailDraftCore,
   deleteMemberDraftsCore,
   listEmailDraftsCore,
+  listEmailSendsCore,
+  listMySentEmailsCore,
   listNotificationsCore,
   markAllNotificationsReadCore,
   markNotificationReadCore,
@@ -16,6 +18,7 @@ import {
   submittedFormEmailsForEvent,
 } from "@everband/core";
 import { type Database, schema } from "@everband/db";
+import { hasStaffAccess } from "@everband/domain";
 import {
   emailComposeSearchSchema,
   notificationIdSchema,
@@ -216,18 +219,16 @@ export const markAllNotificationsRead = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-// staff：发送历史（queued≠sent 忠实展示，PRD §10.2）
+// 发送历史：staff 看全部；家长只能看到发给自己的（按邀请邮箱匹配收件人快照）
 export const listEmailSends = createServerFn({ method: "GET" })
   .validator(orgIdSchema)
   .handler(async ({ data }) => {
     const db = getDb();
-    await requireMembership(db, data.orgId, STAFF_ROLES);
-    return db
-      .select()
-      .from(schema.emailSends)
-      .where(eq(schema.emailSends.organizationId, data.orgId))
-      .orderBy(desc(schema.emailSends.createdAt))
-      .limit(50);
+    const ctx = await requireMembership(db, data.orgId);
+    if (hasStaffAccess(ctx.role, ctx.staffAccess)) {
+      return listEmailSendsCore(db, data.orgId);
+    }
+    return listMySentEmailsCore(db, data.orgId, ctx.email);
   });
 
 export const setEmailPreference = createServerFn({ method: "POST" })

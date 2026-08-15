@@ -70,10 +70,12 @@ const STAFF_MAIN_ITEMS: NavItem[] = [
   { to: "/o/$orgId/groups", label: "Groups", icon: UsersThreeIcon },
 ];
 
-// 家长只能看到与孩子相关的日常信息，成员管理和分组管理属于 staff
+// 家长只能看到与孩子相关的日常信息，成员管理和分组管理属于 staff；
+// Emails 对家长是"发给我的邮件"只读视图
 const PARENT_MAIN_ITEMS: NavItem[] = [
   { to: "/o/$orgId", label: "Overview", icon: SquaresFourIcon, exact: true },
   { to: "/o/$orgId/events", label: "Events", icon: CalendarBlankIcon },
+  { to: "/o/$orgId/emails", label: "Emails", icon: EnvelopeSimpleIcon },
 ];
 
 const UTILITY_ITEMS: NavItem[] = [
