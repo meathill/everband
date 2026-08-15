@@ -82,7 +82,7 @@ export function StaffEventsTable({
     },
     {
       className: "tabular-nums whitespace-nowrap",
-      defaultOrder: "asc",
+      defaultOrder: "desc",
       header: "Starts",
       key: "startsAtUtc",
       render: (row) => formatOrgDateTime(row.startsAtUtc, timezone),

@@ -371,3 +371,26 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
   `reuseExistingServer` 会误连陌生进程。landing webServer 用
   `vite dev --port 3101 --strictPort` 独立端口，`pnpm run dev -- --port` 会被 vite
   解析错误（config 的 port 抢先），必须 `pnpm exec vite dev --port N`。
+
+## 表单交互与 Group 恢复（2026-08-15）
+
+- **base-ui Field 一个 Root 只支持一个 Control**：`registeredFieldName` 机制会把子
+  Control 的 name 回灌给同一 Field.Root 下的**所有** Control（后注册覆盖先注册）。
+  一个 `<Field>` 里放多个输入（如日期+时间的 grid，或事件受众的多个 checkbox）会导致
+  name/id 互相串掉（isOrgWide 变成 groupIds 之类），提交的 FormData 全部错乱。
+  **多输入必须每个单独包 Field，或不用 Field 改用原生 label**（FieldDescription 依赖
+  Field context，脱离 Field 时用 `text-muted-foreground text-xs` 的 p 替代）。
+- **DatePicker 组件**（`packages/ui/date-picker`）：coss "With Input + Close on Select"
+  组合模式——InputGroupInput（type=date，隐藏原生 picker 指示器）是 FormData 的真实
+  来源，InputGroupAddon 内 PopoverTrigger 按钮开 Calendar 弹层，选中即关闭。内部 state
+  持有值、`defaultValue` 初始化，配合表单非受控约定；无需 date-fns（原生 yyyy-MM-dd）。
+- **Group 完整恢复的隐藏坑**：076826c 下线 Group 时把 `createEvent` 硬编码
+  `isOrgWide: true` 且不写 event_groups、`createStudent` 丢弃 groupId、`listStudents`
+  硬编码 `group: "all"`——恢复 UI 时必须一并恢复这三处 server 透传，否则表单提交
+  "成功"但数据全是全组织/无分组。core 层（updateEventCore 受众校验、
+  updateGroupCore 归档校验）从未删过，可直接复用。
+- **Events 列表默认全量**：`eventsListSchema` 的 time 默认 `all`、排序 `startsAtUtc desc`
+  （全部活动最新在前）；Starts 列的 `defaultOrder` 必须与 schema 同步改 desc，否则表头
+  指示与实际排序不一致。
+- **DataTableToolbar onRefresh**：右上角刷新按钮（ArrowClockwiseIcon + router.invalidate），
+  series-section 无 toolbar 时直接在页头按钮组加同款按钮。

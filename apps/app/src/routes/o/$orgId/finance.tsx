@@ -204,6 +204,7 @@ function FinancePage() {
         defaultQuery={search.q}
         key={search.q ?? ""}
         onQueryChange={listSearch.setQuery}
+        onRefresh={() => router.invalidate()}
         searchPlaceholder="Search category or description"
       >
         <Select

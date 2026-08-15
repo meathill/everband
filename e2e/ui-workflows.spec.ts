@@ -7,10 +7,13 @@ import {
   waitForHydration,
 } from "./helpers.ts";
 
-function futureLocalDateTime(days = 7): string {
+function futureLocalDateTime(days = 7): { date: string; time: string } {
   const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
   const part = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${part(date.getMonth() + 1)}-${part(date.getDate())}T18:00`;
+  return {
+    date: `${date.getFullYear()}-${part(date.getMonth() + 1)}-${part(date.getDate())}`,
+    time: "18:00",
+  };
 }
 
 function currentSydneyMonthDateTime(): { date: string; dateTime: string } {
@@ -48,7 +51,9 @@ async function createDraftEvent(page: Page, orgId: string, title: string): Promi
   await expect(page.getByRole("heading", { name: "New event" })).toBeVisible();
   await expect(page.locator('[data-slot="drawer-popup"] [data-slot="frame"]')).toBeVisible();
   await fillField(page.locator("#event-title"), title);
-  await fillField(page.locator("#event-starts"), futureLocalDateTime());
+  const startsAt = futureLocalDateTime();
+  await fillField(page.locator("#event-starts-date"), startsAt.date);
+  await fillField(page.locator("#event-starts-time"), startsAt.time);
   await pressButton(page, "Create draft");
   await expect(page.getByRole("link", { name: title, exact: true })).toBeVisible();
 }
@@ -62,7 +67,9 @@ async function createDraftEventAt(
   await page.goto(`/o/${orgId}/events`);
   await pressButton(page, "New event");
   await fillField(page.locator("#event-title"), title);
-  await fillField(page.locator("#event-starts"), startsAt);
+  const [date, time] = startsAt.split("T");
+  await fillField(page.locator("#event-starts-date"), date ?? "");
+  await fillField(page.locator("#event-starts-time"), time ?? "");
   await pressButton(page, "Create draft");
   await expect(page.getByRole("link", { name: title, exact: true })).toBeVisible();
 }
@@ -216,7 +223,8 @@ test("Overview 日期数字快捷创建 event：staff 菜单、预填日期与 t
 
   await page.getByRole("menuitem", { name: "New event" }).click();
   await expect(page.getByRole("heading", { name: "New event" })).toBeVisible();
-  await expect(page.locator("#event-starts")).toHaveValue(`${date}T09:00`);
+  await expect(page.locator("#event-starts-date")).toHaveValue(date);
+  await expect(page.locator("#event-starts-time")).toHaveValue("09:00");
 
   await fillField(page.locator("#event-title"), title);
   await pressButton(page, "Create draft");
@@ -317,4 +325,47 @@ test("parent 仍看到有权限的活动卡片而不是 staff 管理表", async 
   // parent 在 Overview 也没有快捷创建入口
   await page.goto(`/o/${orgId}`);
   await expect(page.getByRole("button", { name: /Create on \d{4}/ })).toHaveCount(0);
+});
+
+test("Groups 全流程：建组、成员分组、事件受众", async ({ page }) => {
+  const orgId = await createOrganization(page, `Groups ${Date.now()}`);
+  const groupName = `Flutes ${Date.now()}`;
+
+  // 建组
+  await page.goto(`/o/${orgId}/groups`);
+  await expect(page.getByRole("heading", { name: "Groups" })).toBeVisible();
+  await pressButton(page, "New group");
+  await fillField(page.locator("#group-name"), groupName);
+  await pressButton(page, "Create group");
+  await expect(page.getByText(groupName, { exact: true })).toBeVisible();
+
+  // 成员表单选组并显示在表格
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Add student");
+  await fillField(page.locator("#student-name"), "Group Student");
+  await fillField(page.locator("#contact-name"), "Group Contact");
+  await fillField(page.locator("#contact-email"), uniqueEmail("e2e-group"));
+  await chooseOption(page, page.getByRole("combobox", { name: "Assigned group" }), groupName);
+  await pressButton(page, "Add student");
+  await expect(page.getByText("Group Student", { exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Group for Group Student" })).toHaveText(
+    groupName,
+  );
+
+  // 事件受众选择指定分组
+  await page.goto(`/o/${orgId}/events`);
+  await pressButton(page, "New event");
+  await fillField(page.locator("#event-title"), "Group event");
+  await page.getByRole("checkbox", { name: "Whole organization" }).uncheck();
+  await expect(page.getByRole("checkbox", { name: "Whole organization" })).not.toBeChecked();
+  await page.getByRole("checkbox", { name: groupName, exact: true }).check();
+  const startsAt = futureLocalDateTime();
+  await fillField(page.locator("#event-starts-date"), startsAt.date);
+  await fillField(page.locator("#event-starts-time"), startsAt.time);
+  await pressButton(page, "Create draft");
+  await expect(page.getByRole("link", { name: "Group event", exact: true })).toBeVisible();
+
+  // 详情页显示受众组名
+  await page.getByRole("link", { name: "Group event", exact: true }).click();
+  await expect(page.getByText(`Audience: ${groupName}`)).toBeVisible();
 });

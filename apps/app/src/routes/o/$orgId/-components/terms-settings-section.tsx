@@ -1,4 +1,5 @@
 import { Button } from "@everband/ui/components/button";
+import { DatePicker } from "@everband/ui/components/date-picker";
 import { Field, FieldDescription, FieldLabel } from "@everband/ui/components/field";
 import { Frame, FrameHeader, FramePanel, FrameTitle } from "@everband/ui/components/frame";
 import { Input } from "@everband/ui/components/input";
@@ -153,22 +154,22 @@ export function TermsSettingsSection({
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="term-start">Start</FieldLabel>
-                <Input
+                <DatePicker
+                  aria-label="Term start date"
                   defaultValue={editing?.startDate}
                   id="term-start"
                   name="startDate"
                   required
-                  type="date"
                 />
               </Field>
               <Field>
                 <FieldLabel htmlFor="term-end">End</FieldLabel>
-                <Input
+                <DatePicker
+                  aria-label="Term end date"
                   defaultValue={editing?.endDate}
                   id="term-end"
                   name="endDate"
                   required
-                  type="date"
                 />
               </Field>
             </div>

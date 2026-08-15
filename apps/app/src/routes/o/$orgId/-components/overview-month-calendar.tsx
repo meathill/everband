@@ -33,7 +33,7 @@ import {
 } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { EventFormDrawer } from "../events/-components/event-form-drawer.tsx";
+import { EventFormDrawer, type EventFormGroup } from "../events/-components/event-form-drawer.tsx";
 import {
   SeriesFormDrawer,
   type SeriesFormOption,
@@ -51,6 +51,8 @@ export interface OverviewMonthCalendarProps {
   isStaff: boolean;
   /** 新建每周排练的 term 下拉数据；为空时菜单里的排练项禁用 */
   terms: SeriesFormOption[];
+  /** 新建活动的受众分组选项 */
+  groups: EventFormGroup[];
   onMonthChange: (month: string) => void;
 }
 
@@ -111,6 +113,7 @@ export function OverviewMonthCalendar({
   timezone,
   isStaff,
   terms,
+  groups,
   onMonthChange,
 }: OverviewMonthCalendarProps) {
   const [visibleKinds, setVisibleKinds] = useState<Set<CalendarKind>>(
@@ -282,6 +285,7 @@ export function OverviewMonthCalendar({
         <>
           <EventFormDrawer
             defaultStartsAtLocal={createDate ? `${createDate}T09:00` : undefined}
+            groups={groups}
             onOpenChange={setIsEventOpen}
             open={isEventOpen}
             orgId={orgId}

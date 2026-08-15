@@ -3,7 +3,7 @@ import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everband/ui/components/empty";
 import { toastManager } from "@everband/ui/components/toast";
-import { PlusIcon, ProhibitIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, PlusIcon, ProhibitIcon } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
@@ -105,10 +105,20 @@ export function SeriesSection({ orgId, series, terms }: SeriesSectionProps): Rea
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-semibold text-foreground text-xl">Weekly rehearsals</h2>
-        <Button disabled={!hasTerm} onClick={() => setIsDrawerOpen(true)}>
-          <PlusIcon />
-          New weekly rehearsal
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            aria-label="Refresh"
+            onClick={() => router.invalidate()}
+            size="icon"
+            variant="ghost"
+          >
+            <ArrowClockwiseIcon />
+          </Button>
+          <Button disabled={!hasTerm} onClick={() => setIsDrawerOpen(true)}>
+            <PlusIcon />
+            New weekly rehearsal
+          </Button>
+        </div>
       </div>
       {!hasTerm && (
         <p className="text-muted-foreground text-sm">

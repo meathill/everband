@@ -21,12 +21,21 @@ export interface MemberFormValues {
   groupId: string | null;
 }
 
+export interface MemberFormGroup {
+  id: string;
+  name: string;
+}
+
 export interface MemberFormDrawerProps {
   orgId: string;
+  groups: MemberFormGroup[];
   student?: MemberFormValues;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+/** Select 不接受空字符串，用哨兵值表示"不分组" */
+const NO_GROUP = "none";
 
 export const STUDENT_STATUS_LABELS: Record<(typeof STUDENT_STATUS_VALUES)[number], string> = {
   active: "Active",
@@ -54,6 +63,7 @@ function text(formData: FormData, key: string): string {
  */
 export function MemberFormDrawer({
   orgId,
+  groups,
   student,
   open,
   onOpenChange,
@@ -77,14 +87,17 @@ export function MemberFormDrawer({
   const active = isEdit ? update : create;
 
   async function handleSubmit(formData: FormData) {
+    const selected = String(formData.get("groupId") ?? NO_GROUP);
+    const groupId = selected === NO_GROUP ? null : selected;
     if (student) {
-      await update.submit({ orgId, studentId: student.id, name: text(formData, "name") });
+      await update.submit({ orgId, studentId: student.id, name: text(formData, "name"), groupId });
       return;
     }
     await create.submit({
       orgId,
       name: text(formData, "name"),
       status: String(formData.get("status") ?? "active") as (typeof STUDENT_STATUS_VALUES)[number],
+      groupId: groupId ?? undefined,
       contact: {
         name: text(formData, "contactName"),
         email: text(formData, "contactEmail"),
@@ -99,7 +112,7 @@ export function MemberFormDrawer({
     <FormDrawer
       description={
         isEdit
-          ? "Update the student's name."
+          ? "Rename the student or move them to another group."
           : "Students need one contact. An existing contact with the same email is reused."
       }
       error={active.error}
@@ -111,12 +124,25 @@ export function MemberFormDrawer({
       title={isEdit ? "Edit student" : "New student"}
     >
       {/* 抽屉关闭时 Portal 卸载 children，非受控输入天然重置 */}
-      <MemberFormFields student={student} />
+      <MemberFormFields groups={groups} student={student} />
     </FormDrawer>
   );
 }
 
-function MemberFormFields({ student }: { student?: MemberFormValues }): React.ReactElement {
+function MemberFormFields({
+  groups,
+  student,
+}: {
+  groups: MemberFormGroup[];
+  student?: MemberFormValues;
+}): React.ReactElement {
+  const groupLabels: Record<string, string> = { [NO_GROUP]: "No group" };
+  for (const group of groups) {
+    groupLabels[group.id] = group.name;
+  }
+  // 已归档分组不在选项里，回落到"不分组"，保存时会显式移出
+  const defaultGroup =
+    student?.groupId && groupLabels[student.groupId] ? student.groupId : NO_GROUP;
   return (
     <Frame>
       <FramePanel>
@@ -187,6 +213,33 @@ function MemberFormFields({ student }: { student?: MemberFormValues }): React.Re
           </Field>
         </FramePanel>
       )}
+
+      <FramePanel>
+        <FrameHeader className="px-0 pt-0">
+          <FrameTitle>Group</FrameTitle>
+        </FrameHeader>
+        <Field>
+          <FieldLabel htmlFor="student-group">Assigned group</FieldLabel>
+          <Select defaultValue={defaultGroup} items={groupLabels} name="groupId">
+            <SelectTrigger id="student-group">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_GROUP}>No group</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={group.id}>
+                  {group.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {groups.length === 0 && (
+            <FieldDescription>
+              No active groups yet. Create one first, or leave students ungrouped.
+            </FieldDescription>
+          )}
+        </Field>
+      </FramePanel>
     </Frame>
   );
 }

@@ -11,7 +11,7 @@ import {
 import type { EventStatusFilter, EventTimeFilter } from "@everband/validation";
 import { EVENT_STATUS_FILTERS, EVENT_TIME_FILTERS, eventsListSchema } from "@everband/validation";
 import { PlusIcon } from "@phosphor-icons/react";
-import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link, useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
 import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
@@ -51,7 +51,7 @@ function EventsPage(): React.ReactElement {
   const data = Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   return data.mode === "staff" ? (
-    <StaffEvents list={data.list} timezone={org.timezone} />
+    <StaffEvents groups={data.groups} list={data.list} timezone={org.timezone} />
   ) : (
     <ParentEvents timezone={org.timezone} upcoming={data.upcoming} />
   );
@@ -60,15 +60,18 @@ function EventsPage(): React.ReactElement {
 type StaffData = Extract<Awaited<ReturnType<typeof getEventsPageData>>, { mode: "staff" }>;
 
 function StaffEvents({
+  groups,
   list,
   timezone,
 }: {
+  groups: StaffData["groups"];
   list: StaffData["list"];
   timezone: string;
 }): React.ReactElement {
   const { orgId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const router = useRouter();
   const listSearch = useListSearch({
     search,
     onChange: (patch) => navigate({ replace: true, search: (prev) => ({ ...prev, ...patch }) }),
@@ -102,6 +105,7 @@ function StaffEvents({
         }
         defaultQuery={search.q}
         onQueryChange={listSearch.setQuery}
+        onRefresh={() => router.invalidate()}
         searchPlaceholder="Search events"
       >
         {/* items 让 SelectValue 显示标签而不是原始值；筛选值是 URL 状态，所以这里是受控的 */}
@@ -163,6 +167,7 @@ function StaffEvents({
 
       <EventFormDrawer
         event={editing}
+        groups={groups}
         onOpenChange={setIsDrawerOpen}
         open={isDrawerOpen}
         orgId={orgId}

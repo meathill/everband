@@ -1,4 +1,5 @@
 import type { LedgerEntryRow } from "@everband/core";
+import { DatePicker } from "@everband/ui/components/date-picker";
 import { Field, FieldDescription, FieldLabel } from "@everband/ui/components/field";
 import { Frame, FrameHeader, FramePanel, FrameTitle } from "@everband/ui/components/frame";
 import { Input } from "@everband/ui/components/input";
@@ -92,12 +93,12 @@ export function LedgerEntryFormDrawer({
             </Field>
             <Field>
               <FieldLabel htmlFor="ledger-date">Date</FieldLabel>
-              <Input
+              <DatePicker
+                aria-label="Entry date"
                 defaultValue={entry?.occurredOn ?? new Date().toISOString().slice(0, 10)}
                 id="ledger-date"
                 name="occurredOn"
                 required
-                type="date"
               />
             </Field>
           </div>

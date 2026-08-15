@@ -140,10 +140,12 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
   // 组织切换器保持在侧栏顶部；日常运营与底部工具都有稳定入口
   await expect(page.getByRole("button", { name: "Sidebar Test Band" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Members" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Finance" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Groups" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Notifications" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Groups" })).toHaveCount(0);
+  // Rehearsals / Finance 入口已隐藏（路由保留，可从 URL 直达）
+  await expect(page.getByRole("link", { name: "Rehearsals" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Finance" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Events" }).click();
   // Events 是列表页，validateSearch 的默认值会被 Link 补进 URL（?page=1&…），所以不能锚 $
@@ -171,7 +173,7 @@ test("组织侧边栏导航：Overview 精确高亮、可跳转、移动端不�
   await page.goto(`/o/${orgId}/import`);
   await expect(page).toHaveURL(/\/settings\?.*section=data-import/);
   await page.goto(`/o/${orgId}/groups`);
-  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/members`));
+  await expect(page.getByRole("heading", { name: "Groups" })).toBeVisible();
 });
 
 test("favicon 和 band 品牌资源返回有效图片", async ({ page }) => {

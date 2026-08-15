@@ -45,3 +45,15 @@
 
 验收状态：`format:ci/typecheck/build/test/test:e2e` 全绿
 （普通单测 66 + Worker 集成测试 100 + e2e 19 场景、双视口 52 例）。
+
+## 当前任务：表单交互与信息架构调整（2026-08-15）
+
+- [x] 表单 field 间距统一 gap-2（FramePanel 相邻 field 规则）
+- [x] 新增 DatePicker 组件（coss With Input + Close on Select 模式），
+      Event 表单日期时间拆分、Terms/账本日期换组件
+- [x] Events 表格默认全部数据（time=all，startsAtUtc desc）
+- [x] 所有表格右上角加 refresh（DataTableToolbar onRefresh）
+- [x] 隐藏 Rehearsals / Finance 侧边栏入口与 Overview 卡片
+- [x] 完整恢复 Group：Groups 页、侧边栏入口、成员分组（表格列/筛选/表单选组）、
+      Event 受众选择（isOrgWide + groupIds）
+- [ ] 验收：format/typecheck/build 全绿、单测 210、e2e 相关子集全绿、生产部署

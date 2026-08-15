@@ -72,16 +72,16 @@ export type EventStatusFilter = (typeof EVENT_STATUS_FILTERS)[number];
 export const EVENT_TIME_FILTERS = ["upcoming", "past", "all"] as const;
 export type EventTimeFilter = (typeof EVENT_TIME_FILTERS)[number];
 
-// staff 活动列表的 URL 查询参数。默认看未来活动，所以默认排序是 startsAtUtc asc
-// （最近的排在最前）；看 past 时用户自己点表头切 desc。
+// staff 活动列表的 URL 查询参数。默认展示全部活动，最新在前（startsAtUtc desc）；
+// 想看接下来有什么时用户自己切 upcoming 或点表头排序。
 // extend 出来的筛选字段同样 .default().catch()——default 让输入侧可省略，catch 让非法值静默回落。
 export const eventsListSchema = createListQuerySchema({
   sortFields: ["startsAtUtc", "createdAt", "title"],
   defaultSort: "startsAtUtc",
-  defaultOrder: "asc",
+  defaultOrder: "desc",
 }).extend({
   status: z.enum(EVENT_STATUS_FILTERS).default("all").catch("all"),
-  time: z.enum(EVENT_TIME_FILTERS).default("upcoming").catch("upcoming"),
+  time: z.enum(EVENT_TIME_FILTERS).default("all").catch("all"),
 });
 
 export type EventsListQuery = z.output<typeof eventsListSchema>;

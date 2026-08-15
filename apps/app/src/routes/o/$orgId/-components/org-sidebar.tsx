@@ -29,13 +29,12 @@ import {
   CheckIcon,
   GearIcon,
   type Icon,
-  MusicNotesIcon,
   PlusIcon,
   SignOutIcon,
   SquaresFourIcon,
   UserCircleIcon,
   UsersIcon,
-  WalletIcon,
+  UsersThreeIcon,
 } from "@phosphor-icons/react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type React from "react";
@@ -46,10 +45,9 @@ import { logout } from "~/server/auth.ts";
 type OrgNavPath =
   | "/o/$orgId"
   | "/o/$orgId/events"
-  | "/o/$orgId/rehearsals"
   | "/o/$orgId/notifications"
   | "/o/$orgId/members"
-  | "/o/$orgId/finance"
+  | "/o/$orgId/groups"
   | "/o/$orgId/settings";
 
 type NavItem = {
@@ -60,12 +58,17 @@ type NavItem = {
   exact?: boolean;
 };
 
-const MAIN_ITEMS: NavItem[] = [
+const STAFF_MAIN_ITEMS: NavItem[] = [
   { to: "/o/$orgId", label: "Overview", icon: SquaresFourIcon, exact: true },
   { to: "/o/$orgId/events", label: "Events", icon: CalendarBlankIcon },
-  { to: "/o/$orgId/rehearsals", label: "Rehearsals", icon: MusicNotesIcon },
   { to: "/o/$orgId/members", label: "Members", icon: UsersIcon },
-  { to: "/o/$orgId/finance", label: "Finance", icon: WalletIcon },
+  { to: "/o/$orgId/groups", label: "Groups", icon: UsersThreeIcon },
+];
+
+// 家长只能看到与孩子相关的日常信息，成员管理和分组管理属于 staff
+const PARENT_MAIN_ITEMS: NavItem[] = [
+  { to: "/o/$orgId", label: "Overview", icon: SquaresFourIcon, exact: true },
+  { to: "/o/$orgId/events", label: "Events", icon: CalendarBlankIcon },
 ];
 
 const UTILITY_ITEMS: NavItem[] = [
@@ -117,7 +120,7 @@ export function OrgSidebar({
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Daily operations</SidebarGroupLabel>
-          <NavMenu items={isStaff ? MAIN_ITEMS : MAIN_ITEMS.slice(0, 3)} orgId={org.id} />
+          <NavMenu items={isStaff ? STAFF_MAIN_ITEMS : PARENT_MAIN_ITEMS} orgId={org.id} />
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>

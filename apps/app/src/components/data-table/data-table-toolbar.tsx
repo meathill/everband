@@ -1,6 +1,7 @@
+import { Button } from "@everband/ui/components/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@everband/ui/components/input-group";
 import { cn } from "@everband/ui/lib/utils";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
 import type React from "react";
 
 export type DataTableToolbarProps = {
@@ -13,6 +14,8 @@ export type DataTableToolbarProps = {
   children?: React.ReactNode;
   /** 右侧操作区，如 New xxx 按钮 */
   actions?: React.ReactNode;
+  /** 右上角刷新按钮（通常接 router.invalidate） */
+  onRefresh?: () => void;
   className?: string;
 };
 
@@ -29,6 +32,7 @@ export function DataTableToolbar({
   onQueryChange,
   children,
   actions,
+  onRefresh,
   className,
 }: DataTableToolbarProps): React.ReactElement {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -61,7 +65,16 @@ export function DataTableToolbar({
         </form>
       )}
       {children}
-      {actions && <div className="ms-auto flex items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="ms-auto flex items-center gap-2">
+          {onRefresh && (
+            <Button aria-label="Refresh" onClick={onRefresh} size="icon" variant="ghost">
+              <ArrowClockwiseIcon />
+            </Button>
+          )}
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

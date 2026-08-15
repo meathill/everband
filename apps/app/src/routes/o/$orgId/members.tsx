@@ -10,14 +10,14 @@ import {
 import type { StudentStatusFilter } from "@everband/validation";
 import { STUDENT_STATUS_FILTERS, studentsListSchema } from "@everband/validation";
 import { PlusIcon } from "@phosphor-icons/react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
 import { DataTablePagination } from "~/components/data-table/data-table-pagination.tsx";
 import { DataTableToolbar } from "~/components/data-table/data-table-toolbar.tsx";
 import { useListSearch } from "~/components/data-table/use-list-search.ts";
 import { PageSkeleton } from "~/components/page-loaders.tsx";
-import { listStudents } from "~/server/members.ts";
+import { listGroups, listStudents } from "~/server/members.ts";
 import { MemberFormDrawer } from "./-components/member-form-drawer.tsx";
 import { MembersTable } from "./-components/members-table.tsx";
 
@@ -27,7 +27,12 @@ export const Route = createFileRoute("/o/$orgId/members")({
   loaderDeps: ({ search }) => search,
   loader: async ({ params, deps }) => {
     try {
-      return { list: await listStudents({ data: { orgId: params.orgId, ...deps } }) };
+      const [list, groups] = await Promise.all([
+        listStudents({ data: { orgId: params.orgId, ...deps } }),
+        // 分组下拉只列在用的分组
+        listGroups({ data: { orgId: params.orgId, status: "active" } }),
+      ]);
+      return { list, groups };
     } catch {
       throw redirect({ to: "/o/$orgId", params: { orgId: params.orgId } });
     }
@@ -44,11 +49,14 @@ const STATUS_LABELS: Record<StudentStatusFilter, string> = {
   withdrawn: "Withdrawn",
 };
 
+const ALL_GROUPS = "all";
+
 function MembersPage(): React.ReactElement {
-  const { list } = Route.useLoaderData();
+  const { list, groups } = Route.useLoaderData();
   const { orgId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const router = useRouter();
   const listSearch = useListSearch({
     search,
     onChange: (patch) => navigate({ replace: true, search: (prev) => ({ ...prev, ...patch }) }),
@@ -67,7 +75,11 @@ function MembersPage(): React.ReactElement {
     setIsDrawerOpen(true);
   }
 
-  const isFiltered = Boolean(search.q) || search.status !== "all";
+  const groupLabels: Record<string, string> = { [ALL_GROUPS]: "All groups" };
+  for (const group of groups) {
+    groupLabels[group.id] = group.name;
+  }
+  const isFiltered = Boolean(search.q) || search.status !== "all" || search.group !== ALL_GROUPS;
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,6 +94,7 @@ function MembersPage(): React.ReactElement {
         }
         defaultQuery={search.q}
         onQueryChange={listSearch.setQuery}
+        onRefresh={() => router.invalidate()}
         searchPlaceholder="Search students"
       >
         {/* 筛选值是 URL 状态，所以这些 Select 是受控的；items 让 SelectValue 显示标签 */}
@@ -103,9 +116,27 @@ function MembersPage(): React.ReactElement {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          items={groupLabels}
+          onValueChange={(value: string | null) => value && listSearch.setFilter("group", value)}
+          value={groupLabels[search.group] ? search.group : ALL_GROUPS}
+        >
+          <SelectTrigger aria-label="Filter by group" className="w-auto min-w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_GROUPS}>All groups</SelectItem>
+            {groups.map((group) => (
+              <SelectItem key={group.id} value={group.id}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </DataTableToolbar>
 
       <MembersTable
+        groups={groups}
         isFiltered={isFiltered}
         onEdit={openEdit}
         onSortChange={listSearch.setSort}
@@ -123,6 +154,7 @@ function MembersPage(): React.ReactElement {
       />
 
       <MemberFormDrawer
+        groups={groups}
         onOpenChange={setIsDrawerOpen}
         open={isDrawerOpen}
         orgId={orgId}
