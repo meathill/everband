@@ -28,6 +28,8 @@ export interface SeriesFormDrawerProps {
   defaultWeekday?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 创建成功后的回调（如刷新依赖本地 state 的日历） */
+  onSubmitted?: () => void;
 }
 
 // 原生 select 的统一外观（Base UI 的 Select 是受控组件，与非受控红线冲突）
@@ -41,11 +43,15 @@ export function SeriesFormDrawer({
   defaultWeekday = 3,
   open,
   onOpenChange,
+  onSubmitted,
 }: SeriesFormDrawerProps): React.ReactElement {
   const create = useServerFormAction({
     action: createRehearsalSeries,
     successMessage: "Weekly rehearsal created",
-    onSuccess: () => onOpenChange(false),
+    onSuccess: () => {
+      onOpenChange(false);
+      onSubmitted?.();
+    },
   });
 
   async function handleSubmit(formData: FormData) {

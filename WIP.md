@@ -76,4 +76,7 @@
 - [x] 家长视角的邮件筛选（2026-08-15）：listEmailSends 按角色分支——staff 看全部，
       parent 只看发给自己的（收件人快照按邀请邮箱匹配，排除 suppressed），只读列表
       可展开看正文、无写信入口；侧边栏家长加 Emails；集成 127 例、e2e 70 例全绿
+- [x] Overview 月份切换局部刷新（2026-08-16）：月份与日历数据改本地 state，切月
+      只刷日历（导航按钮 loading/禁用 + 日历骨架），不再整页骨架屏；日历 Today
+      圆点标注；抽屉创建/编辑后 onSubmitted 手动刷新本地日历；e2e 72 例全绿
 - [ ] 部署：先 `wrangler d1 migrations apply --remote`（0011、0012）再部署 app/tasks

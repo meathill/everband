@@ -3,19 +3,23 @@ import { hasStaffAccess } from "@everband/domain";
 import { Card, CardPanel } from "@everband/ui/components/card";
 import { overviewSearchSchema } from "@everband/validation";
 import { createFileRoute, getRouteApi, redirect } from "@tanstack/react-router";
+import type React from "react";
+import { useState } from "react";
 import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { getRouteAuthErrorCode } from "~/lib/route-auth-error.ts";
 import { getOverview } from "~/server/overview.ts";
-import { OverviewMonthCalendar } from "./-components/overview-month-calendar.tsx";
+import {
+  type MonthNavAction,
+  OverviewMonthCalendar,
+} from "./-components/overview-month-calendar.tsx";
 
 const orgRoute = getRouteApi("/o/$orgId");
 
 export const Route = createFileRoute("/o/$orgId/")({
   validateSearch: overviewSearchSchema,
-  loaderDeps: ({ search }) => search,
-  loader: async ({ params, deps }) => {
+  loader: async ({ params }) => {
     try {
-      return await getOverview({ data: { orgId: params.orgId, month: deps.month } });
+      return await getOverview({ data: { orgId: params.orgId } });
     } catch (cause) {
       const authError = getRouteAuthErrorCode(cause);
       if (authError === "unauthenticated") throw redirect({ to: "/login" });
@@ -29,10 +33,44 @@ export const Route = createFileRoute("/o/$orgId/")({
 
 function OrgOverview() {
   const { org, role, staffAccess } = orgRoute.useLoaderData();
-  const { month, overview, terms, groups } = Route.useLoaderData();
-  const navigate = Route.useNavigate();
+  const { month: initialMonth, overview, terms, groups } = Route.useLoaderData();
   const isStaff = hasStaffAccess(role, staffAccess);
   const staffOverview = isStaff ? (overview as StaffOverviewData) : null;
+
+  // 月份与日历数据是本地状态：切换月份只局部刷新日历，不走 loader/整页骨架。
+  // 初始月 = loader 拿到的当前月；URL 不同步（月份是临时浏览状态）。
+  const [month, setMonth] = useState(initialMonth);
+  const [calendar, setCalendar] = useState(overview.calendarItems);
+  const [monthTerms, setMonthTerms] = useState(terms);
+  const [monthGroups, setMonthGroups] = useState(groups);
+  const [isMonthLoading, setIsMonthLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<MonthNavAction | null>(null);
+
+  async function handleMonthChange(nextMonth: string, action: MonthNavAction) {
+    if (isMonthLoading) {
+      return;
+    }
+    setMonth(nextMonth);
+    setLoadingAction(action);
+    setIsMonthLoading(true);
+    try {
+      const data = await getOverview({ data: { orgId: org.id, month: nextMonth } });
+      setCalendar(data.overview.calendarItems);
+      setMonthTerms(data.terms);
+      setMonthGroups(data.groups);
+    } finally {
+      setIsMonthLoading(false);
+      setLoadingAction(null);
+    }
+  }
+
+  // 抽屉创建/编辑成功后，本地 state 的日历需要手动刷新（不走 loader）
+  async function refreshCalendar() {
+    const data = await getOverview({ data: { orgId: org.id, month } });
+    setCalendar(data.overview.calendarItems);
+    setMonthTerms(data.terms);
+    setMonthGroups(data.groups);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,13 +80,16 @@ function OrgOverview() {
       </div>
       {staffOverview && <OverviewStatsCards data={staffOverview} />}
       <OverviewMonthCalendar
-        groups={groups}
+        groups={monthGroups}
         isStaff={isStaff}
-        items={overview.calendarItems}
+        isLoading={isMonthLoading}
+        items={calendar}
+        loadingAction={loadingAction}
         month={month}
-        onMonthChange={(nextMonth) => navigate({ search: { month: nextMonth } })}
+        onCalendarDataChange={refreshCalendar}
+        onMonthChange={handleMonthChange}
         orgId={org.id}
-        terms={terms}
+        terms={monthTerms}
         timezone={org.timezone}
       />
     </div>

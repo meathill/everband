@@ -40,6 +40,8 @@ export interface EventFormDrawerProps {
   defaultStartsAtLocal?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 创建/编辑成功后的回调（如刷新依赖本地 state 的日历） */
+  onSubmitted?: () => void;
 }
 
 function text(formData: FormData, key: string): string {
@@ -78,6 +80,7 @@ export function EventFormDrawer({
   defaultStartsAtLocal,
   open,
   onOpenChange,
+  onSubmitted,
 }: EventFormDrawerProps): React.ReactElement {
   const isEdit = event !== undefined;
   const isLocked = event?.status === "published";
@@ -86,15 +89,20 @@ export function EventFormDrawer({
     onOpenChange(false);
   }
 
+  function closeAndNotify() {
+    close();
+    onSubmitted?.();
+  }
+
   const create = useServerFormAction({
     action: createEvent,
     successMessage: "Event created",
-    onSuccess: close,
+    onSuccess: closeAndNotify,
   });
   const update = useServerFormAction({
     action: updateEvent,
     successMessage: "Event updated",
-    onSuccess: close,
+    onSuccess: closeAndNotify,
   });
   const active = isEdit ? update : create;
 

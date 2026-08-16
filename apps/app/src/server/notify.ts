@@ -27,7 +27,7 @@ import {
 } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./context.ts";
 import { requireMembership, STAFF_ROLES } from "./guards.ts";

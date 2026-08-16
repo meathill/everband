@@ -642,3 +642,32 @@ test("parent 在 Emails 页只看到发给自己的邮件，且没有写信入�
   await page.getByText(subject, { exact: true }).click();
   await expect(page.getByText("Only you can see this.", { exact: true })).toBeVisible();
 });
+
+test("Overview 月份切换只刷新日历：标题保持、月标签变化、Today 有标注", async ({ page }) => {
+  const orgId = await createOrganization(page, `Calendar nav ${Date.now()}`);
+  await page.goto(`/o/${orgId}`);
+
+  // 整页骨架会出现 h1 消失；局部刷新时 h1 全程可见
+  const overviewHeading = page.getByRole("heading", { name: "Overview" });
+  await expect(overviewHeading).toBeVisible();
+
+  // Today 标注：组织时区（Sydney）的今天在日历格子里有 primary 圆点（先于切月断言）
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const today = `${parts.find((p) => p.type === "year")?.value}-${parts.find((p) => p.type === "month")?.value}-${parts.find((p) => p.type === "day")?.value}`;
+  const todayDot = page.locator(`[data-date="${today}"] time`);
+  await expect(todayDot).toHaveClass(/bg-primary/);
+
+  const monthLabel = page.locator("h2");
+  const before = await monthLabel.innerText();
+  const nextButton = page.getByRole("button", { name: "Next month", exact: true });
+  await waitForHydration(nextButton);
+  await nextButton.click();
+
+  await expect(overviewHeading).toBeVisible();
+  await expect(monthLabel).not.toHaveText(before);
+});
