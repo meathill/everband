@@ -130,7 +130,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-lg border border-input bg-background shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 sm:text-sm",
+        "flex w-full flex-col overflow-hidden rounded-lg border border-input bg-card shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 sm:text-sm",
         className,
       )}
     >
