@@ -101,9 +101,10 @@ const TOOLS: ToolDef[] = [
 ];
 
 /**
- * 富文本编辑器（TipTap + StarterKit）。
+ * 富文本编辑器（TipTap + StarterKit + tailwindcss/typography）。
  * SSR 安全：immediatelyRender: false，服务端输出空容器，挂载后再渲染。
  * 邮件正文：html 发 HTML 版本，text 发纯文本兜底。
+ * heading 仅开放 H2/H3（无 H1），粘贴的 H1 会被降级为段落。
  */
 export function RichTextEditor({
   value,
@@ -112,13 +113,13 @@ export function RichTextEditor({
   className,
 }: RichTextEditorProps): React.ReactElement {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [StarterKit.configure({ heading: { levels: [2, 3] } })],
     content: value || "",
     immediatelyRender: false,
     editorProps: {
       attributes: {
         class:
-          "prose-sm min-h-40 w-full px-3 py-2 text-foreground outline-none placeholder:text-muted-foreground/72 [&_p.is-editor-empty]:before:content-[attr(data-placeholder)] [&_p.is-editor-empty]:before:pointer-events-none [&_p.is-editor-empty]:before:float-left [&_p.is-editor-empty]:before:h-0 [&_p.is-editor-empty]:before:text-muted-foreground/72",
+          "prose prose-sm max-w-none min-h-40 w-full px-3 py-2 text-foreground outline-none prose-headings:font-semibold prose-headings:text-foreground prose-h2:text-xl prose-h3:text-lg prose-p:my-2 prose-strong:font-bold prose-strong:text-foreground prose-em:text-foreground prose-blockquote:border-l-2 prose-blockquote:border-border prose-blockquote:pl-3 prose-blockquote:text-muted-foreground prose-ul:list-disc prose-ol:list-decimal prose-li:my-0.5 dark:prose-invert placeholder:text-muted-foreground/72 [&_p.is-editor-empty]:before:content-[attr(data-placeholder)] [&_p.is-editor-empty]:before:pointer-events-none [&_p.is-editor-empty]:before:float-left [&_p.is-editor-empty]:before:h-0 [&_p.is-editor-empty]:before:text-muted-foreground/72",
         "data-placeholder": placeholder ?? "Write your message…",
       },
     },
@@ -151,6 +152,7 @@ export function RichTextEditor({
                 )}
                 disabled={!enabled}
                 key={tool.label}
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() => tool.action(editor)}
                 type="button"
               >

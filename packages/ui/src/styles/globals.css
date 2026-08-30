@@ -3,6 +3,7 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "./colors-and-type.css";
 
 /* 本包位于 workspace 依赖内，Tailwind 自动内容探测不会跨包扫描，

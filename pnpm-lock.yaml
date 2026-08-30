@@ -44,6 +44,9 @@ importers:
       '@everband/validation':
         specifier: workspace:*
         version: link:../../packages/validation
+      '@meathill/brand':
+        specifier: file:/tmp/meathill-brand-0.1.0.tgz
+        version: file:../../../../../tmp/meathill-brand-0.1.0.tgz
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -87,6 +90,9 @@ importers:
       '@everband/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@tailwindcss/typography':
+        specifier: ^0.5.20
+        version: 0.5.20(tailwindcss@4.3.3)
       '@tailwindcss/vite':
         specifier: ^4.0.0
         version: 4.3.3(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.9))
@@ -120,6 +126,12 @@ importers:
       '@everband/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@meathill/brand':
+        specifier: file:/tmp/meathill-brand-0.1.0.tgz
+        version: file:../../../../../tmp/meathill-brand-0.1.0.tgz
+      '@meathill/brand-react':
+        specifier: file:/tmp/meathill-brand-react-0.1.0.tgz
+        version: file:../../../../../tmp/meathill-brand-react-0.1.0.tgz(@meathill/brand@file:../../../../../tmp/meathill-brand-0.1.0.tgz)(react@19.2.8)
       '@tanstack/react-router':
         specifier: ^1.140.0
         version: 1.170.20(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1261,6 +1273,17 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
+  '@meathill/brand-react@file:../../../../../tmp/meathill-brand-react-0.1.0.tgz':
+    resolution: {integrity: sha512-aJfMXNwktpgPcj1JoNmW33jPGuSPBtoxwBJ03UwWWvzV6jI6Ing/JJ5CppRvpOsNqZ/k5RcFVub1KXNfBkRhBg==, tarball: file:../../../../../tmp/meathill-brand-react-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@meathill/brand': ^0.1.0
+      react: '>=18'
+
+  '@meathill/brand@file:../../../../../tmp/meathill-brand-0.1.0.tgz':
+    resolution: {integrity: sha512-LzfnNoSXHzLgPvtpkLDVUer2LoBpW1ZSsE46AG1Gmq6IW+Fr9hDHV5m1d41JgKAMRcJ1/7eidX6zljL0suGlZg==, tarball: file:../../../../../tmp/meathill-brand-0.1.0.tgz}
+    version: 0.1.0
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
@@ -1640,6 +1663,11 @@ packages:
   '@tailwindcss/oxide@4.3.3':
     resolution: {integrity: sha512-krXjAikiaFSPaK/FkAQT5UTx3VormQaiZ5hBFlJZ9UFQGB/rwg1MZIhHAG9smMQRTdyJxP6Qt5MwMtdyU5FWrA==}
     engines: {node: '>= 20'}
+
+  '@tailwindcss/typography@0.5.20':
+    resolution: {integrity: sha512-hwbzQuNUfcPvbegQFatVPl/MY/tcM9KLl963hQ5laJKPh81TEZ1+dNG9PirGvcaDBkp+BCshExAyKVPW91dozw==}
+    peerDependencies:
+      tailwindcss: '>=3.0.0 || >=4.0.0 || insiders'
 
   '@tailwindcss/vite@4.3.3':
     resolution: {integrity: sha512-yYU8cogLeSh/ms2jh8Fj7jaba/EWa7Ja6GoUqYZaraEuCI5YS6ms6ObZgjjedm+jm6XZjdNRWBpPP6Z86oOxcw==}
@@ -2180,6 +2208,11 @@ packages:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
     engines: {node: '>=18'}
 
+  cssesc@3.0.0:
+    resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
+    engines: {node: '>=4'}
+    hasBin: true
+
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
@@ -2628,6 +2661,10 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  postcss-selector-parser@6.0.10:
+    resolution: {integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==}
+    engines: {node: '>=4'}
+
   postcss@8.5.26:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -2882,6 +2919,9 @@ packages:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  util-deprecate@1.0.2:
+    resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
   vite@7.3.6:
     resolution: {integrity: sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg==}
@@ -3698,6 +3738,13 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@meathill/brand-react@file:../../../../../tmp/meathill-brand-react-0.1.0.tgz(@meathill/brand@file:../../../../../tmp/meathill-brand-0.1.0.tgz)(react@19.2.8)':
+    dependencies:
+      '@meathill/brand': file:../../../../../tmp/meathill-brand-0.1.0.tgz
+      react: 19.2.8
+
+  '@meathill/brand@file:../../../../../tmp/meathill-brand-0.1.0.tgz': {}
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
@@ -3930,6 +3977,11 @@ snapshots:
       '@tailwindcss/oxide-wasm32-wasi': 4.3.3
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.3
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
+
+  '@tailwindcss/typography@0.5.20(tailwindcss@4.3.3)':
+    dependencies:
+      postcss-selector-parser: 6.0.10
+      tailwindcss: 4.3.3
 
   '@tailwindcss/vite@4.3.3(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.9))':
     dependencies:
@@ -4534,6 +4586,8 @@ snapshots:
 
   cookie@1.1.1: {}
 
+  cssesc@3.0.0: {}
+
   csstype@3.2.3: {}
 
   date-fns@4.4.0: {}
@@ -4868,6 +4922,11 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
+  postcss-selector-parser@6.0.10:
+    dependencies:
+      cssesc: 3.0.0
+      util-deprecate: 1.0.2
+
   postcss@8.5.26:
     dependencies:
       nanoid: 3.3.17
@@ -5176,6 +5235,8 @@ snapshots:
   use-sync-external-store@1.6.0(react@19.2.8):
     dependencies:
       react: 19.2.8
+
+  util-deprecate@1.0.2: {}
 
   vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.9):
     dependencies:
