@@ -12,7 +12,9 @@ export interface OverviewEventItem {
   title: string;
   status: "draft" | "published" | "cancelled" | "completed";
   startsAtUtc: number;
+  startsAtHasTime: boolean;
   endsAtUtc: number | null;
+  endsAtHasTime: boolean;
   localDate: string;
   location: string | null;
 }
@@ -84,7 +86,9 @@ export async function getStaffOverviewData(
           title: schema.events.title,
           status: schema.events.status,
           startsAtUtc: schema.events.startsAtUtc,
+          startsAtHasTime: schema.events.startsAtHasTime,
           endsAtUtc: schema.events.endsAtUtc,
+          endsAtHasTime: schema.events.endsAtHasTime,
           location: schema.events.location,
         })
         .from(schema.events)
@@ -207,7 +211,9 @@ export async function getParentOverviewData(
         title: schema.events.title,
         status: schema.events.status,
         startsAtUtc: schema.events.startsAtUtc,
+        startsAtHasTime: schema.events.startsAtHasTime,
         endsAtUtc: schema.events.endsAtUtc,
+        endsAtHasTime: schema.events.endsAtHasTime,
         location: schema.events.location,
       })
       .from(schema.events)

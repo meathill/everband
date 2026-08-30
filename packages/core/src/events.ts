@@ -71,7 +71,9 @@ export interface ParentEventRow {
   title: string;
   type: string;
   startsAtUtc: number;
+  startsAtHasTime: boolean;
   endsAtUtc: number | null;
+  endsAtHasTime: boolean;
   location: string | null;
   status: "published" | "cancelled";
   isOrgWide: boolean;
@@ -111,7 +113,9 @@ export async function listParentEvents(
       title: schema.events.title,
       type: schema.events.type,
       startsAtUtc: schema.events.startsAtUtc,
+      startsAtHasTime: schema.events.startsAtHasTime,
       endsAtUtc: schema.events.endsAtUtc,
+      endsAtHasTime: schema.events.endsAtHasTime,
       location: schema.events.location,
       status: schema.events.status,
       isOrgWide: schema.events.isOrgWide,

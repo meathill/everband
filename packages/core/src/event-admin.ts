@@ -20,7 +20,9 @@ export interface OrgEventRow {
   type: string;
   description: string | null;
   startsAtUtc: number;
+  startsAtHasTime: boolean;
   endsAtUtc: number | null;
+  endsAtHasTime: boolean;
   location: string | null;
   status: EventStatus;
   isOrgWide: boolean;
@@ -90,7 +92,9 @@ export async function listOrgEventsCore(
         type: schema.events.type,
         description: schema.events.description,
         startsAtUtc: schema.events.startsAtUtc,
+        startsAtHasTime: schema.events.startsAtHasTime,
         endsAtUtc: schema.events.endsAtUtc,
+        endsAtHasTime: schema.events.endsAtHasTime,
         location: schema.events.location,
         status: schema.events.status,
         isOrgWide: schema.events.isOrgWide,
@@ -145,14 +149,21 @@ export interface UpdateEventCoreInput {
   description?: string | null;
   location?: string | null;
   startsAtUtc?: number;
+  startsAtHasTime?: boolean;
   endsAtUtc?: number | null;
+  endsAtHasTime?: boolean;
   isOrgWide?: boolean;
   groupIds?: string[];
 }
 
 // published 之后仍可改的字段：补充说明、地点、结束时间。
 // 标题与开始时间已经进过 parent 的邮件与日程，改了等于换了一个活动，走取消 + 新建。
-const PUBLISHED_EDITABLE_FIELDS = ["description", "location", "endsAtUtc"] as const;
+const PUBLISHED_EDITABLE_FIELDS = [
+  "description",
+  "location",
+  "endsAtUtc",
+  "endsAtHasTime",
+] as const;
 
 async function assertGroupsInOrg(
   db: Database,
@@ -224,7 +235,9 @@ export async function updateEventCore(
       description: input.description,
       location: input.location,
       startsAtUtc: input.startsAtUtc,
+      startsAtHasTime: input.startsAtHasTime,
       endsAtUtc: input.endsAtUtc,
+      endsAtHasTime: input.endsAtHasTime,
       isOrgWide: input.isOrgWide,
       updatedAt: now,
     })

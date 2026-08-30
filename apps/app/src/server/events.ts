@@ -13,7 +13,7 @@ import {
   generateId,
   hasStaffAccess,
   ID_PREFIXES,
-  localDateTimeToUtcMs,
+  localDateOrDateTimeToUtcMs,
   upcomingWindow,
 } from "@everband/domain";
 import {
@@ -69,8 +69,10 @@ export const createEvent = createServerFn({ method: "POST" })
       title: data.title,
       type: data.type,
       description: data.description ?? null,
-      startsAtUtc: localDateTimeToUtcMs(data.startsAtLocal, timezone),
-      endsAtUtc: data.endsAtLocal ? localDateTimeToUtcMs(data.endsAtLocal, timezone) : null,
+      startsAtUtc: localDateOrDateTimeToUtcMs(data.startsAtLocal, timezone),
+      startsAtHasTime: data.startsAtLocal.includes("T"),
+      endsAtUtc: data.endsAtLocal ? localDateOrDateTimeToUtcMs(data.endsAtLocal, timezone) : null,
+      endsAtHasTime: data.endsAtLocal ? data.endsAtLocal.includes("T") : true,
       location: data.location ?? null,
       isOrgWide: data.isOrgWide,
       status: "draft",
@@ -114,14 +116,21 @@ export const updateEvent = createServerFn({ method: "POST" })
         description: data.description === undefined ? undefined : data.description || null,
         location: data.location === undefined ? undefined : data.location || null,
         startsAtUtc: data.startsAtLocal
-          ? localDateTimeToUtcMs(data.startsAtLocal, timezone)
+          ? localDateOrDateTimeToUtcMs(data.startsAtLocal, timezone)
           : undefined,
+        startsAtHasTime: data.startsAtLocal ? data.startsAtLocal.includes("T") : undefined,
         endsAtUtc:
           data.endsAtLocal === undefined
             ? undefined
             : data.endsAtLocal
-              ? localDateTimeToUtcMs(data.endsAtLocal, timezone)
+              ? localDateOrDateTimeToUtcMs(data.endsAtLocal, timezone)
               : null,
+        endsAtHasTime:
+          data.endsAtLocal === undefined
+            ? undefined
+            : data.endsAtLocal
+              ? data.endsAtLocal.includes("T")
+              : true,
         isOrgWide: data.isOrgWide,
         groupIds: data.groupIds,
       },

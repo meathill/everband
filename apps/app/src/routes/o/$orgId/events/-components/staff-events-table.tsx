@@ -1,6 +1,6 @@
 import type { OrgEventRow } from "@everband/core";
 import type { EventStatus } from "@everband/domain";
-import { formatOrgDateTime } from "@everband/domain";
+import { formatOrgDateTimeMaybe } from "@everband/domain";
 import { Badge, type BadgeProps } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everband/ui/components/empty";
@@ -85,7 +85,7 @@ export function StaffEventsTable({
       defaultOrder: "desc",
       header: "Starts",
       key: "startsAtUtc",
-      render: (row) => formatOrgDateTime(row.startsAtUtc, timezone),
+      render: (row) => formatOrgDateTimeMaybe(row.startsAtUtc, timezone, row.startsAtHasTime),
       sortable: true,
     },
     {

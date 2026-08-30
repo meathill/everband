@@ -1,5 +1,5 @@
 import type { EventStatus } from "@everband/domain";
-import { utcMsToLocalDateTime } from "@everband/domain";
+import { toLocalDateString, utcMsToLocalDateTime } from "@everband/domain";
 import { Checkbox } from "@everband/ui/components/checkbox";
 import { DatePicker } from "@everband/ui/components/date-picker";
 import { Field, FieldDescription, FieldLabel } from "@everband/ui/components/field";
@@ -19,7 +19,9 @@ export interface EventFormValues {
   description: string | null;
   location: string | null;
   startsAtUtc: number;
+  startsAtHasTime: boolean;
   endsAtUtc: number | null;
+  endsAtHasTime: boolean;
   isOrgWide: boolean;
   status: EventStatus;
   groupIds: string[];
@@ -58,11 +60,14 @@ function splitLocalDateTime(local: string | undefined): { date?: string; time?: 
   return { date, time };
 }
 
-/** 拆分后的日期与时间字段组合回 "YYYY-MM-DDTHH:mm" */
+/** 拆分后的日期与时间字段组合回 "YYYY-MM-DD" 或 "YYYY-MM-DDTHH:mm"；time 可空，对应服务端 date-only 语义 */
 function composeDateTime(formData: FormData, prefix: "startsAt" | "endsAt"): string {
   const date = text(formData, `${prefix}Date`);
   const time = text(formData, `${prefix}Time`);
-  return date && time ? `${date}T${time}` : "";
+  if (!date) {
+    return "";
+  }
+  return time ? `${date}T${time}` : date;
 }
 
 /**
@@ -238,9 +243,11 @@ function EventFormFields({
             <DatePicker
               aria-label="Start date"
               defaultValue={
-                splitLocalDateTime(
-                  event ? utcMsToLocalDateTime(event.startsAtUtc, timezone) : defaultStartsAtLocal,
-                ).date
+                event
+                  ? event.startsAtHasTime === false
+                    ? toLocalDateString(event.startsAtUtc, timezone)
+                    : splitLocalDateTime(utcMsToLocalDateTime(event.startsAtUtc, timezone)).date
+                  : splitLocalDateTime(defaultStartsAtLocal).date
               }
               disabled={isLocked}
               id="event-starts-date"
@@ -253,14 +260,17 @@ function EventFormFields({
             <FieldLabel htmlFor="event-starts-time">Starts time</FieldLabel>
             <Input
               defaultValue={
-                splitLocalDateTime(
-                  event ? utcMsToLocalDateTime(event.startsAtUtc, timezone) : defaultStartsAtLocal,
-                ).time
+                event?.startsAtHasTime === false
+                  ? undefined
+                  : splitLocalDateTime(
+                      event
+                        ? utcMsToLocalDateTime(event.startsAtUtc, timezone)
+                        : defaultStartsAtLocal,
+                    ).time
               }
               disabled={isLocked}
               id="event-starts-time"
               name="startsAtTime"
-              required={!isLocked}
               type="time"
             />
           </Field>
@@ -271,9 +281,11 @@ function EventFormFields({
             <DatePicker
               aria-label="End date"
               defaultValue={
-                splitLocalDateTime(
-                  event?.endsAtUtc ? utcMsToLocalDateTime(event.endsAtUtc, timezone) : undefined,
-                ).date
+                event?.endsAtUtc
+                  ? event.endsAtHasTime === false
+                    ? toLocalDateString(event.endsAtUtc, timezone)
+                    : splitLocalDateTime(utcMsToLocalDateTime(event.endsAtUtc, timezone)).date
+                  : undefined
               }
               id="event-ends-date"
               name="endsAtDate"
@@ -284,9 +296,11 @@ function EventFormFields({
             <FieldLabel htmlFor="event-ends-time">Ends time</FieldLabel>
             <Input
               defaultValue={
-                splitLocalDateTime(
-                  event?.endsAtUtc ? utcMsToLocalDateTime(event.endsAtUtc, timezone) : undefined,
-                ).time
+                event?.endsAtHasTime === false
+                  ? undefined
+                  : event?.endsAtUtc
+                    ? splitLocalDateTime(utcMsToLocalDateTime(event.endsAtUtc, timezone)).time
+                    : undefined
               }
               id="event-ends-time"
               name="endsAtTime"

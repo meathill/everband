@@ -16,7 +16,10 @@ export const events = sqliteTable(
     type: text("type").notNull().default("event"),
     description: text("description"),
     startsAtUtc: integer("starts_at_utc").notNull(),
+    // 时间是否明确；false 表示仅日期、时间待定（00:00 仅为排序占位，不应展示为 12:00 AM）
+    startsAtHasTime: integer("starts_at_has_time", { mode: "boolean" }).notNull().default(true),
     endsAtUtc: integer("ends_at_utc"),
+    endsAtHasTime: integer("ends_at_has_time", { mode: "boolean" }).notNull().default(true),
     location: text("location"),
     // 组织范围活动对全组织 parent 可见；否则按 event_groups 受众
     isOrgWide: integer("is_org_wide", { mode: "boolean" }).notNull().default(false),

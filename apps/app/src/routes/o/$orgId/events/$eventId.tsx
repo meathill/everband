@@ -1,4 +1,4 @@
-import { type EventStatus, formatOrgDateTime, hasStaffAccess } from "@everband/domain";
+import { type EventStatus, formatOrgDateTimeMaybe, hasStaffAccess } from "@everband/domain";
 import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
 import { toastManager } from "@everband/ui/components/toast";
@@ -61,8 +61,10 @@ function EventDetailPage(): React.ReactElement {
           </Badge>
         </div>
         <p className="text-muted-foreground tabular-nums">
-          {formatOrgDateTime(event.startsAtUtc, org.timezone)}
-          {event.endsAtUtc ? ` → ${formatOrgDateTime(event.endsAtUtc, org.timezone)}` : ""}
+          {formatOrgDateTimeMaybe(event.startsAtUtc, org.timezone, event.startsAtHasTime)}
+          {event.endsAtUtc
+            ? ` → ${formatOrgDateTimeMaybe(event.endsAtUtc, org.timezone, event.endsAtHasTime)}`
+            : ""}
           {event.location ? ` · ${event.location}` : ""}
         </p>
         <p className="text-muted-foreground text-sm">
@@ -116,11 +118,13 @@ function EventDetailPage(): React.ReactElement {
         <EventFormDrawer
           event={{
             description: event.description,
+            endsAtHasTime: event.endsAtHasTime,
             endsAtUtc: event.endsAtUtc,
             groupIds: groups.map((group) => group.groupId),
             id: event.id,
             isOrgWide: event.isOrgWide,
             location: event.location,
+            startsAtHasTime: event.startsAtHasTime,
             startsAtUtc: event.startsAtUtc,
             status: event.status,
             title: event.title,

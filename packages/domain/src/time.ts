@@ -65,6 +65,22 @@ export function localDateTimeToUtcMs(local: string, timezone: string): number {
   return new TZDate(year, month - 1, day, hour, minute, 0, 0, timezone).getTime();
 }
 
+// 兼容 date-only（YYYY-MM-DD）与 datetime-local；date-only 按当日 00:00 计，排序/窗口仍可用
+export function localDateOrDateTimeToUtcMs(local: string, timezone: string): number {
+  if (local.includes("T")) {
+    return localDateTimeToUtcMs(local, timezone);
+  }
+  return localDateToUtcMs(local, timezone);
+}
+
+export function localDateToUtcMs(localDate: string, timezone: string): number {
+  const [year, month, day] = localDate.split("-").map(Number);
+  if (year === undefined || month === undefined || day === undefined) {
+    throw new Error(`Invalid date value: ${localDate}`);
+  }
+  return new TZDate(year, month - 1, day, 0, 0, 0, 0, timezone).getTime();
+}
+
 // UTC 毫秒 → 组织时区 datetime-local 值（编辑表单回显用）
 export function utcMsToLocalDateTime(utcMs: number, timezone: string): string {
   const local = new TZDate(utcMs, timezone);
@@ -93,6 +109,23 @@ export function formatOrgDateTime(utcMs: number, timezone: string): string {
     minute: "2-digit",
     hour12: true,
   }).format(utcMs);
+}
+
+export function formatOrgDate(utcMs: number, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).format(utcMs);
+}
+
+export function formatOrgDateTimeMaybe(
+  utcMs: number,
+  timezone: string,
+  hasTime: boolean | null | undefined,
+): string {
+  return hasTime === false ? formatOrgDate(utcMs, timezone) : formatOrgDateTime(utcMs, timezone);
 }
 
 // 组织时区下的时刻显示（仅时间，用于排练 occurrence 等已有本地日期的场景）

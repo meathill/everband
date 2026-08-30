@@ -1,5 +1,5 @@
 import type { OrgEventRow } from "@everband/core";
-import { formatOrgDateTime } from "@everband/domain";
+import { formatOrgDateTimeMaybe } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import {
   Select,
@@ -211,7 +211,7 @@ function ParentEvents({
                     )}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {formatOrgDateTime(event.startsAtUtc, timezone)}
+                    {formatOrgDateTimeMaybe(event.startsAtUtc, timezone, event.startsAtHasTime)}
                     {event.location ? ` · ${event.location}` : ""}
                   </p>
                 </div>

@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { createListQuerySchema } from "./list.ts";
 
+const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the date picker");
+
 const localDateTimeSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use the date and time picker");
+
+const localDateOrDateTimeSchema = z.union([localDateTimeSchema, localDateSchema]);
 
 export const createEventSchema = z
   .object({
@@ -11,9 +15,9 @@ export const createEventSchema = z
     title: z.string().trim().min(1).max(120),
     type: z.string().trim().min(1).max(40).default("event"),
     description: z.string().trim().max(4000).optional(),
-    // 组织时区下的本地时间，服务端转 UTC
-    startsAtLocal: localDateTimeSchema,
-    endsAtLocal: localDateTimeSchema.optional(),
+    // 组织时区下的本地时间，服务端转 UTC；date-only 表示时间待定
+    startsAtLocal: localDateOrDateTimeSchema,
+    endsAtLocal: localDateOrDateTimeSchema.optional(),
     location: z.string().trim().max(200).optional(),
     isOrgWide: z.boolean(),
     groupIds: z.array(z.string().min(1)).max(50),
@@ -38,8 +42,8 @@ export const updateEventSchema = z
     // 空串表示"清空该可选字段"，与 undefined（不改）区分
     description: z.string().trim().max(4000).optional(),
     location: z.string().trim().max(200).optional(),
-    startsAtLocal: localDateTimeSchema.optional(),
-    endsAtLocal: localDateTimeSchema.or(z.literal("")).optional(),
+    startsAtLocal: localDateOrDateTimeSchema.optional(),
+    endsAtLocal: localDateOrDateTimeSchema.or(z.literal("")).optional(),
     isOrgWide: z.boolean().optional(),
     groupIds: z.array(z.string().min(1)).max(50).optional(),
   })
