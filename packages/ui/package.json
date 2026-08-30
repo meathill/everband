@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@everband/config": "workspace:*",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/react": "^19.0.0",
     "typescript": "^7.0.2"
   }
