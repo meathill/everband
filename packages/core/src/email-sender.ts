@@ -56,7 +56,15 @@ export class CloudflareEmailSender implements EmailSender {
 
   async send(message: OutgoingEmail): Promise<SendResult> {
     try {
-      await this.options.binding.send({
+      // 便于 wrangler tail / observability 排查 cc/bcc 是否透传
+      console.log("[CloudflareEmailSender] send", {
+        to: message.to,
+        cc: message.cc ?? null,
+        bcc: message.bcc ?? null,
+        subject: message.subject,
+        kind: message.kind,
+      });
+      const result = await this.options.binding.send({
         to: message.to,
         from: { email: this.options.fromEmail, name: this.options.fromName },
         subject: message.subject,
@@ -65,11 +73,19 @@ export class CloudflareEmailSender implements EmailSender {
         cc: message.cc,
         bcc: message.bcc,
       });
+      console.log("[CloudflareEmailSender] send ok", { to: message.to, result });
       return { ok: true };
     } catch (cause) {
       // binding 抛 Error 且带 E_* code（如 E_RECIPIENT_SUPPRESSED / E_RATE_LIMIT_EXCEEDED）
       const code = (cause as { code?: string }).code;
       const detail = cause instanceof Error ? cause.message : "unknown error";
+      console.error("[CloudflareEmailSender] send failed", {
+        to: message.to,
+        cc: message.cc ?? null,
+        bcc: message.bcc ?? null,
+        code,
+        detail,
+      });
       return { ok: false, error: code ? `${code}: ${detail}` : detail };
     }
   }
