@@ -169,14 +169,32 @@ async function seedRehearsal(
 }
 
 describe("Overview 月历与统计", () => {
-  it("staff 看到当月全部状态日程、全部学生口径和账本摘要", async () => {
+  it("staff 看到当月全部状态日程、全部学生口径和账本摘要，并拥有分组与 WIP 视图", async () => {
     const seeded = await seedOrg();
     await seedStudent(seeded.orgId, seeded.membershipId, "active");
     await seedStudent(seeded.orgId, seeded.membershipId, "archived");
+    // 分组：active 与 archived，仅 active 进入 staff Overview 左栏
+    const activeGroupId = generateId(ID_PREFIXES.group);
+    const archivedGroupId = generateId(ID_PREFIXES.group);
+    await db.insert(schema.groups).values([
+      { id: activeGroupId, organizationId: seeded.orgId, name: "Active Group", createdAt: NOW },
+      {
+        id: archivedGroupId,
+        organizationId: seeded.orgId,
+        name: "Archived Group",
+        status: "archived",
+        createdAt: NOW,
+      },
+    ]);
     await seedEvent(seeded.orgId, seeded.membershipId, {
       title: "Draft concert",
       startsAtUtc: Date.parse("2026-08-05T08:00:00Z"),
       status: "draft",
+    });
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Published concert",
+      startsAtUtc: Date.parse("2026-08-10T08:00:00Z"),
+      status: "published",
     });
     await seedEvent(seeded.orgId, seeded.membershipId, {
       title: "Cross-month camp",
@@ -221,7 +239,7 @@ describe("Overview 月历与统计", () => {
     expect(data.stats).toMatchObject({
       studentCount: 2,
       activeStudentCount: 1,
-      eventCount: 2,
+      eventCount: 3,
       ledgerBalanceMinor: 80_00,
       ledgerMonthNetMinor: 80_00,
       currencyCode: "AUD",
@@ -229,7 +247,41 @@ describe("Overview 月历与统计", () => {
     expect(data.calendarItems.map((item) => [item.kind, item.status, item.title])).toEqual([
       ["event", "completed", "Cross-month camp"],
       ["event", "draft", "Draft concert"],
+      ["event", "published", "Published concert"],
       ["rehearsal", "cancelled", "Rehearsal"],
+    ]);
+    // 左栏分组：仅 active
+    expect(data.groups.map((group) => group.name)).toEqual(["Active Group"]);
+    expect(data.groups[0]?.status).toBe("active");
+    // 右栏 WIP：仅 draft + published，按 startsAtUtc 升序
+    expect(data.wipEvents.map((event) => [event.status, event.title])).toEqual([
+      ["draft", "Draft concert"],
+      ["published", "Published concert"],
+    ]);
+  });
+
+  it("staff WIP 按时间排序且跨月可见，cancelled/completed 不进入 WIP", async () => {
+    const seeded = await seedOrg();
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Later published",
+      startsAtUtc: Date.parse("2026-09-01T08:00:00Z"),
+      status: "published",
+    });
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Earlier draft",
+      startsAtUtc: Date.parse("2026-07-01T08:00:00Z"),
+      status: "draft",
+    });
+    await seedEvent(seeded.orgId, seeded.membershipId, {
+      title: "Cancelled event",
+      startsAtUtc: Date.parse("2026-08-15T08:00:00Z"),
+      status: "cancelled",
+    });
+    // AUGUST 窗口外但仍应在 WIP 中（WIP 不限月）
+    const data = await getStaffOverviewData(db, seeded.orgId, AUGUST, "Australia/Sydney");
+    expect(data.wipEvents.map((event) => event.title)).toEqual([
+      "Earlier draft",
+      "Later published",
     ]);
   });
 

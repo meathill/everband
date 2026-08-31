@@ -161,75 +161,84 @@ test("Drawer 创建活动，Frame 表单提交后 URL 不变", async ({ page }) 
   await expect(page.getByRole("heading", { name: "New event" })).not.toBeVisible();
 });
 
-test("Overview 月历在桌面展示溢出 Popover，在移动端展示选中日期 agenda", async ({ page }) => {
-  const orgId = await createOrganization(page, `Calendar ${Date.now()}`);
-  const { date, dateTime } = currentSydneyMonthDateTime();
-  const titles = Array.from({ length: 4 }, (_, index) => `Calendar item ${index + 1}`);
+test("Overview staff 视图：左侧 Groups 多选发邮件，右侧 Work in Progress 按时间排序可进详情", async ({
+  page,
+}) => {
+  const orgId = await createOrganization(page, `Staff overview ${Date.now()}`);
+  const groupName = `WIP Group ${Date.now()}`;
+  await page.goto(`/o/${orgId}/groups`);
+  await pressButton(page, "New group");
+  await fillField(page.locator("#group-name"), groupName);
+  await pressButton(page, "Create group");
+  await expect(page.getByText(groupName, { exact: true })).toBeVisible();
 
-  for (const title of titles) {
-    await createDraftEventAt(page, orgId, title, dateTime);
-  }
+  const titles = Array.from({ length: 2 }, (_, index) => `WIP item ${index + 1} ${Date.now()}`);
+  // 两个不同时间，确保 WIP 按时间排序
+  const base = currentSydneyMonthDateTime();
+  await createDraftEventAt(page, orgId, titles[0] ?? "", `${base.date}T10:00`);
+  await createDraftEventAt(page, orgId, titles[1] ?? "", `${base.date}T18:00`);
 
   await page.goto(`/o/${orgId}`);
-  const eventStat = page.getByText("Events this month", { exact: true }).locator("..");
-  await expect(eventStat.getByText("4", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Groups" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Work in Progress" })).toBeVisible();
+  await expect(page.getByText(groupName, { exact: true })).toBeVisible();
 
-  if ((page.viewportSize()?.width ?? 0) < 768) {
-    const dayButton = page.locator(`[data-day="${date}"] button`);
-    await waitForHydration(dayButton);
-    await dayButton.click();
-    await expect(page.getByRole("heading", { name: date })).toBeVisible();
-    await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();
-  } else {
-    const overflow = page.getByRole("button", { name: "+1 more" });
-    await waitForHydration(overflow);
-    await overflow.focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("link", { name: titles[3] })).toBeVisible();
-  }
+  const emailButton = page.getByRole("button", { name: /^Email/ });
+  await expect(emailButton).toBeDisabled();
+  const groupCheckbox = page.getByRole("checkbox", { name: `Select ${groupName}` });
+  await waitForHydration(groupCheckbox);
+  await groupCheckbox.click();
+  await expect(emailButton).toBeEnabled();
+  await expect(emailButton).toContainText("1");
 
-  await page.getByRole("link", { name: titles[3] }).click();
+  await emailButton.click();
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails`));
+  await expect(page.getByRole("heading", { name: "Email" })).toBeVisible();
+  await page.goto(`/o/${orgId}`);
+
+  // WIP 按时间排序：早的在前
+  const wipLinks = page.getByRole("link").filter({ hasText: /WIP item/ });
+  await expect(wipLinks).toHaveCount(2);
+  await expect(wipLinks.first()).toContainText(titles[0] ?? "");
+  await wipLinks.first().click();
   await expect(page).toHaveURL(new RegExp(`/o/${orgId}/events/`));
-  await expect(page.getByRole("heading", { name: titles[3], exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: titles[0] ?? "", exact: true })).toBeVisible();
 });
 
-test("Overview 日期数字快捷创建 event：staff 菜单、预填日期与 toggle 筛选", async ({ page }) => {
-  const orgId = await createOrganization(page, `Quick create ${Date.now()}`);
+test("Overview staff 不再有日历快捷创建，parent 保留日历但无快捷创建", async ({ page }) => {
+  const orgId = await createOrganization(page, `No quick create ${Date.now()}`);
   const { date } = currentSydneyMonthDateTime();
-  const title = `Quick event ${Date.now()}`;
+  // staff 视图：没有日期快捷创建、没有 toggle
   await page.goto(`/o/${orgId}`);
+  await expect(page.getByRole("heading", { name: "Groups" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Work in Progress" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show events" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Show rehearsals" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: `Create on ${date}` })).toHaveCount(0);
 
-  const eventsToggle = page.getByRole("button", { name: "Show events" });
-  await expect(eventsToggle).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Show rehearsals" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-
-  if ((page.viewportSize()?.width ?? 0) < 768) {
-    const dayButton = page.locator(`[data-day="${date}"] button`);
-    await waitForHydration(dayButton);
-    await dayButton.click();
-    await expect(page.getByRole("heading", { name: date })).toBeVisible();
-  }
-
-  const createButton = page.getByRole("button", { name: `Create on ${date}` });
-  await waitForHydration(createButton);
-  await createButton.click();
-
-  await expect(page.getByRole("menuitem", { name: "New event" })).toBeVisible();
-  // 新建组织还没有 term，排练项应禁用
-  await expect(page.getByRole("menuitem", { name: "New weekly rehearsal" })).toBeDisabled();
-
-  await page.getByRole("menuitem", { name: "New event" }).click();
-  await expect(page.getByRole("heading", { name: "New event" })).toBeVisible();
-  await expect(page.locator("#event-starts-date")).toHaveValue(date);
-  await expect(page.locator("#event-starts-time")).toHaveValue("09:00");
-
-  await fillField(page.locator("#event-title"), title);
-  await pressButton(page, "Create draft");
-  // 日历 Badge 的可访问名带 status 后缀（如 "… draft"），这里不做 exact 匹配
-  await expect(page.getByRole("link", { name: title })).toBeVisible();
+  // parent 视角：有日历，但也没有快捷创建入口
+  const parentEmail = uniqueEmail("e2e-parent-nocreate");
+  const studentName = `NoCreate student ${Date.now()}`;
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Add student");
+  await fillField(page.locator("#student-name"), studentName);
+  await fillField(page.locator("#contact-name"), "Parent Contact");
+  await fillField(page.locator("#contact-email"), parentEmail);
+  await pressButton(page, "Add student");
+  await expect(page.getByText(studentName, { exact: true })).toBeVisible();
+  await pressButton(page, "Invite parent");
+  await expect(page.getByText("Invitation sent", { exact: true })).toBeVisible();
+  await page.goto("/dev/outbox");
+  const invite = page.locator('article[data-kind="invite"]', { hasText: parentEmail }).first();
+  await expect(invite).toBeVisible();
+  const body = await invite.locator("pre").innerText();
+  const inviteLink = body.match(/http:\/\/[^\s]+\/invite\/[^\s]+/)?.[0] ?? "";
+  expect(inviteLink).toContain("/invite/");
+  await page.goto(inviteLink);
+  await page.goto(`/o/${orgId}`);
+  // parent 能看到月历（h2 为月份标题），但也没有快捷创建
+  await expect(page.locator("h2").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: `Create on ${date}` })).toHaveCount(0);
 });
 
 test("活动删除确认与 published 取消均刷新列表并显示 toast", async ({ page }) => {
@@ -643,8 +652,29 @@ test("parent 在 Emails 页只看到发给自己的邮件，且没有写信入�
   await expect(page.getByText("Only you can see this.", { exact: true })).toBeVisible();
 });
 
-test("Overview 月份切换只刷新日历：标题保持、月标签变化、Today 有标注", async ({ page }) => {
+test("Overview 月份切换只刷新日历（parent 视图）：标题保持、月标签变化、Today 有标注", async ({
+  page,
+}) => {
   const orgId = await createOrganization(page, `Calendar nav ${Date.now()}`);
+  // parent 视图保留月历，staff 已改为 Groups+WIP，此用例改为以 parent 身份验证月历
+  const parentEmail = uniqueEmail("e2e-parent-cal");
+  const studentName = `Cal student ${Date.now()}`;
+  await page.goto(`/o/${orgId}/members`);
+  await pressButton(page, "Add student");
+  await fillField(page.locator("#student-name"), studentName);
+  await fillField(page.locator("#contact-name"), "Parent Contact");
+  await fillField(page.locator("#contact-email"), parentEmail);
+  await pressButton(page, "Add student");
+  await expect(page.getByText(studentName, { exact: true })).toBeVisible();
+  await pressButton(page, "Invite parent");
+  await expect(page.getByText("Invitation sent", { exact: true })).toBeVisible();
+  await page.goto("/dev/outbox");
+  const invite = page.locator('article[data-kind="invite"]', { hasText: parentEmail }).first();
+  await expect(invite).toBeVisible();
+  const body = await invite.locator("pre").innerText();
+  const inviteLink = body.match(/http:\/\/[^\s]+\/invite\/[^\s]+/)?.[0] ?? "";
+  expect(inviteLink).toContain("/invite/");
+  await page.goto(inviteLink);
   await page.goto(`/o/${orgId}`);
 
   // 整页骨架会出现 h1 消失；局部刷新时 h1 全程可见

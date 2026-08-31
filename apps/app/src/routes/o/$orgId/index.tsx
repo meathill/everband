@@ -1,6 +1,5 @@
 import type { StaffOverviewData } from "@everband/core";
 import { hasStaffAccess } from "@everband/domain";
-import { Card, CardPanel } from "@everband/ui/components/card";
 import { overviewSearchSchema } from "@everband/validation";
 import { createFileRoute, getRouteApi, redirect } from "@tanstack/react-router";
 import type React from "react";
@@ -12,6 +11,7 @@ import {
   type MonthNavAction,
   OverviewMonthCalendar,
 } from "./-components/overview-month-calendar.tsx";
+import { StaffOverview } from "./-components/staff-overview.tsx";
 
 const orgRoute = getRouteApi("/o/$orgId");
 
@@ -33,12 +33,48 @@ export const Route = createFileRoute("/o/$orgId/")({
 
 function OrgOverview() {
   const { org, role, staffAccess } = orgRoute.useLoaderData();
-  const { month: initialMonth, overview, terms, groups } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData();
   const isStaff = hasStaffAccess(role, staffAccess);
-  const staffOverview = isStaff ? (overview as StaffOverviewData) : null;
 
-  // 月份与日历数据是本地状态：切换月份只局部刷新日历，不走 loader/整页骨架。
-  // 初始月 = loader 拿到的当前月；URL 不同步（月份是临时浏览状态）。
+  if (isStaff) {
+    return <StaffOverviewSection org={org} data={loaderData.overview as StaffOverviewData} />;
+  }
+
+  return <ParentOverviewSection org={org} loaderData={loaderData} />;
+}
+
+function StaffOverviewSection({
+  org,
+  data,
+}: {
+  org: { id: string; name: string; timezone: string };
+  data: StaffOverviewData;
+}): React.ReactElement {
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="font-semibold text-3xl text-foreground tracking-tight">Overview</h1>
+        <p className="mt-1 text-muted-foreground">{org.name} — groups and upcoming work.</p>
+      </div>
+      <StaffOverview
+        groups={data.groups}
+        orgId={org.id}
+        timezone={org.timezone}
+        wipEvents={data.wipEvents}
+      />
+    </div>
+  );
+}
+
+function ParentOverviewSection({
+  org,
+  loaderData,
+}: {
+  org: { id: string; name: string; timezone: string };
+  loaderData: Awaited<ReturnType<typeof getOverview>>;
+}): React.ReactElement {
+  const { month: initialMonth, overview, terms, groups } = loaderData;
+
   const [month, setMonth] = useState(initialMonth);
   const [calendar, setCalendar] = useState(overview.calendarItems);
   const [monthTerms, setMonthTerms] = useState(terms);
@@ -64,7 +100,6 @@ function OrgOverview() {
     }
   }
 
-  // 抽屉创建/编辑成功后，本地 state 的日历需要手动刷新（不走 loader）
   async function refreshCalendar() {
     const data = await getOverview({ data: { orgId: org.id, month } });
     setCalendar(data.overview.calendarItems);
@@ -78,10 +113,9 @@ function OrgOverview() {
         <h1 className="font-semibold text-3xl text-foreground tracking-tight">Overview</h1>
         <p className="mt-1 text-muted-foreground">{org.name}'s month at a glance.</p>
       </div>
-      {staffOverview && <OverviewStatsCards data={staffOverview} />}
       <OverviewMonthCalendar
         groups={monthGroups}
-        isStaff={isStaff}
+        isStaff={false}
         isLoading={isMonthLoading}
         items={calendar}
         loadingAction={loadingAction}
@@ -93,41 +127,5 @@ function OrgOverview() {
         timezone={org.timezone}
       />
     </div>
-  );
-}
-
-function OverviewStatsCards({ data }: { data: StaffOverviewData }) {
-  const stats = data.stats;
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <StatCard
-        detail={`${stats.activeStudentCount} active`}
-        label="Total students"
-        value={String(stats.studentCount)}
-      />
-      <StatCard detail="All statuses" label="Events this month" value={String(stats.eventCount)} />
-    </div>
-  );
-}
-
-function StatCard({
-  detail,
-  label,
-  link,
-  value,
-}: {
-  detail: string;
-  label: string;
-  link?: React.ReactElement;
-  value: string;
-}) {
-  return (
-    <Card render={link} className={link ? "transition-colors hover:bg-accent/40" : undefined}>
-      <CardPanel className="p-4">
-        <p className="text-muted-foreground text-sm">{label}</p>
-        <p className="mt-2 font-semibold text-2xl tabular-nums tracking-tight">{value}</p>
-        <p className="mt-1 text-muted-foreground text-xs">{detail}</p>
-      </CardPanel>
-    </Card>
   );
 }

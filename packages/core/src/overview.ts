@@ -42,9 +42,19 @@ export interface OverviewStats {
   currencyCode: string;
 }
 
+export interface StaffGroupItem {
+  id: string;
+  name: string;
+  status: "active" | "archived";
+}
+
 export interface StaffOverviewData {
   stats: OverviewStats;
   calendarItems: OverviewCalendarItem[];
+  /** 左栏：可发邮件的分组（仅 active） */
+  groups: StaffGroupItem[];
+  /** 右栏：Work in Progress — draft + published 事件，按时间顺序 */
+  wipEvents: OverviewEventItem[];
 }
 
 export interface ParentOverviewData {
@@ -78,66 +88,98 @@ export async function getStaffOverviewData(
   timezone: string,
 ): Promise<StaffOverviewData> {
   const nextMonthStart = toLocalDateString(window.endUtcMs, timezone);
-  const [events, rehearsals, studentCounts, pendingSwapCounts, organizations, ledger] =
-    await Promise.all([
-      db
-        .select({
-          id: schema.events.id,
-          title: schema.events.title,
-          status: schema.events.status,
-          startsAtUtc: schema.events.startsAtUtc,
-          startsAtHasTime: schema.events.startsAtHasTime,
-          endsAtUtc: schema.events.endsAtUtc,
-          endsAtHasTime: schema.events.endsAtHasTime,
-          location: schema.events.location,
-        })
-        .from(schema.events)
-        .where(and(eq(schema.events.organizationId, orgId), eventOverlapCondition(window)))
-        .orderBy(asc(schema.events.startsAtUtc)),
-      db
-        .select({
-          id: schema.rehearsalOccurrences.id,
-          status: schema.rehearsalOccurrences.status,
-          startsAtUtc: schema.rehearsalOccurrences.startsAtUtc,
-          endsAtUtc: schema.rehearsalOccurrences.endsAtUtc,
-          localDate: schema.rehearsalOccurrences.localDate,
-          location: schema.rehearsalSeries.location,
-        })
-        .from(schema.rehearsalOccurrences)
-        .innerJoin(
-          schema.rehearsalSeries,
-          eq(schema.rehearsalSeries.id, schema.rehearsalOccurrences.seriesId),
-        )
-        .where(
-          and(
-            eq(schema.rehearsalOccurrences.organizationId, orgId),
-            rehearsalOverlapCondition(window),
-          ),
-        )
-        .orderBy(asc(schema.rehearsalOccurrences.startsAtUtc)),
-      db
-        .select({
-          studentCount: count(),
-          activeStudentCount: sql<number>`sum(case when ${schema.students.status} = 'active' then 1 else 0 end)`,
-        })
-        .from(schema.students)
-        .where(eq(schema.students.organizationId, orgId)),
-      db
-        .select({ value: count() })
-        .from(schema.swapRequests)
-        .where(
-          and(
-            eq(schema.swapRequests.organizationId, orgId),
-            eq(schema.swapRequests.status, "requested"),
-          ),
+  const [
+    events,
+    rehearsals,
+    studentCounts,
+    pendingSwapCounts,
+    organizations,
+    ledger,
+    staffGroups,
+    wipRows,
+  ] = await Promise.all([
+    db
+      .select({
+        id: schema.events.id,
+        title: schema.events.title,
+        status: schema.events.status,
+        startsAtUtc: schema.events.startsAtUtc,
+        startsAtHasTime: schema.events.startsAtHasTime,
+        endsAtUtc: schema.events.endsAtUtc,
+        endsAtHasTime: schema.events.endsAtHasTime,
+        location: schema.events.location,
+      })
+      .from(schema.events)
+      .where(and(eq(schema.events.organizationId, orgId), eventOverlapCondition(window)))
+      .orderBy(asc(schema.events.startsAtUtc)),
+    db
+      .select({
+        id: schema.rehearsalOccurrences.id,
+        status: schema.rehearsalOccurrences.status,
+        startsAtUtc: schema.rehearsalOccurrences.startsAtUtc,
+        endsAtUtc: schema.rehearsalOccurrences.endsAtUtc,
+        localDate: schema.rehearsalOccurrences.localDate,
+        location: schema.rehearsalSeries.location,
+      })
+      .from(schema.rehearsalOccurrences)
+      .innerJoin(
+        schema.rehearsalSeries,
+        eq(schema.rehearsalSeries.id, schema.rehearsalOccurrences.seriesId),
+      )
+      .where(
+        and(
+          eq(schema.rehearsalOccurrences.organizationId, orgId),
+          rehearsalOverlapCondition(window),
         ),
-      db
-        .select({ currencyCode: schema.organizations.currencyCode })
-        .from(schema.organizations)
-        .where(eq(schema.organizations.id, orgId))
-        .limit(1),
-      getLedgerSummaryCore(db, orgId, `${window.month}-01`, nextMonthStart),
-    ]);
+      )
+      .orderBy(asc(schema.rehearsalOccurrences.startsAtUtc)),
+    db
+      .select({
+        studentCount: count(),
+        activeStudentCount: sql<number>`sum(case when ${schema.students.status} = 'active' then 1 else 0 end)`,
+      })
+      .from(schema.students)
+      .where(eq(schema.students.organizationId, orgId)),
+    db
+      .select({ value: count() })
+      .from(schema.swapRequests)
+      .where(
+        and(
+          eq(schema.swapRequests.organizationId, orgId),
+          eq(schema.swapRequests.status, "requested"),
+        ),
+      ),
+    db
+      .select({ currencyCode: schema.organizations.currencyCode })
+      .from(schema.organizations)
+      .where(eq(schema.organizations.id, orgId))
+      .limit(1),
+    getLedgerSummaryCore(db, orgId, `${window.month}-01`, nextMonthStart),
+    db
+      .select({ id: schema.groups.id, name: schema.groups.name, status: schema.groups.status })
+      .from(schema.groups)
+      .where(and(eq(schema.groups.organizationId, orgId), eq(schema.groups.status, "active")))
+      .orderBy(asc(schema.groups.name)),
+    db
+      .select({
+        id: schema.events.id,
+        title: schema.events.title,
+        status: schema.events.status,
+        startsAtUtc: schema.events.startsAtUtc,
+        startsAtHasTime: schema.events.startsAtHasTime,
+        endsAtUtc: schema.events.endsAtUtc,
+        endsAtHasTime: schema.events.endsAtHasTime,
+        location: schema.events.location,
+      })
+      .from(schema.events)
+      .where(
+        and(
+          eq(schema.events.organizationId, orgId),
+          inArray(schema.events.status, ["draft", "published"]),
+        ),
+      )
+      .orderBy(asc(schema.events.startsAtUtc)),
+  ]);
 
   const calendarItems: OverviewCalendarItem[] = [
     ...events.map(
@@ -156,6 +198,13 @@ export async function getStaffOverviewData(
     ),
   ];
   const studentCount = studentCounts[0];
+  const wipEvents: OverviewEventItem[] = wipRows.map(
+    (event): OverviewEventItem => ({
+      ...event,
+      kind: "event",
+      localDate: toLocalDateString(event.startsAtUtc, timezone),
+    }),
+  );
   return {
     stats: {
       studentCount: studentCount?.studentCount ?? 0,
@@ -167,6 +216,8 @@ export async function getStaffOverviewData(
       currencyCode: organizations[0]?.currencyCode ?? "AUD",
     },
     calendarItems: sortCalendarItems(calendarItems),
+    groups: staffGroups,
+    wipEvents,
   };
 }
 
