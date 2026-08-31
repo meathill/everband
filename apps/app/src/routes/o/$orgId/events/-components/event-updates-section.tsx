@@ -1,8 +1,6 @@
 import { formatOrgDateTime } from "@everband/domain";
 import { Button } from "@everband/ui/components/button";
 import { Checkbox } from "@everband/ui/components/checkbox";
-import { Field, FieldLabel } from "@everband/ui/components/field";
-import { Frame, FrameHeader, FramePanel, FrameTitle } from "@everband/ui/components/frame";
 import { Input } from "@everband/ui/components/input";
 import { toastManager } from "@everband/ui/components/toast";
 import {
@@ -12,12 +10,12 @@ import {
   PlusIcon,
   TrashIcon,
   UploadSimpleIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
-import { FormDrawer } from "~/components/form-drawer.tsx";
 import { RichTextEditor } from "~/components/rich-text-editor.tsx";
 import { deleteAttachment, uploadUpdateAttachment } from "~/server/attachments.ts";
 import {
@@ -71,8 +69,8 @@ export function EventUpdatesSection({
   updateAttachments = [],
 }: EventUpdatesSectionProps): React.ReactElement {
   const router = useRouter();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editing, setEditing] = useState<EventUpdateRow | undefined>(undefined);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [html, setHtml] = useState("");
   const [text, setText] = useState("");
@@ -81,32 +79,43 @@ export function EventUpdatesSection({
   const [error, setError] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
-  function openCreate() {
-    setEditing(undefined);
+  const attachmentsByUpdate = new Map<string, UpdateAttachmentRow[]>();
+  for (const attachment of updateAttachments) {
+    const list = attachmentsByUpdate.get(attachment.ownerId);
+    if (list) list.push(attachment);
+    else attachmentsByUpdate.set(attachment.ownerId, [attachment]);
+  }
+
+  function startCreate() {
+    setEditingId(null);
     setTitle("");
     setHtml("");
     setText("");
     setAlsoSend(false);
     setError(null);
-    setIsDrawerOpen(true);
+    setIsCreating(true);
   }
 
-  function openEdit(update: EventUpdateRow) {
-    setEditing(update);
+  function cancelCreate() {
+    setIsCreating(false);
+    setError(null);
+  }
+
+  function startEdit(update: EventUpdateRow) {
+    setIsCreating(false);
+    setEditingId(update.id);
     setTitle(update.title);
-    // 存量纯文本当作 html 文本回填，TipTap 会转成段落
     setHtml(update.body);
     setText(update.body.replace(/<[^>]+>/g, " ").trim());
-    setAlsoSend(false);
     setError(null);
-    setIsDrawerOpen(true);
   }
 
-  function close() {
-    setIsDrawerOpen(false);
+  function cancelEdit() {
+    setEditingId(null);
+    setError(null);
   }
 
-  async function handleSubmit(_formData: FormData) {
+  async function handleCreate() {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setError("Title is required.");
@@ -119,25 +128,6 @@ export function EventUpdatesSection({
     setIsBusy(true);
     setError(null);
     try {
-      if (editing) {
-        const result = await editEventUpdate({
-          data: {
-            orgId,
-            updateId: editing.id,
-            title: trimmedTitle,
-            body: text || html,
-            bodyHtml: html,
-          },
-        });
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
-        await router.invalidate();
-        toastManager.add({ title: "Update saved", type: "success" });
-        close();
-        return;
-      }
       const result = await createEventUpdate({
         data: {
           orgId,
@@ -148,7 +138,7 @@ export function EventUpdatesSection({
           alsoSendEmail: alsoSend,
         },
       });
-      // biome-ignore lint/suspicious/noExplicitAny: server fn 返回扩展字段
+      // biome-ignore lint/suspicious/noExplicitAny: server fn returns extra fields
       const anyResult = result as any;
       if (!anyResult.ok) {
         setError(anyResult.error ?? "Failed to save update.");
@@ -170,7 +160,41 @@ export function EventUpdatesSection({
           type: anyResult.emailError ? "info" : "success",
         });
       }
-      close();
+      setIsCreating(false);
+      setTitle("");
+      setHtml("");
+      setText("");
+      setAlsoSend(false);
+    } catch {
+      setError("Something went wrong. Try again.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleEdit(updateId: string) {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError("Title is required.");
+      return;
+    }
+    if (!html.trim() && !text.trim()) {
+      setError("Message is required.");
+      return;
+    }
+    setIsBusy(true);
+    setError(null);
+    try {
+      const result = await editEventUpdate({
+        data: { orgId, updateId, title: trimmedTitle, body: text || html, bodyHtml: html },
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await router.invalidate();
+      toastManager.add({ title: "Update saved", type: "success" });
+      setEditingId(null);
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
@@ -246,31 +270,137 @@ export function EventUpdatesSection({
     return true;
   }
 
-  const attachmentsByUpdate = new Map<string, UpdateAttachmentRow[]>();
-  for (const attachment of updateAttachments) {
-    const list = attachmentsByUpdate.get(attachment.ownerId);
-    if (list) list.push(attachment);
-    else attachmentsByUpdate.set(attachment.ownerId, [attachment]);
-  }
-
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold text-foreground text-xl">Updates</h2>
-        {isStaff && (
-          <Button onClick={openCreate} variant="outline">
+        {isStaff && !isCreating && (
+          <Button onClick={startCreate} variant="outline">
             <PlusIcon />
             New update
           </Button>
         )}
       </div>
 
-      {updates.length === 0 ? (
+      {isStaff && isCreating && (
+        <div className="flex w-full max-w-3xl flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-foreground">New update</h3>
+            <Button aria-label="Close" onClick={cancelCreate} size="icon" variant="ghost">
+              <XIcon />
+            </Button>
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-medium text-foreground text-sm" htmlFor="new-update-title">
+                Title
+              </label>
+              <Input
+                id="new-update-title"
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Update title"
+                value={title}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="font-medium text-foreground text-sm">Message</span>
+              <RichTextEditor
+                key="new-update-editor"
+                onChange={({ html: h, text: t }) => {
+                  setHtml(h);
+                  setText(t);
+                }}
+                placeholder="Write the update… Paste a Google Form link here if you need a form."
+                value={html}
+              />
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                checked={alsoSend}
+                id="also-send"
+                onCheckedChange={(v) => setAlsoSend(v === true)}
+              />
+              <label className="text-foreground text-sm" htmlFor="also-send">
+                also send email notification to the audience
+              </label>
+            </div>
+            {error && (
+              <p className="text-destructive-foreground text-sm" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button loading={isBusy} onClick={handleCreate}>
+                {alsoSend ? "Publish and email" : "Save draft"}
+              </Button>
+              <Button disabled={isBusy} onClick={cancelCreate} variant="outline">
+                Cancel
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Draft updates are only visible to staff until published.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {updates.length === 0 && !isCreating ? (
         <p className="text-muted-foreground">No updates yet.</p>
       ) : (
-        <ul className="flex max-w-2xl flex-col gap-3">
+        <ul className="flex w-full max-w-3xl flex-col gap-3">
           {updates.map((update) => {
             const files = attachmentsByUpdate.get(update.id) ?? [];
+            const isEditing = editingId === update.id;
+
+            if (isEditing) {
+              return (
+                <li
+                  className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 shadow-sm"
+                  key={update.id}
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        className="font-medium text-foreground text-sm"
+                        htmlFor={`edit-title-${update.id}`}
+                      >
+                        Title
+                      </label>
+                      <Input
+                        id={`edit-title-${update.id}`}
+                        onChange={(e) => setTitle(e.target.value)}
+                        value={title}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="font-medium text-foreground text-sm">Message</span>
+                      <RichTextEditor
+                        key={`edit-${update.id}`}
+                        onChange={({ html: h, text: t }) => {
+                          setHtml(h);
+                          setText(t);
+                        }}
+                        value={html}
+                      />
+                    </div>
+                    {error && (
+                      <p className="text-destructive-foreground text-sm" role="alert">
+                        {error}
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button loading={isBusy} onClick={() => handleEdit(update.id)}>
+                        Save changes
+                      </Button>
+                      <Button disabled={isBusy} onClick={cancelEdit} variant="outline">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              );
+            }
+
             return (
               <li
                 className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-sm"
@@ -282,7 +412,7 @@ export function EventUpdatesSection({
                     <div className="flex shrink-0 items-center gap-1">
                       <Button
                         aria-label={`Edit ${update.title}`}
-                        onClick={() => openEdit(update)}
+                        onClick={() => startEdit(update)}
                         size="icon"
                         variant="ghost"
                       >
@@ -352,13 +482,11 @@ export function EventUpdatesSection({
                     </div>
                   )}
                 </div>
-                {/* 富文本正文：body 存 html，直接 prose 渲染；旧纯文本无标签也会正常显示 */}
                 <div
                   className="prose prose-sm max-w-none text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:underline prose-blockquote:border-l-2 prose-blockquote:border-border prose-blockquote:pl-3 prose-ul:list-disc prose-ol:list-decimal dark:prose-invert"
-                  // biome-ignore lint/security/noDangerouslySetInnerHtml: 受控富文本，服务端未做额外 sanitize 但来源为 staff
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: 受控富文本，来源为 staff
                   dangerouslySetInnerHTML={{ __html: update.body }}
                 />
-                {/* 每条 Update 的附件（属于该邮件） */}
                 {files.length > 0 && (
                   <ul className="flex flex-col gap-1 pt-1">
                     {files.map((file) => (
@@ -426,62 +554,6 @@ export function EventUpdatesSection({
           })}
         </ul>
       )}
-
-      <FormDrawer
-        description={
-          editing
-            ? "Published updates stay visible to families. Editing one never re-sends its email."
-            : "Create a rich update for this event. Check the box to also email the audience."
-        }
-        error={error}
-        isBusy={isBusy}
-        onOpenChange={setIsDrawerOpen}
-        onSubmit={handleSubmit}
-        open={isDrawerOpen}
-        submitLabel={editing ? "Save changes" : alsoSend ? "Publish and email" : "Save draft"}
-        title={editing ? "Edit update" : "New update"}
-      >
-        <Frame>
-          <FramePanel>
-            <FrameHeader className="px-0 pt-0">
-              <FrameTitle>Update</FrameTitle>
-            </FrameHeader>
-            <Field>
-              <FieldLabel htmlFor="update-title">Title</FieldLabel>
-              <Input
-                id="update-title"
-                name="title"
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                value={title}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="update-body">Message</FieldLabel>
-              <RichTextEditor
-                onChange={({ html: h, text: t }) => {
-                  setHtml(h);
-                  setText(t);
-                }}
-                placeholder="Write the update… Paste a Google Form link here if you need a form."
-                value={html || editing?.body || ""}
-              />
-            </Field>
-            {!editing && (
-              <div className="flex items-center gap-2 pt-2">
-                <Checkbox
-                  checked={alsoSend}
-                  id="also-send"
-                  onCheckedChange={(v) => setAlsoSend(v === true)}
-                />
-                <label className="text-sm text-foreground" htmlFor="also-send">
-                  also send email notification to the audience
-                </label>
-              </div>
-            )}
-          </FramePanel>
-        </Frame>
-      </FormDrawer>
     </section>
   );
 }
