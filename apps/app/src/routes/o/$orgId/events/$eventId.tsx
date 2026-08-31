@@ -13,25 +13,18 @@ import { createFileRoute, getRouteApi, redirect, useRouter } from "@tanstack/rea
 import type React from "react";
 import { useState } from "react";
 import { ConfirmDialog } from "~/components/confirm-dialog.tsx";
-import { EventFormSection } from "~/components/event-form-section.tsx";
 import { PageSkeleton } from "~/components/page-loaders.tsx";
 import { getEventDetail, transitionEvent } from "~/server/events.ts";
-import { getEventForm, listFormResults } from "~/server/forms.ts";
-import { EventAttachmentsSection } from "./-components/event-attachments-section.tsx";
 import { EventFormDrawer } from "./-components/event-form-drawer.tsx";
 import { EventUpdatesSection } from "./-components/event-updates-section.tsx";
 
 export const Route = createFileRoute("/o/$orgId/events/$eventId")({
   loader: async ({ params }) => {
     try {
-      const input = { data: { eventId: params.eventId, orgId: params.orgId } };
-      const [detail, formData] = await Promise.all([getEventDetail(input), getEventForm(input)]);
-      const isStaff = hasStaffAccess(detail.role, detail.staffAccess);
-      const results =
-        isStaff && formData.form
-          ? await listFormResults({ data: { formId: formData.form.id, orgId: params.orgId } })
-          : [];
-      return { ...detail, formData, results };
+      const detail = await getEventDetail({
+        data: { eventId: params.eventId, orgId: params.orgId },
+      });
+      return detail;
     } catch {
       throw redirect({ params: { orgId: params.orgId }, to: "/o/$orgId/events" });
     }
@@ -43,7 +36,7 @@ export const Route = createFileRoute("/o/$orgId/events/$eventId")({
 const orgRoute = getRouteApi("/o/$orgId");
 
 function EventDetailPage(): React.ReactElement {
-  const { event, groups, allGroups, updates, attachments, role, staffAccess, formData, results } =
+  const { event, groups, allGroups, updates, updateAttachments, role, staffAccess } =
     Route.useLoaderData();
   const { org } = orgRoute.useLoaderData();
   const { orgId } = Route.useParams();
@@ -97,21 +90,8 @@ function EventDetailPage(): React.ReactElement {
         isStaff={isStaff}
         orgId={orgId}
         timezone={org.timezone}
+        updateAttachments={updateAttachments}
         updates={updates}
-      />
-      <EventFormSection
-        eventId={event.id}
-        formData={formData}
-        isStaff={isStaff}
-        orgId={orgId}
-        results={results}
-        timezone={org.timezone}
-      />
-      <EventAttachmentsSection
-        attachments={attachments}
-        eventId={event.id}
-        isStaff={isStaff}
-        orgId={orgId}
       />
 
       {isStaff && (

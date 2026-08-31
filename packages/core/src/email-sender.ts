@@ -21,6 +21,7 @@ export class DevEmailSender implements EmailSender {
       toEmail: message.to,
       subject: message.subject,
       body: message.text,
+      html: message.html ?? null,
       cc: message.cc ?? null,
       kind: message.kind,
       createdAt: Date.now(),

@@ -39,6 +39,7 @@ import {
   UsersThreeIcon,
 } from "@phosphor-icons/react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { brandCatalog } from "meathill-brand";
 import type React from "react";
 import { useState } from "react";
 import { FeedbackDialog } from "~/components/feedback-dialog.tsx";
@@ -122,6 +123,13 @@ export function OrgSidebar({
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
+        <a
+          href={brandCatalog.organization.url}
+          className="flex items-baseline gap-2 rounded-md px-2 py-1 text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <span className="font-semibold text-xs">Meathill Studio</span>
+          <span className="text-muted-foreground text-xs">/ Everband</span>
+        </a>
         <OrgSwitcher currentOrgId={org.id} name={org.name} type={org.type} orgs={orgs} />
       </SidebarHeader>
       <SidebarContent>

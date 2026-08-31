@@ -1,7 +1,22 @@
 import appCss from "@everband/ui/styles/globals.css?url";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { brandCatalog, getOrganizationJsonLd } from "meathill-brand";
+import brandCss from "meathill-brand-react/styles.css?url";
 import type { ReactNode } from "react";
 import { OG_IMAGE_URL } from "~/lib/config.ts";
+
+const BRAND_STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    getOrganizationJsonLd(),
+    {
+      "@type": "WebSite",
+      name: "Everband",
+      url: "https://everband.meathill.com",
+      publisher: { "@id": brandCatalog.organization.id },
+    },
+  ],
+};
 
 export const Route = createRootRoute({
   head: () => ({
@@ -44,6 +59,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: brandCss },
       { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
       { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "256x256" },
     ],
@@ -66,6 +82,11 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body>
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD 结构化数据
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(BRAND_STRUCTURED_DATA) }}
+        />
         {children}
         <Scripts />
       </body>

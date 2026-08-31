@@ -6,6 +6,7 @@ import {
   deleteAttachmentSchema,
   MAX_ATTACHMENT_BYTES,
   uploadAttachmentSchema,
+  uploadUpdateAttachmentSchema,
 } from "@everband/validation";
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
@@ -67,6 +68,67 @@ export const uploadEventAttachment = createServerFn({ method: "POST" })
       objectType: "attachment",
       objectId: attachmentId,
       summary: { eventId: data.eventId, fileName: data.fileName, sizeBytes: bytes.byteLength },
+    });
+    return { ok: true as const, attachmentId };
+  });
+
+// 附件归属于某个 Update（站内可见，邮件内附下载链接）
+export const uploadUpdateAttachment = createServerFn({ method: "POST" })
+  .validator(uploadUpdateAttachmentSchema)
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId, STAFF_ROLES);
+    const now = Date.now();
+
+    const updates = await db
+      .select({ id: schema.eventUpdates.id, eventId: schema.eventUpdates.eventId })
+      .from(schema.eventUpdates)
+      .where(
+        and(
+          eq(schema.eventUpdates.id, data.updateId),
+          eq(schema.eventUpdates.organizationId, data.orgId),
+        ),
+      )
+      .limit(1);
+    const update = updates[0];
+    if (!update) {
+      return { ok: false as const, error: "Update not found." };
+    }
+
+    const bytes = decodeBase64(data.dataBase64);
+    if (bytes.byteLength > MAX_ATTACHMENT_BYTES) {
+      return { ok: false as const, error: "File is larger than 5 MB." };
+    }
+
+    const attachmentId = generateId(ID_PREFIXES.attachment);
+    const r2Key = `org/${data.orgId}/event_update/${data.updateId}/${attachmentId}`;
+    await env.FILES.put(r2Key, bytes, {
+      httpMetadata: { contentType: data.contentType },
+    });
+    await db.insert(schema.attachments).values({
+      id: attachmentId,
+      organizationId: data.orgId,
+      ownerType: "event_update",
+      ownerId: data.updateId,
+      r2Key,
+      fileName: data.fileName,
+      contentType: data.contentType,
+      sizeBytes: bytes.byteLength,
+      uploadedByMembershipId: ctx.membershipId,
+      createdAt: now,
+    });
+    await recordAudit(db, {
+      organizationId: data.orgId,
+      actorMembershipId: ctx.membershipId,
+      action: "attachment.uploaded",
+      objectType: "attachment",
+      objectId: attachmentId,
+      summary: {
+        updateId: data.updateId,
+        eventId: update.eventId,
+        fileName: data.fileName,
+        sizeBytes: bytes.byteLength,
+      },
     });
     return { ok: true as const, attachmentId };
   });

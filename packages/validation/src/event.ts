@@ -102,14 +102,17 @@ export const createEventUpdateSchema = z.object({
   orgId: z.string().min(1),
   eventId: z.string().min(1),
   title: z.string().trim().min(1).max(120),
-  body: z.string().trim().min(1).max(8000),
+  body: z.string().trim().min(1).max(20000),
+  bodyHtml: z.string().trim().max(20000).optional(),
+  alsoSendEmail: z.boolean().optional(),
 });
 
 export const editEventUpdateSchema = z.object({
   orgId: z.string().min(1),
   updateId: z.string().min(1),
   title: z.string().trim().min(1).max(120),
-  body: z.string().trim().min(1).max(8000),
+  body: z.string().trim().min(1).max(20000),
+  bodyHtml: z.string().trim().max(20000).optional(),
 });
 
 export const publishEventUpdateSchema = z.object({
@@ -125,6 +128,17 @@ export const uploadAttachmentSchema = z.object({
   fileName: z.string().trim().min(1).max(200),
   contentType: z.string().trim().min(1).max(120),
   // base64 编码内容（≤5MB 原始大小）
+  dataBase64: z
+    .string()
+    .min(1)
+    .max(Math.ceil((MAX_ATTACHMENT_BYTES * 4) / 3) + 100),
+});
+
+export const uploadUpdateAttachmentSchema = z.object({
+  orgId: z.string().min(1),
+  updateId: z.string().min(1),
+  fileName: z.string().trim().min(1).max(200),
+  contentType: z.string().trim().min(1).max(120),
   dataBase64: z
     .string()
     .min(1)

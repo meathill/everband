@@ -32,6 +32,7 @@ export const devOutbox = sqliteTable("dev_outbox", {
   toEmail: text("to_email").notNull(),
   subject: text("subject").notNull(),
   body: text("body").notNull(),
+  html: text("html"),
   cc: text("cc"),
   kind: text("kind").notNull(),
   createdAt: integer("created_at").notNull(),

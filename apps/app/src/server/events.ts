@@ -267,7 +267,7 @@ export const getEventDetail = createServerFn({ method: "GET" })
       throw new AuthError("forbidden");
     }
 
-    const [groupRows, allGroups, updates, attachmentRows] = await Promise.all([
+    const [groupRows, allGroups, updates] = await Promise.all([
       db
         .select({ groupId: schema.eventGroups.groupId, name: schema.groups.name })
         .from(schema.eventGroups)
@@ -297,30 +297,38 @@ export const getEventDetail = createServerFn({ method: "GET" })
           ),
         )
         .orderBy(desc(schema.eventUpdates.createdAt)),
-      db
-        .select({
-          id: schema.attachments.id,
-          fileName: schema.attachments.fileName,
-          contentType: schema.attachments.contentType,
-          sizeBytes: schema.attachments.sizeBytes,
-          createdAt: schema.attachments.createdAt,
-        })
-        .from(schema.attachments)
-        .where(
-          and(
-            eq(schema.attachments.organizationId, data.orgId),
-            eq(schema.attachments.ownerType, "event"),
-            eq(schema.attachments.ownerId, data.eventId),
-          ),
-        ),
     ]);
+
+    // 附件已下沉到 update 级别（event 级隐藏，存量数据仍保留但不再展示）
+    const updateIds = updates.map((u) => u.id);
+    const updateAttachmentRows =
+      updateIds.length > 0
+        ? await db
+            .select({
+              id: schema.attachments.id,
+              ownerId: schema.attachments.ownerId,
+              fileName: schema.attachments.fileName,
+              contentType: schema.attachments.contentType,
+              sizeBytes: schema.attachments.sizeBytes,
+              createdAt: schema.attachments.createdAt,
+            })
+            .from(schema.attachments)
+            .where(
+              and(
+                eq(schema.attachments.organizationId, data.orgId),
+                eq(schema.attachments.ownerType, "event_update"),
+                inArray(schema.attachments.ownerId, updateIds),
+              ),
+            )
+        : [];
 
     return {
       event,
       groups: groupRows,
       allGroups,
       updates,
-      attachments: attachmentRows,
+      attachments: [] as typeof updateAttachmentRows,
+      updateAttachments: updateAttachmentRows,
       role: ctx.role,
       staffAccess: ctx.staffAccess,
     };

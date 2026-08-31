@@ -18,6 +18,7 @@ export interface PrepareEmailSendInput {
   kind: string;
   subject: string;
   body: string;
+  html?: string;
   // 抄送；群发时每封邮件同一地址（例如经办 staff 留底）
   cc?: string;
   objectType: string;
@@ -61,6 +62,7 @@ export async function prepareEmailSend(
     kind: input.kind,
     subject: input.subject,
     body: input.body,
+    html: input.html ?? null,
     cc: input.cc ?? null,
     objectType: input.objectType,
     objectId: input.objectId,
@@ -146,6 +148,7 @@ export async function processEmailRecipient(
     .select({
       subject: schema.emailSends.subject,
       body: schema.emailSends.body,
+      html: schema.emailSends.html,
       cc: schema.emailSends.cc,
       kind: schema.emailSends.kind,
     })
@@ -162,7 +165,7 @@ export async function processEmailRecipient(
     to: recipient.email,
     subject: send.subject,
     text: send.body,
-    html: undefined,
+    html: send.html ?? undefined,
     cc: send.cc ?? undefined,
     kind: send.kind,
   });
@@ -503,6 +506,7 @@ export async function listMySentEmailsCore(
       kind: schema.emailSends.kind,
       subject: schema.emailSends.subject,
       body: schema.emailSends.body,
+      html: schema.emailSends.html,
       cc: schema.emailSends.cc,
       objectType: schema.emailSends.objectType,
       objectId: schema.emailSends.objectId,

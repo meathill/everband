@@ -115,13 +115,45 @@ export const sendUpdateEmail = createServerFn({ method: "POST" })
     const dedupKey = `event_update:${update.id}:${contentVersion}`;
 
     const link = `${getRequestUrl().origin}/o/${data.orgId}/events/${update.eventId}`;
+
+    // 附件链接（站内鉴权下载，邮件内附链接）
+    const updateAttachments = await db
+      .select({ fileName: schema.attachments.fileName, id: schema.attachments.id })
+      .from(schema.attachments)
+      .where(
+        and(
+          eq(schema.attachments.organizationId, data.orgId),
+          eq(schema.attachments.ownerType, "event_update"),
+          eq(schema.attachments.ownerId, update.id),
+        ),
+      );
+    const origin = getRequestUrl().origin;
+    const attachmentLinks = updateAttachments.map(
+      (a) => `${origin}/api/orgs/${data.orgId}/attachments/${a.id} (${a.fileName})`,
+    );
+    const attachmentsText =
+      attachmentLinks.length > 0 ? `\n\nAttachments:\n${attachmentLinks.join("\n")}` : "";
+    const isHtml = /<[^>]+>/.test(update.body);
+    const htmlBody = isHtml
+      ? `${update.body}<p><a href="${link}">View the event</a></p>${updateAttachments.length > 0 ? `<p>Attachments:<br/>${updateAttachments.map((a) => `<a href="${origin}/api/orgs/${data.orgId}/attachments/${a.id}">${a.fileName}</a>`).join("<br/>")}</p>` : ""}`
+      : undefined;
+    const textBody = `${
+      isHtml
+        ? update.body
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+        : update.body
+    }\n\nView the event: ${link}${attachmentsText}`;
+
     const prepared = await prepareEmailSend(
       db,
       {
         organizationId: data.orgId,
         kind: "event-update",
         subject: `Update: ${eventTitle} — ${update.title}`,
-        body: `${update.body}\n\nView the event: ${link}`,
+        body: textBody,
+        html: htmlBody,
         objectType: "event_update",
         objectId: update.id,
         dedupKey,

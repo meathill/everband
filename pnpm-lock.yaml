@@ -65,6 +65,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@5.20260804.1)
+      meathill-brand:
+        specifier: ^0.1.0
+        version: 0.1.0
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -129,6 +132,12 @@ importers:
       '@tanstack/react-start':
         specifier: ^1.140.0
         version: 1.168.37(esbuild@0.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(rolldown@1.2.3)(rollup@4.62.4)(supports-color@10.2.2)(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.9))
+      meathill-brand:
+        specifier: ^0.1.0
+        version: 0.1.0
+      meathill-brand-react:
+        specifier: ^0.1.0
+        version: 0.1.0(meathill-brand@0.1.0)(react@19.2.8)
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -2594,6 +2603,15 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
+  meathill-brand-react@0.1.0:
+    resolution: {integrity: sha512-VWLUT5z3M3cXjRKNv5vHHOgAmBmfo9gjFceYLSK5APYgGC0ckHtgrfhT5o5HwbISkscjtbv45fSLEHaTp4O7rg==}
+    peerDependencies:
+      meathill-brand: ^0.1.0
+      react: '>=18'
+
+  meathill-brand@0.1.0:
+    resolution: {integrity: sha512-ua09wnW8UeGtmkFESdPse6xnjq2Ixny4Qjlobp+nTUk9CBigx+Jb0Bp0xk58MxVlstDAeErGqi6GAl7+9kOpuw==}
+
   miniflare@5.20260801.0-alpha:
     resolution: {integrity: sha512-AfMrnQbJg81ESsGkGhOkHBtwTqCG+mosR+3GE+qDrhF1I/ieIvgg3ICxNyBvgHBZ3iapy6cysBQHNPykkzrfgw==}
     engines: {node: '>=22.0.0'}
@@ -4847,6 +4865,13 @@ snapshots:
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  meathill-brand-react@0.1.0(meathill-brand@0.1.0)(react@19.2.8):
+    dependencies:
+      meathill-brand: 0.1.0
+      react: 19.2.8
+
+  meathill-brand@0.1.0: {}
 
   miniflare@5.20260801.0-alpha:
     dependencies:
