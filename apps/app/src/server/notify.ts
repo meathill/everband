@@ -3,9 +3,13 @@ import {
   createNotifications,
   deleteEmailDraftCore,
   deleteMemberDraftsCore,
+  getEmailSendDetailCore,
   listEmailDraftsCore,
+  listEmailSendRecipientsCore,
   listEmailSendsCore,
+  listEmailSendsPageCore,
   listMySentEmailsCore,
+  listMySentEmailsPageCore,
   listNotificationsCore,
   markAllNotificationsReadCore,
   markNotificationReadCore,
@@ -21,6 +25,8 @@ import { type Database, schema } from "@everband/db";
 import { hasStaffAccess } from "@everband/domain";
 import {
   emailComposeSearchSchema,
+  emailSendRecipientsListSchema,
+  emailSendsListSchema,
   notificationIdSchema,
   notificationsPageSchema,
   orgIdSchema,
@@ -261,6 +267,63 @@ export const listEmailSends = createServerFn({ method: "GET" })
       return listEmailSendsCore(db, data.orgId);
     }
     return listMySentEmailsCore(db, data.orgId, ctx.email);
+  });
+
+// 分页审计（Drawer 详情与历史分页）
+export const listEmailSendsPage = createServerFn({ method: "GET" })
+  .validator(emailSendsListSchema.extend({ orgId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId);
+    if (hasStaffAccess(ctx.role, ctx.staffAccess)) {
+      return listEmailSendsPageCore(db, data.orgId, data);
+    }
+    return listMySentEmailsPageCore(db, data.orgId, ctx.email, data);
+  });
+
+export const getEmailSendDetail = createServerFn({ method: "GET" })
+  .validator(z.object({ orgId: z.string().min(1), sendId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId);
+    const detail = await getEmailSendDetailCore(db, data.orgId, data.sendId);
+    if (!detail) return null;
+    // 家长只能看包含自己的发送
+    if (!hasStaffAccess(ctx.role, ctx.staffAccess)) {
+      const own = detail.recipients.some((r) => r.email === ctx.email);
+      if (!own) return null;
+    }
+    return detail;
+  });
+
+export const listEmailSendRecipients = createServerFn({ method: "GET" })
+  .validator(
+    emailSendRecipientsListSchema.extend({
+      orgId: z.string().min(1),
+      sendId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const db = getDb();
+    const ctx = await requireMembership(db, data.orgId);
+    // 家长视角：仅看自己的那一行（由 core 过滤后前端再兜底）
+    if (!hasStaffAccess(ctx.role, ctx.staffAccess)) {
+      const detail = await getEmailSendDetailCore(db, data.orgId, data.sendId);
+      if (!detail || !detail.recipients.some((r) => r.email === ctx.email)) {
+        return { items: [], total: 0, page: data.page, pageSize: data.pageSize };
+      }
+      // 家长：强制过滤 email
+      const all = await listEmailSendRecipientsCore(db, data.orgId, data.sendId, {
+        ...data,
+        q: ctx.email,
+        page: 1,
+        pageSize: 20,
+      } as typeof data);
+      // 再按 email 精确过滤
+      const mine = all.items.filter((r) => r.email === ctx.email);
+      return { items: mine, total: mine.length, page: 1, pageSize: 20 };
+    }
+    return listEmailSendRecipientsCore(db, data.orgId, data.sendId, data);
   });
 
 export const setEmailPreference = createServerFn({ method: "POST" })

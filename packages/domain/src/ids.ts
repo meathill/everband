@@ -28,6 +28,7 @@ export const ID_PREFIXES = {
   notification: "ntf",
   emailSend: "send",
   emailSendRecipient: "rcp",
+  emailOpen: "ope",
   emailDraft: "dft",
   importJob: "imp",
   importJobRow: "row",

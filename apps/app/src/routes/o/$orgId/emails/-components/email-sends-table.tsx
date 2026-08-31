@@ -8,6 +8,10 @@ export type EmailSendRow = Awaited<ReturnType<typeof listEmailSends>>[number];
 export interface EmailSendsTableProps {
   rows: EmailSendRow[];
   timezone: string;
+  sort?: string;
+  order?: "asc" | "desc";
+  onSortChange?: (sort: string, order: "asc" | "desc") => void;
+  onRowClick?: (row: EmailSendRow) => void;
 }
 
 function statusClassName(status: string): string {
@@ -16,23 +20,34 @@ function statusClassName(status: string): string {
   return "text-muted-foreground";
 }
 
-/**
- * staff 的邮件发送历史。刻意不做分页：它和通知收件箱共用一个 URL，两套分页参数会让
- * 链接难以理解，而这块只是排障用的近况面板——固定展示最近 50 条并在文案里说明。
- */
-export function EmailSendsTable({ rows, timezone }: EmailSendsTableProps): React.ReactElement {
+export function EmailSendsTable({
+  rows,
+  timezone,
+  sort,
+  order,
+  onSortChange,
+  onRowClick,
+}: EmailSendsTableProps): React.ReactElement {
   const columns: DataTableColumn<EmailSendRow>[] = [
     {
       key: "createdAt",
       header: "Requested",
+      sortable: true,
+      defaultOrder: "desc",
       render: (row) => (
         <span className="tabular-nums">{formatOrgDateTime(row.createdAt, timezone)}</span>
       ),
     },
-    { key: "subject", header: "Subject", render: (row) => row.subject },
+    {
+      key: "subject",
+      header: "Subject",
+      sortable: true,
+      render: (row) => <span className="truncate">{row.subject}</span>,
+    },
     {
       key: "status",
       header: "Status",
+      sortable: true,
       render: (row) => <span className={statusClassName(row.status)}>{row.status}</span>,
     },
     {
@@ -61,10 +76,18 @@ export function EmailSendsTable({ rows, timezone }: EmailSendsTableProps): React
     <section className="flex flex-col gap-3">
       <h2 className="font-semibold text-foreground text-xl">Email history</h2>
       <p className="text-muted-foreground text-sm">
-        Queued means the job was accepted — it does not mean delivered. Watch the per-send counts
-        below. Showing the latest 50 sends.
+        Click a row to view content, CC/BCC, and per-recipient delivery &amp; open status. Queued
+        means accepted, not delivered.
       </p>
-      <DataTable columns={columns} rowKey={(row) => row.id} rows={rows} />
+      <DataTable
+        columns={columns}
+        onRowClick={onRowClick}
+        onSortChange={onSortChange}
+        order={order}
+        rowKey={(row) => row.id}
+        rows={rows}
+        sort={sort}
+      />
     </section>
   );
 }

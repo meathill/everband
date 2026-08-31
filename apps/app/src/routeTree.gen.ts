@@ -29,6 +29,7 @@ import { Route as OOrgIdMembersRouteImport } from './routes/o/$orgId/members'
 import { Route as OOrgIdNotificationsRouteImport } from './routes/o/$orgId/notifications'
 import { Route as OOrgIdRehearsalsRouteImport } from './routes/o/$orgId/rehearsals'
 import { Route as OOrgIdSettingsRouteImport } from './routes/o/$orgId/settings'
+import { Route as ApiTrackOpenTokenRouteImport } from './routes/api/track/open.$token'
 import { Route as OOrgIdEventsIndexRouteImport } from './routes/o/$orgId/events/index'
 import { Route as OOrgIdEventsEventIdRouteImport } from './routes/o/$orgId/events/$eventId'
 import { Route as ApiOrgsOrgIdAttachmentsAttachmentIdRouteImport } from './routes/api/orgs.$orgId.attachments.$attachmentId'
@@ -133,6 +134,11 @@ const OOrgIdSettingsRoute = OOrgIdSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => OOrgIdRouteRoute,
 } as any)
+const ApiTrackOpenTokenRoute = ApiTrackOpenTokenRouteImport.update({
+  id: '/api/track/open/$token',
+  path: '/api/track/open/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OOrgIdEventsIndexRoute = OOrgIdEventsIndexRouteImport.update({
   id: '/events/',
   path: '/events/',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/o/$orgId/rehearsals': typeof OOrgIdRehearsalsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/api/track/open/$token': typeof ApiTrackOpenTokenRoute
   '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
   '/o/$orgId/events/': typeof OOrgIdEventsIndexRoute
   '/api/orgs/$orgId/attachments/$attachmentId': typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/o/$orgId/rehearsals': typeof OOrgIdRehearsalsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId': typeof OOrgIdIndexRoute
+  '/api/track/open/$token': typeof ApiTrackOpenTokenRoute
   '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
   '/o/$orgId/events': typeof OOrgIdEventsIndexRoute
   '/api/orgs/$orgId/attachments/$attachmentId': typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/o/$orgId/rehearsals': typeof OOrgIdRehearsalsRoute
   '/o/$orgId/settings': typeof OOrgIdSettingsRoute
   '/o/$orgId/': typeof OOrgIdIndexRoute
+  '/api/track/open/$token': typeof ApiTrackOpenTokenRoute
   '/o/$orgId/events/$eventId': typeof OOrgIdEventsEventIdRoute
   '/o/$orgId/events/': typeof OOrgIdEventsIndexRoute
   '/api/orgs/$orgId/attachments/$attachmentId': typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/rehearsals'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
+    | '/api/track/open/$token'
     | '/o/$orgId/events/$eventId'
     | '/o/$orgId/events/'
     | '/api/orgs/$orgId/attachments/$attachmentId'
@@ -272,6 +282,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/rehearsals'
     | '/o/$orgId/settings'
     | '/o/$orgId'
+    | '/api/track/open/$token'
     | '/o/$orgId/events/$eventId'
     | '/o/$orgId/events'
     | '/api/orgs/$orgId/attachments/$attachmentId'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/o/$orgId/rehearsals'
     | '/o/$orgId/settings'
     | '/o/$orgId/'
+    | '/api/track/open/$token'
     | '/o/$orgId/events/$eventId'
     | '/o/$orgId/events/'
     | '/api/orgs/$orgId/attachments/$attachmentId'
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   DevResetRoute: typeof DevResetRoute
   InviteTokenRoute: typeof InviteTokenRoute
   PPublicSlugRoute: typeof PPublicSlugRoute
+  ApiTrackOpenTokenRoute: typeof ApiTrackOpenTokenRoute
   ApiOrgsOrgIdAttachmentsAttachmentIdRoute: typeof ApiOrgsOrgIdAttachmentsAttachmentIdRoute
 }
 
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OOrgIdSettingsRouteImport
       parentRoute: typeof OOrgIdRouteRoute
     }
+    '/api/track/open/$token': {
+      id: '/api/track/open/$token'
+      path: '/api/track/open/$token'
+      fullPath: '/api/track/open/$token'
+      preLoaderRoute: typeof ApiTrackOpenTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/o/$orgId/events/': {
       id: '/o/$orgId/events/'
       path: '/events'
@@ -527,6 +547,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevResetRoute: DevResetRoute,
   InviteTokenRoute: InviteTokenRoute,
   PPublicSlugRoute: PPublicSlugRoute,
+  ApiTrackOpenTokenRoute: ApiTrackOpenTokenRoute,
   ApiOrgsOrgIdAttachmentsAttachmentIdRoute:
     ApiOrgsOrgIdAttachmentsAttachmentIdRoute,
 }

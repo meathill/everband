@@ -78,10 +78,40 @@ export const emailSendRecipients = sqliteTable(
     error: text("error"),
     attemptCount: integer("attempt_count").notNull().default(0),
     sentAt: integer("sent_at"),
+    // 像素追踪：每个已发送收件人一个不可猜的 token，打开时回写计数
+    openToken: text("open_token"),
+    openedAt: integer("opened_at"),
+    openCount: integer("open_count").notNull().default(0),
+    lastOpenedAt: integer("last_opened_at"),
   },
   (table) => [
     uniqueIndex("uq_email_recipients_send_email").on(table.sendId, table.email),
     index("idx_email_recipients_send_status").on(table.sendId, table.status),
+    index("idx_email_recipients_open_token").on(table.openToken),
+  ],
+);
+
+// 打开事件流水：每次像素请求落一条，用于去重与审计
+export const emailOpenEvents = sqliteTable(
+  "email_open_events",
+  {
+    id: text("id").primaryKey(),
+    sendId: text("send_id")
+      .notNull()
+      .references(() => emailSends.id),
+    recipientId: text("recipient_id")
+      .notNull()
+      .references(() => emailSendRecipients.id),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    openedAt: integer("opened_at").notNull(),
+    userAgent: text("user_agent"),
+    ipHash: text("ip_hash"),
+  },
+  (table) => [
+    index("idx_open_events_recipient").on(table.recipientId, table.openedAt),
+    index("idx_open_events_send").on(table.sendId, table.openedAt),
   ],
 );
 

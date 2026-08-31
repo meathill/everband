@@ -56,19 +56,28 @@ export default {
             }
           : undefined,
       );
-        for (const message of batch.messages) {
+      for (const message of batch.messages) {
         // queue 消息 = 一封邮件；platform 负责并行调度（max_concurrency）
         // 与重投（max_retries=1）。幂等与错误分级在 core 内完成。
         const { sendId, recipientId } = message.body as EmailSendMessage;
         try {
-          console.log("[tasks] processEmailRecipient start", { sendId, recipientId, attempts: message.attempts });
+          console.log("[tasks] processEmailRecipient start", {
+            sendId,
+            recipientId,
+            attempts: message.attempts,
+          });
           const { outcome, error } = await processEmailRecipient(db, sender, {
             sendId,
             recipientId,
             attempts: message.attempts,
             now: Date.now(),
           });
-          console.log("[tasks] processEmailRecipient done", { sendId, recipientId, outcome, error: error ?? null });
+          console.log("[tasks] processEmailRecipient done", {
+            sendId,
+            recipientId,
+            outcome,
+            error: error ?? null,
+          });
           if (outcome === "retryable") {
             console.warn("email send retryable, will retry", { sendId, recipientId, error });
             message.retry();

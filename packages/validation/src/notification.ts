@@ -43,3 +43,37 @@ export const emailComposeSearchSchema = z.object({
 });
 
 export type EmailComposeSearch = z.output<typeof emailComposeSearchSchema>;
+
+// 邮件发送历史（审计）的列表参数：分页 + 搜索 + 状态/kind 过滤
+export const EMAIL_SEND_STATUSES = ["queued", "succeeded", "partial", "failed"] as const;
+export type EmailSendStatus = (typeof EMAIL_SEND_STATUSES)[number];
+
+export const EMAIL_SEND_KINDS = ["bulk", "event-update"] as const;
+export type EmailSendKind = (typeof EMAIL_SEND_KINDS)[number];
+
+export const emailSendsListSchema = createListQuerySchema({
+  sortFields: ["createdAt", "subject", "status"],
+  defaultSort: "createdAt",
+  defaultOrder: "desc",
+  defaultPageSize: 20,
+}).extend({
+  status: z.enum(EMAIL_SEND_STATUSES).optional().catch(undefined),
+  kind: z.enum(EMAIL_SEND_KINDS).optional().catch(undefined),
+});
+
+export type EmailSendsListQuery = z.output<typeof emailSendsListSchema>;
+
+// 单次发送的收件人列表参数
+export const EMAIL_RECIPIENT_STATUSES = ["queued", "sent", "failed", "suppressed"] as const;
+
+export const emailSendRecipientsListSchema = createListQuerySchema({
+  sortFields: ["email", "status", "sentAt", "openedAt"],
+  defaultSort: "email",
+  defaultOrder: "asc",
+  defaultPageSize: 20,
+}).extend({
+  status: z.enum(EMAIL_RECIPIENT_STATUSES).optional().catch(undefined),
+  opened: z.enum(["opened", "unopened"]).optional().catch(undefined),
+});
+
+export type EmailSendRecipientsListQuery = z.output<typeof emailSendRecipientsListSchema>;

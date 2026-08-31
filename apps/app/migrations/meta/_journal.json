@@ -71,6 +71,55 @@
       "when": 1786450952756,
       "tag": "0009_finance",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786612373000,
+      "tag": "0010_org-roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1786801146000,
+      "tag": "0011_email-broadcast",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1786807010000,
+      "tag": "0012_email-drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1788106435000,
+      "tag": "0013_events-optional-time",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1788140974000,
+      "tag": "0014_email-html",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1788161357000,
+      "tag": "0015_email-bcc",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1788166702000,
+      "tag": "0016_email-open-tracking",
+      "breakpoints": true
     }
   ]
 }

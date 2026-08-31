@@ -38,6 +38,7 @@ export type DataTableProps<T> = {
   onSelectionChange?: (ids: Set<string>) => void;
   /** 行的复选框无障碍标签（如 "Select Alice"） */
   selectionLabel?: (row: T) => string;
+  onRowClick?: (row: T) => void;
   className?: string;
 };
 
@@ -57,6 +58,7 @@ export function DataTable<T>({
   selectedIds,
   onSelectionChange,
   selectionLabel,
+  onRowClick,
   className,
 }: DataTableProps<T>): React.ReactElement {
   function handleSort(column: DataTableColumn<T>): void {
@@ -152,9 +154,13 @@ export function DataTable<T>({
           </TableRow>
         ) : (
           rows.map((row) => (
-            <TableRow key={rowKey(row)}>
+            <TableRow
+              className={onRowClick ? "cursor-pointer hover:bg-muted/50" : undefined}
+              key={rowKey(row)}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
               {hasSelection && (
-                <TableCell className="w-10">
+                <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     aria-label={selectionLabel?.(row) ?? "Select row"}
                     checked={selected.has(rowKey(row))}

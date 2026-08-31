@@ -7,9 +7,27 @@ import type { Database } from "@everband/db";
 import { schema } from "@everband/db";
 import { generateId, ID_PREFIXES } from "@everband/domain";
 import type { EmailSender } from "@everband/integrations/email";
-import type { ListResult, NotificationFilter } from "@everband/validation";
+import type {
+  EmailSendRecipientsListQuery,
+  EmailSendsListQuery,
+  ListResult,
+  NotificationFilter,
+} from "@everband/validation";
 import { toOffset } from "@everband/validation";
-import { and, asc, count, desc, eq, inArray, isNull, ne, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import type { AudienceContact } from "./events.ts";
 import { resolveEventAudienceContacts } from "./events.ts";
 
@@ -37,6 +55,12 @@ export interface PrepareEmailSendResult {
   created: boolean;
   queuedCount: number;
   suppressedCount: number;
+}
+
+function generateOpenToken(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export async function prepareEmailSend(
@@ -78,16 +102,18 @@ export async function prepareEmailSend(
   });
   if (input.audience.length > 0) {
     await db.insert(schema.emailSendRecipients).values(
-      input.audience.map((contact) => ({
-        id: generateId(ID_PREFIXES.emailSendRecipient),
-        sendId,
-        organizationId: input.organizationId,
-        email: contact.email,
-        contactId: contact.contactId,
-        status: input.suppressedEmails.has(contact.email)
-          ? ("suppressed" as const)
-          : ("queued" as const),
-      })),
+      input.audience.map((contact) => {
+        const isSuppressed = input.suppressedEmails.has(contact.email);
+        return {
+          id: generateId(ID_PREFIXES.emailSendRecipient),
+          sendId,
+          organizationId: input.organizationId,
+          email: contact.email,
+          contactId: contact.contactId,
+          status: isSuppressed ? ("suppressed" as const) : ("queued" as const),
+          openToken: isSuppressed ? null : generateOpenToken(),
+        };
+      }),
     );
   }
   return { sendId, created: true, queuedCount: queued.length, suppressedCount: suppressed.length };
@@ -133,6 +159,7 @@ export async function processEmailRecipient(
       id: schema.emailSendRecipients.id,
       email: schema.emailSendRecipients.email,
       status: schema.emailSendRecipients.status,
+      openToken: schema.emailSendRecipients.openToken,
     })
     .from(schema.emailSendRecipients)
     .where(
@@ -165,11 +192,17 @@ export async function processEmailRecipient(
     return { outcome: "failed", error: "send task missing" };
   }
 
+  const TRACKING_ORIGIN = "https://everband-app.meathill.com";
+  const htmlWithPixel =
+    send.html && recipient.openToken
+      ? `${send.html}<img src="${TRACKING_ORIGIN}/api/track/open/${recipient.openToken}" width="1" height="1" style="display:none" alt="" />`
+      : (send.html ?? undefined);
+
   const result = await sender.send({
     to: recipient.email,
     subject: send.subject,
     text: send.body,
-    html: send.html ?? undefined,
+    html: htmlWithPixel,
     cc: send.cc ?? undefined,
     bcc: send.bcc ?? undefined,
     kind: send.kind,
@@ -540,4 +573,253 @@ export async function listMySentEmailsCore(
     )
     .orderBy(desc(schema.emailSends.createdAt))
     .limit(50);
+}
+
+// ---------------------------------------------------------------------------
+// 分页审计（Drawer 详情与历史分页）
+// ---------------------------------------------------------------------------
+
+export type EmailSendRecipientRow = typeof schema.emailSendRecipients.$inferSelect;
+
+function buildEmailSendWhere(orgId: string, query: EmailSendsListQuery): SQL | undefined {
+  const clauses: SQL[] = [eq(schema.emailSends.organizationId, orgId)];
+  if (query.q) {
+    const pattern = `%${query.q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+    clauses.push(sql`${schema.emailSends.subject} LIKE ${pattern} COLLATE NOCASE`);
+  }
+  if (query.status) clauses.push(eq(schema.emailSends.status, query.status));
+  if (query.kind) clauses.push(eq(schema.emailSends.kind, query.kind));
+  return and(...clauses);
+}
+
+export async function listEmailSendsPageCore(
+  db: Database,
+  orgId: string,
+  query: EmailSendsListQuery,
+): Promise<ListResult<EmailSendRow>> {
+  const where = buildEmailSendWhere(orgId, query);
+  const orderBy =
+    query.sort === "subject"
+      ? query.order === "asc"
+        ? asc(schema.emailSends.subject)
+        : desc(schema.emailSends.subject)
+      : query.sort === "status"
+        ? query.order === "asc"
+          ? asc(schema.emailSends.status)
+          : desc(schema.emailSends.status)
+        : query.order === "asc"
+          ? asc(schema.emailSends.createdAt)
+          : desc(schema.emailSends.createdAt);
+
+  const [rows, total] = await Promise.all([
+    db
+      .select()
+      .from(schema.emailSends)
+      .where(where)
+      .orderBy(orderBy, asc(schema.emailSends.id))
+      .limit(query.pageSize)
+      .offset(toOffset(query.page, query.pageSize)),
+    db.select({ value: count() }).from(schema.emailSends).where(where),
+  ]);
+  return { items: rows, total: total[0]?.value ?? 0, page: query.page, pageSize: query.pageSize };
+}
+
+export async function listMySentEmailsPageCore(
+  db: Database,
+  orgId: string,
+  email: string,
+  query: EmailSendsListQuery,
+): Promise<ListResult<EmailSendRow>> {
+  // 家长分页：JOIN 收件人快照，按邮箱过滤
+  const baseWhere = and(
+    eq(schema.emailSends.organizationId, orgId),
+    eq(schema.emailSendRecipients.email, email),
+    ne(schema.emailSendRecipients.status, "suppressed"),
+  );
+  const extra = buildEmailSendWhere(orgId, query);
+  // 合并 extra 的非 org 条件
+  const clauses: SQL[] = [baseWhere as SQL];
+  if (query.q) {
+    const pattern = `%${query.q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+    clauses.push(sql`${schema.emailSends.subject} LIKE ${pattern} COLLATE NOCASE`);
+  }
+  if (query.status) clauses.push(eq(schema.emailSends.status, query.status));
+  if (query.kind) clauses.push(eq(schema.emailSends.kind, query.kind));
+  const where = and(...clauses);
+  void extra;
+
+  const orderBy =
+    query.sort === "subject"
+      ? query.order === "asc"
+        ? asc(schema.emailSends.subject)
+        : desc(schema.emailSends.subject)
+      : query.sort === "status"
+        ? query.order === "asc"
+          ? asc(schema.emailSends.status)
+          : desc(schema.emailSends.status)
+        : query.order === "asc"
+          ? asc(schema.emailSends.createdAt)
+          : desc(schema.emailSends.createdAt);
+
+  const [rows, total] = await Promise.all([
+    db
+      .selectDistinct({
+        id: schema.emailSends.id,
+        organizationId: schema.emailSends.organizationId,
+        kind: schema.emailSends.kind,
+        subject: schema.emailSends.subject,
+        body: schema.emailSends.body,
+        html: schema.emailSends.html,
+        cc: schema.emailSends.cc,
+        bcc: schema.emailSends.bcc,
+        objectType: schema.emailSends.objectType,
+        objectId: schema.emailSends.objectId,
+        requestedByMembershipId: schema.emailSends.requestedByMembershipId,
+        dedupKey: schema.emailSends.dedupKey,
+        status: schema.emailSends.status,
+        recipientCount: schema.emailSends.recipientCount,
+        sentCount: schema.emailSends.sentCount,
+        failedCount: schema.emailSends.failedCount,
+        suppressedCount: schema.emailSends.suppressedCount,
+        createdAt: schema.emailSends.createdAt,
+        finishedAt: schema.emailSends.finishedAt,
+      })
+      .from(schema.emailSends)
+      .innerJoin(
+        schema.emailSendRecipients,
+        eq(schema.emailSendRecipients.sendId, schema.emailSends.id),
+      )
+      .where(where)
+      .orderBy(orderBy, asc(schema.emailSends.id))
+      .limit(query.pageSize)
+      .offset(toOffset(query.page, query.pageSize)),
+    db
+      .select({ value: count() })
+      .from(schema.emailSends)
+      .innerJoin(
+        schema.emailSendRecipients,
+        eq(schema.emailSendRecipients.sendId, schema.emailSends.id),
+      )
+      .where(where),
+  ]);
+  return {
+    items: rows as EmailSendRow[],
+    total: total[0]?.value ?? 0,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
+}
+
+export async function getEmailSendDetailCore(
+  db: Database,
+  orgId: string,
+  sendId: string,
+): Promise<{ send: EmailSendRow; recipients: EmailSendRecipientRow[] } | null> {
+  const sends = await db
+    .select()
+    .from(schema.emailSends)
+    .where(and(eq(schema.emailSends.id, sendId), eq(schema.emailSends.organizationId, orgId)))
+    .limit(1);
+  const send = sends[0];
+  if (!send) return null;
+  const recipients = await db
+    .select()
+    .from(schema.emailSendRecipients)
+    .where(eq(schema.emailSendRecipients.sendId, sendId))
+    .orderBy(asc(schema.emailSendRecipients.email));
+  return { send, recipients };
+}
+
+export async function listEmailSendRecipientsCore(
+  db: Database,
+  orgId: string,
+  sendId: string,
+  query: EmailSendRecipientsListQuery,
+): Promise<ListResult<EmailSendRecipientRow>> {
+  const clauses: SQL[] = [
+    eq(schema.emailSendRecipients.sendId, sendId),
+    eq(schema.emailSendRecipients.organizationId, orgId),
+  ];
+  if (query.q) {
+    const pattern = `%${query.q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+    clauses.push(sql`${schema.emailSendRecipients.email} LIKE ${pattern} COLLATE NOCASE`);
+  }
+  if (query.status) clauses.push(eq(schema.emailSendRecipients.status, query.status));
+  if (query.opened === "opened") clauses.push(isNotNull(schema.emailSendRecipients.openedAt));
+  if (query.opened === "unopened") clauses.push(isNull(schema.emailSendRecipients.openedAt));
+  const where = and(...clauses);
+
+  const orderBy =
+    query.sort === "status"
+      ? query.order === "asc"
+        ? asc(schema.emailSendRecipients.status)
+        : desc(schema.emailSendRecipients.status)
+      : query.sort === "sentAt"
+        ? query.order === "asc"
+          ? asc(schema.emailSendRecipients.sentAt)
+          : desc(schema.emailSendRecipients.sentAt)
+        : query.sort === "openedAt"
+          ? query.order === "asc"
+            ? asc(schema.emailSendRecipients.openedAt)
+            : desc(schema.emailSendRecipients.openedAt)
+          : query.order === "asc"
+            ? asc(schema.emailSendRecipients.email)
+            : desc(schema.emailSendRecipients.email);
+
+  const [rows, total] = await Promise.all([
+    db
+      .select()
+      .from(schema.emailSendRecipients)
+      .where(where)
+      .orderBy(orderBy, asc(schema.emailSendRecipients.id))
+      .limit(query.pageSize)
+      .offset(toOffset(query.page, query.pageSize)),
+    db.select({ value: count() }).from(schema.emailSendRecipients).where(where),
+  ]);
+  return { items: rows, total: total[0]?.value ?? 0, page: query.page, pageSize: query.pageSize };
+}
+
+// ---------------------------------------------------------------------------
+// 像素打开追踪
+// ---------------------------------------------------------------------------
+
+export async function markEmailOpenedCore(
+  db: Database,
+  openToken: string,
+  input: { userAgent?: string | null; ipHash?: string | null; now: number },
+): Promise<{ ok: boolean }> {
+  const rows = await db
+    .select({
+      id: schema.emailSendRecipients.id,
+      sendId: schema.emailSendRecipients.sendId,
+      organizationId: schema.emailSendRecipients.organizationId,
+      openedAt: schema.emailSendRecipients.openedAt,
+      openCount: schema.emailSendRecipients.openCount,
+    })
+    .from(schema.emailSendRecipients)
+    .where(eq(schema.emailSendRecipients.openToken, openToken))
+    .limit(1);
+  const recipient = rows[0];
+  if (!recipient) return { ok: false };
+
+  await db
+    .update(schema.emailSendRecipients)
+    .set({
+      openedAt: recipient.openedAt ?? input.now,
+      lastOpenedAt: input.now,
+      openCount: (recipient.openCount ?? 0) + 1,
+    })
+    .where(eq(schema.emailSendRecipients.id, recipient.id));
+
+  await db.insert(schema.emailOpenEvents).values({
+    id: generateId(ID_PREFIXES.emailOpen),
+    sendId: recipient.sendId,
+    recipientId: recipient.id,
+    organizationId: recipient.organizationId,
+    openedAt: input.now,
+    userAgent: input.userAgent ?? null,
+    ipHash: input.ipHash ?? null,
+  });
+
+  return { ok: true };
 }
