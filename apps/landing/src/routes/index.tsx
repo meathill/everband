@@ -5,40 +5,7 @@ import { APP_URL } from "~/lib/config.ts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { property: "og:url", content: "https://everband.meathill.com/" },
-      {
-        "script:ld+json": [
-          {
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "WebSite",
-                name: "Everband",
-                url: "https://everband.meathill.com/",
-                description:
-                  "Members, events, rehearsals and parent rosters for community bands, teams and clubs.",
-                inLanguage: "en",
-              },
-              {
-                "@type": "SoftwareApplication",
-                name: "Everband",
-                applicationCategory: "BusinessApplication",
-                operatingSystem: "Web",
-                description:
-                  "Run your community band without the spreadsheets: members, events, rehearsals and parent rosters in one place.",
-                url: "https://everband.meathill.com/",
-                offers: {
-                  "@type": "Offer",
-                  price: "0",
-                  priceCurrency: "AUD",
-                },
-              },
-            ],
-          },
-        ],
-      },
-    ],
+    meta: [{ property: "og:url", content: "https://everband.meathill.com/" }],
     links: [{ rel: "canonical", href: "https://everband.meathill.com/" }],
   }),
   component: Home,

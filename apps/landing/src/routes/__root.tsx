@@ -12,8 +12,25 @@ const BRAND_STRUCTURED_DATA = {
     {
       "@type": "WebSite",
       name: "Everband",
-      url: "https://everband.meathill.com",
+      url: "https://everband.meathill.com/",
+      description:
+        "Members, events, rehearsals and parent rosters for community bands, teams and clubs.",
+      inLanguage: "en",
       publisher: { "@id": brandCatalog.organization.id },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Everband",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Run your community band without the spreadsheets: members, events, rehearsals and parent rosters in one place.",
+      url: "https://everband.meathill.com/",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "AUD",
+      },
     },
   ],
 };
