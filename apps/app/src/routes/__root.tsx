@@ -1,6 +1,7 @@
 import { ToastProvider } from "@everband/ui/components/toast";
 import appCss from "@everband/ui/styles/globals.css?url";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import brandCss from "meathill-brand-react/styles.css?url";
 import type { ReactNode } from "react";
 
 export const Route = createRootRoute({
@@ -19,6 +20,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: brandCss },
       { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
       { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "256x256" },
     ],
