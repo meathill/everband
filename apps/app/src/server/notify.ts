@@ -309,7 +309,7 @@ export const listEmailSendRecipients = createServerFn({ method: "GET" })
     // 家长视角：仅看自己的那一行（由 core 过滤后前端再兜底）
     if (!hasStaffAccess(ctx.role, ctx.staffAccess)) {
       const detail = await getEmailSendDetailCore(db, data.orgId, data.sendId);
-      if (!detail || !detail.recipients.some((r) => r.email === ctx.email)) {
+      if (!detail?.recipients.some((r) => r.email === ctx.email)) {
         return { items: [], total: 0, page: data.page, pageSize: data.pageSize };
       }
       // 家长：强制过滤 email

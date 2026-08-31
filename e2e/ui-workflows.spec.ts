@@ -572,7 +572,7 @@ test("群发邮件：选组 → 写信页 → 收件人微调 → 发送入队 �
   await expect(page.getByText(/Email queued for 1 recipient/)).toBeVisible();
 
   // 发送后回到邮件中心，发送历史可见（queued ≠ delivered 如实展示）
-  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails$`));
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails(\\?|$)`));
   await expect(page.getByText("Rehearsal reminder", { exact: true })).toBeVisible();
 });
 
@@ -591,7 +591,7 @@ test("群发草稿：写信自动保存、列表可恢复、恢复后内容完�
 
   // 回列表：草稿卡片出现
   await pressButton(page, "All emails");
-  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails$`));
+  await expect(page).toHaveURL(new RegExp(`/o/${orgId}/emails(\\?|$)`));
   await expect(page.getByText("Drafts", { exact: true })).toBeVisible();
   await expect(page.getByText("Draft subject", { exact: true })).toBeVisible();
 
@@ -648,7 +648,11 @@ test("parent 在 Emails 页只看到发给自己的邮件，且没有写信入�
   await page.goto(`/o/${orgId}/emails`);
   await expect(page.getByText(subject, { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "New email" })).not.toBeVisible();
-  await page.getByText(subject, { exact: true }).click();
+  // 父列表用 ul>button 非标准结构，移动端热区易遮挡；用键盘激活兜底
+  const rowBtn = page.getByRole("button", { name: new RegExp(subject) });
+  await waitForHydration(rowBtn);
+  await rowBtn.focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByText("Only you can see this.", { exact: true })).toBeVisible();
 });
 

@@ -136,7 +136,6 @@ function EmailsPage(): React.ReactElement {
   const data = Route.useLoaderData();
   const { orgId } = Route.useParams();
   const { org } = orgRoute.useLoaderData();
-  const navigate = Route.useNavigate();
 
   if (data.view === "compose") {
     return (

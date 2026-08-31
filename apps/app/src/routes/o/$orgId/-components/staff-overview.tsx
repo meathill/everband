@@ -2,7 +2,7 @@ import type { OverviewEventItem, StaffGroupItem } from "@everband/core";
 import { formatOrgDateTimeMaybe } from "@everband/domain";
 import { Badge } from "@everband/ui/components/badge";
 import { Button } from "@everband/ui/components/button";
-import { Card, CardHeader, CardPanel, CardTitle } from "@everband/ui/components/card";
+import { Card, CardHeader, CardPanel } from "@everband/ui/components/card";
 import { Checkbox } from "@everband/ui/components/checkbox";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everband/ui/components/empty";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react";
@@ -67,7 +67,9 @@ function GroupsPanel({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle>Groups</CardTitle>
+        <h2 className="font-heading font-semibold text-lg leading-none" data-slot="card-title">
+          Groups
+        </h2>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs tabular-nums">{groups.length} groups</span>
           {groups.length > 0 && (
@@ -148,7 +150,9 @@ function WipPanel({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle>Work in Progress</CardTitle>
+        <h2 className="font-heading font-semibold text-lg leading-none" data-slot="card-title">
+          Work in Progress
+        </h2>
         <p className="text-muted-foreground text-xs">
           Draft and published events, ordered by date.
         </p>

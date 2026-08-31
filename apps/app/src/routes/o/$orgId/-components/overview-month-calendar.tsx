@@ -282,29 +282,45 @@ export function OverviewMonthCalendar({
                 );
                 const isOutside = value.slice(0, 7) !== month;
                 const isToday = value === today;
+                const timeNode = (
+                  <time
+                    className={cn(
+                      "inline-flex size-7 items-center justify-center rounded-full",
+                      isToday && "bg-primary font-semibold text-primary-foreground",
+                    )}
+                    dateTime={value}
+                  >
+                    {date.getDate()}
+                  </time>
+                );
                 return (
                   <div
                     className="min-h-32 border-b border-r border-border p-2 last:border-r-0"
                     data-date={value}
                     key={value}
                   >
-                    <DateQuickCreateMenu
-                      date={value}
-                      hasTerm={terms.length > 0}
-                      isStaff={isStaff}
-                      onQuickCreate={(kind) => openQuickCreate(kind, value)}
-                      triggerClassName={isOutside ? "text-muted-foreground/60" : "text-foreground"}
-                    >
-                      <time
-                        className={cn(
-                          "inline-flex size-7 items-center justify-center rounded-full",
-                          isToday && "bg-primary font-semibold text-primary-foreground",
-                        )}
-                        dateTime={value}
+                    {isStaff ? (
+                      <DateQuickCreateMenu
+                        date={value}
+                        hasTerm={terms.length > 0}
+                        isStaff={isStaff}
+                        onQuickCreate={(kind) => openQuickCreate(kind, value)}
+                        triggerClassName={
+                          isOutside ? "text-muted-foreground/60" : "text-foreground"
+                        }
                       >
-                        {date.getDate()}
-                      </time>
-                    </DateQuickCreateMenu>
+                        {timeNode}
+                      </DateQuickCreateMenu>
+                    ) : (
+                      <span
+                        className={cn(
+                          "inline-flex h-8 min-w-8 items-center justify-center text-sm",
+                          isOutside ? "text-muted-foreground/60" : "text-foreground",
+                        )}
+                      >
+                        {timeNode}
+                      </span>
+                    )}
                     <div className="mt-2 flex flex-col gap-1">
                       {dayItems.slice(0, 3).map((item) => (
                         <CalendarItem item={item} key={item.id} orgId={orgId} />
