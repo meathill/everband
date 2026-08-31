@@ -19,6 +19,7 @@ export interface EmailDraftSelection {
 export interface EmailDraftContent {
   subject: string;
   cc: string;
+  bcc: string;
   html: string;
   text: string;
   recipients: AudienceContact[];
@@ -35,6 +36,7 @@ function parseDraft(row: {
   id: string;
   subject: string;
   cc: string | null;
+  bcc: string | null;
   html: string;
   text: string;
   recipientsJson: string;
@@ -58,6 +60,7 @@ function parseDraft(row: {
     id: row.id,
     subject: row.subject,
     cc: row.cc ?? "",
+    bcc: row.bcc ?? "",
     html: row.html,
     text: row.text,
     recipients,
@@ -89,6 +92,7 @@ export async function saveEmailDraftCore(
   const values = {
     subject: content.subject,
     cc: content.cc || null,
+    bcc: content.bcc || null,
     html: content.html,
     text: content.text,
     recipientsJson: JSON.stringify(content.recipients),

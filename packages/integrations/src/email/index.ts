@@ -10,8 +10,10 @@ export interface OutgoingEmail {
   subject: string;
   text: string;
   html?: string;
-  // 抄送；群发时每封邮件同一地址（例如经办 staff 留底）
+  // 抄送；群发时每封邮件同一地址（例如经办 staff 留底），多地址逗号分隔
   cc?: string;
+  // 密送（同 cc，多地址逗号分隔；Cloudflare binding 原生支持 cc/bcc 数组）
+  bcc?: string;
   // 邮件类别（invite/magic-link/event-update/swap-result...），用于审计与偏好过滤
   kind: string;
 }

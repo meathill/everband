@@ -19,8 +19,10 @@ export interface PrepareEmailSendInput {
   subject: string;
   body: string;
   html?: string;
-  // 抄送；群发时每封邮件同一地址（例如经办 staff 留底）
+  // 抄送；群发时每封邮件同一地址（例如经办 staff 留底），多地址逗号分隔
   cc?: string;
+  // 密送（同 cc，多地址逗号分隔）
+  bcc?: string;
   objectType: string;
   objectId: string;
   dedupKey: string;
@@ -64,6 +66,7 @@ export async function prepareEmailSend(
     body: input.body,
     html: input.html ?? null,
     cc: input.cc ?? null,
+    bcc: input.bcc ?? null,
     objectType: input.objectType,
     objectId: input.objectId,
     requestedByMembershipId: input.requestedByMembershipId,
@@ -150,6 +153,7 @@ export async function processEmailRecipient(
       body: schema.emailSends.body,
       html: schema.emailSends.html,
       cc: schema.emailSends.cc,
+      bcc: schema.emailSends.bcc,
       kind: schema.emailSends.kind,
     })
     .from(schema.emailSends)
@@ -167,6 +171,7 @@ export async function processEmailRecipient(
     text: send.body,
     html: send.html ?? undefined,
     cc: send.cc ?? undefined,
+    bcc: send.bcc ?? undefined,
     kind: send.kind,
   });
   if (result.ok) {
@@ -508,6 +513,7 @@ export async function listMySentEmailsCore(
       body: schema.emailSends.body,
       html: schema.emailSends.html,
       cc: schema.emailSends.cc,
+      bcc: schema.emailSends.bcc,
       objectType: schema.emailSends.objectType,
       objectId: schema.emailSends.objectId,
       requestedByMembershipId: schema.emailSends.requestedByMembershipId,

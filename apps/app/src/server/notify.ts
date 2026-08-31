@@ -345,6 +345,7 @@ export const getEmailComposeData = createServerFn({ method: "GET" })
 async function bulkEmailDedupKey(input: {
   subject: string;
   cc: string;
+  bcc: string;
   html: string;
   recipients: { email: string }[];
 }): Promise<string> {
@@ -354,12 +355,23 @@ async function bulkEmailDedupKey(input: {
     .join(",");
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(`${input.subject}\n${input.cc}\n${input.html}\n${emails}`),
+    new TextEncoder().encode(
+      `${input.subject}\n${input.cc}\n${input.bcc}\n${input.html}\n${emails}`,
+    ),
   );
   const hex = [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
   return `bulk:${hex}`;
+}
+
+// 逗号分隔的多邮箱校验（支持单地址，也支持 "a@b.com, c@d.com"）
+function isValidEmailList(value: string): boolean {
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 0 && parts.every((part) => z.email().safeParse(part).success);
 }
 
 function htmlToText(html: string): string {
@@ -384,7 +396,12 @@ export const sendBulkEmail = createServerFn({ method: "POST" })
         .string()
         .trim()
         .optional()
-        .refine((value) => !value || z.email().safeParse(value).success, "Invalid CC email"),
+        .refine((value) => !value || isValidEmailList(value), "Invalid CC email"),
+      bcc: z
+        .string()
+        .trim()
+        .optional()
+        .refine((value) => !value || isValidEmailList(value), "Invalid BCC email"),
       html: z.string(),
       text: z.string(),
       groups: z.array(z.string().min(1)).optional(),
@@ -435,9 +452,11 @@ export const sendBulkEmail = createServerFn({ method: "POST" })
     );
 
     const cc = data.cc ?? "";
+    const bcc = data.bcc ?? "";
     const dedupKey = await bulkEmailDedupKey({
       subject,
       cc,
+      bcc,
       html,
       recipients: data.recipients,
     });
@@ -449,6 +468,7 @@ export const sendBulkEmail = createServerFn({ method: "POST" })
         subject,
         body: text || htmlToText(html),
         cc: cc || undefined,
+        bcc: bcc || undefined,
         objectType: "bulk",
         objectId: dedupKey,
         dedupKey,
@@ -503,7 +523,8 @@ export const saveEmailDraft = createServerFn({ method: "POST" })
     z.object({
       orgId: z.string().min(1),
       subject: z.string().max(200),
-      cc: z.string().max(200).optional(),
+      cc: z.string().max(500).optional(),
+      bcc: z.string().max(500).optional(),
       html: z.string(),
       text: z.string(),
       recipients: z.array(bulkRecipientSchema),
@@ -525,6 +546,7 @@ export const saveEmailDraft = createServerFn({ method: "POST" })
       {
         subject: data.subject,
         cc: data.cc ?? "",
+        bcc: data.bcc ?? "",
         html: data.html,
         text: data.text,
         recipients: data.recipients,

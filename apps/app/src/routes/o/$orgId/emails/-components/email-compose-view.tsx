@@ -44,6 +44,7 @@ export function EmailComposeView({
 
   const [subject, setSubject] = useState(draft?.subject ?? "");
   const [cc, setCc] = useState(draft?.cc ?? "");
+  const [bcc, setBcc] = useState(draft?.bcc ?? "");
   const [html, setHtml] = useState(draft?.html ?? "");
   const [text, setText] = useState(draft?.text ?? "");
   const [recipients, setRecipients] = useState<AudienceContact[]>(initialRecipients);
@@ -67,7 +68,7 @@ export function EmailComposeView({
   );
 
   // dirty 判定：当前内容 key 与最后成功保存的快照不一致（收件人变化也算）
-  const currentKey = JSON.stringify([subject, cc, html, text, [...selected].sort()]);
+  const currentKey = JSON.stringify([subject, cc, bcc, html, text, [...selected].sort()]);
   const savedKeyRef = useRef(currentKey);
   const isDirty = savedKeyRef.current !== currentKey;
 
@@ -77,6 +78,7 @@ export function EmailComposeView({
         orgId,
         subject,
         cc,
+        bcc,
         html,
         text,
         recipients: selectedRecipients,
@@ -89,11 +91,11 @@ export function EmailComposeView({
     savedKeyRef.current = currentKey;
     // 草稿已变化：邮件中心列表的 loader 缓存（staleTime 60s）需要失效
     await router.invalidate();
-  }, [cc, currentKey, html, orgId, router, selectedRecipients, selection, subject, text]);
+  }, [bcc, cc, currentKey, html, orgId, router, selectedRecipients, selection, subject, text]);
 
   // debounce 自动保存：输入停止 1s 后静默落库；有任何内容（含收件人）就保存，
   // 纯空白页面不落草稿
-  const hasContent = Boolean(subject || cc || html || text || selectedRecipients.length > 0);
+  const hasContent = Boolean(subject || cc || bcc || html || text || selectedRecipients.length > 0);
   useEffect(() => {
     if (!isDirty || !hasContent) {
       return;
@@ -200,6 +202,7 @@ export function EmailComposeView({
           orgId,
           subject,
           cc: cc.trim() || undefined,
+          bcc: bcc.trim() || undefined,
           html,
           text,
           groups: selection.groups,
@@ -295,9 +298,17 @@ export function EmailComposeView({
           <Input
             id="email-cc"
             onChange={(event) => setCc(event.target.value)}
-            placeholder="e.g. organiser@yourband.org (optional)"
-            type="email"
+            placeholder="e.g. organiser@yourband.org, cc2@yourband.org (optional)"
             value={cc}
+          />
+        </Field>
+        <Field className="gap-2">
+          <FieldLabel htmlFor="email-bcc">BCC</FieldLabel>
+          <Input
+            id="email-bcc"
+            onChange={(event) => setBcc(event.target.value)}
+            placeholder="e.g. archive@yourband.org (optional, hidden from recipients)"
+            value={bcc}
           />
         </Field>
         <Field className="gap-2">

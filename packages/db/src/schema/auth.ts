@@ -34,6 +34,7 @@ export const devOutbox = sqliteTable("dev_outbox", {
   body: text("body").notNull(),
   html: text("html"),
   cc: text("cc"),
+  bcc: text("bcc"),
   kind: text("kind").notNull(),
   createdAt: integer("created_at").notNull(),
 });

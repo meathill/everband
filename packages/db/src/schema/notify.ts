@@ -36,8 +36,10 @@ export const emailSends = sqliteTable(
     body: text("body").notNull(),
     // 富文本 HTML（与 body 文本并存；为空时仅按文本发送）
     html: text("html"),
-    // 抄送（群发时每封邮件同一地址，比如经办 staff 留底）
+    // 抄送（群发时每封邮件同一地址，比如经办 staff 留底；多地址逗号分隔）
     cc: text("cc"),
+    // 密送（同 cc，多地址逗号分隔；CF binding 原生支持 cc/bcc 数组）
+    bcc: text("bcc"),
     objectType: text("object_type").notNull(),
     objectId: text("object_id").notNull(),
     requestedByMembershipId: text("requested_by_membership_id").notNull(),
@@ -95,6 +97,7 @@ export const emailDrafts = sqliteTable(
     membershipId: text("membership_id").notNull(),
     subject: text("subject").notNull(),
     cc: text("cc"),
+    bcc: text("bcc"),
     html: text("html").notNull(),
     text: text("text").notNull(),
     recipientsJson: text("recipients_json").notNull(),
