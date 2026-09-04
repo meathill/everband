@@ -41,7 +41,11 @@ test.describe("landing SEO", () => {
     await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
     const ldJson = await page.locator('script[type="application/ld+json"]').textContent();
     expect(ldJson).toContain('"@type":"WebSite"');
-    expect(ldJson).toContain('"@type":"SoftwareApplication"');
+    expect(ldJson).toContain('"@type":"WebPage"');
+    // 无真实、页面可见、可追溯的评价时，不输出 SoftwareApplication / aggregateRating / review（issue #6）
+    expect(ldJson).not.toContain("SoftwareApplication");
+    expect(ldJson).not.toContain("aggregateRating");
+    expect(ldJson).not.toContain('"@type":"Review"');
     expect(ldJson).toContain("everband.meathill.com");
   });
 

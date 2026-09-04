@@ -11,6 +11,7 @@ const BRAND_STRUCTURED_DATA = {
     getOrganizationJsonLd(),
     {
       "@type": "WebSite",
+      "@id": "https://everband.meathill.com/#website",
       name: "Everband",
       url: "https://everband.meathill.com/",
       description:
@@ -19,18 +20,14 @@ const BRAND_STRUCTURED_DATA = {
       publisher: { "@id": brandCatalog.organization.id },
     },
     {
-      "@type": "SoftwareApplication",
-      name: "Everband",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web",
-      description:
-        "Run your community band without the spreadsheets: members, events, rehearsals and parent rosters in one place.",
+      "@type": "WebPage",
+      "@id": "https://everband.meathill.com/#webpage",
       url: "https://everband.meathill.com/",
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "AUD",
-      },
+      name: "Everband — run your community band without the spreadsheets",
+      description:
+        "Members, events, rehearsals and parent rosters for community bands, teams and clubs. One place instead of spreadsheets, group emails and lost attachments.",
+      inLanguage: "en",
+      isPartOf: { "@id": "https://everband.meathill.com/#website" },
     },
   ],
 };
