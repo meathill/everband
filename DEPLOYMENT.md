@@ -115,8 +115,9 @@ vite build + wrangler deploy）。
 
 ## 运维
 
-- **日志**：三个 Worker 都开了 `observability`，Dashboard → Workers → Logs 可查；
-  实时尾随用 `pnpm -C apps/app exec wrangler tail`。
+- **日志**：三个 Worker 的 `observability` 已关闭（2026-09-05，Workers Logs 按量计费，额度用尽；
+  显式写 `false` 而非删配置块——Cloudflare 对未配置的 Worker 默认开启）。排障用实时尾随
+  `pnpm -C apps/app exec wrangler tail`（实时流不存储、不占该额度）；需要持久日志时再临时打开。
 - **回滚**：`wrangler rollback`（Dashboard → Deployments 也可选历史版本回滚）。
   涉及数据库结构的回滚需按迁移 PR 中的回滚说明手工执行 SQL。
 - **失败队列**：进入 `everband-dlq` 的消息在 Dashboard → Queues 查看；

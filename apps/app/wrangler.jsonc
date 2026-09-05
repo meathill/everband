@@ -7,7 +7,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
   "observability": {
-    "enabled": true
+    "enabled": false
   },
   "vars": {
     // 生产真实发送；本地 dev 由 .dev.vars 覆盖为 dev（落 /dev/outbox）

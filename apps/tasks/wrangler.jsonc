@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/index.ts",
   "observability": {
-    "enabled": true
+    "enabled": false
   },
   "d1_databases": [
     {
