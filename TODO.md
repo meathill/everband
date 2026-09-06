@@ -17,8 +17,9 @@
 
 ## 功能补齐
 
-- [ ] e2e 场景补齐至 PRD §12.2 全部 8 条（现覆盖 2/8/隔离片段；CSV 导入、
-      邮件发送、排练换班的 e2e 用集成测试兜底中）
+- [ ] e2e 场景补齐至 PRD §12.2 全部 8 条（2026-09-06：5 文件 36 例，
+      主链路已覆盖：登录/导航/UI 工作流/公开主页/SEO；CSV 导入、邮件发送、
+      排练换班的 e2e 仍用集成测试兜底中）
 - [ ] 公开主页 logo 上传（字段已建：publicLogoAttachmentId）
 - [ ] occurrence 单次取消/调整 UI（core 已支持 status=cancelled）
 - [ ] roster 手工替换/锁定 UI（schema 已支持 manual/isLocked）

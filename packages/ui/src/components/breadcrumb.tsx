@@ -3,7 +3,8 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronRight, MoreHorizontal } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react";
 import type * as React from "react";
 
 export function Breadcrumb({ ...props }: React.ComponentProps<"nav">): React.ReactElement {
@@ -83,7 +84,7 @@ export function BreadcrumbSeparator({
       role="presentation"
       {...props}
     >
-      {children ?? <ChevronRight />}
+      {children ?? <CaretRightIcon />}
     </li>
   );
 }
@@ -100,7 +101,7 @@ export function BreadcrumbEllipsis({
       role="presentation"
       {...props}
     >
-      <MoreHorizontal className="size-4" />
+      <DotsThreeIcon className="size-4" />
       <span className="sr-only">More</span>
     </span>
   );

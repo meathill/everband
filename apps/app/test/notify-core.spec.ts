@@ -1,9 +1,11 @@
 import { env } from "cloudflare:test";
 import {
+  listEmailSendRecipientsCore,
   listEmailSendsCore,
   listMySentEmailsCore,
   listNotificationsCore,
   markAllNotificationsReadCore,
+  markEmailOpenedCore,
   markNotificationReadCore,
   prepareEmailSend,
   processEmailRecipient,
@@ -752,5 +754,144 @@ describe("listEmailSendsCore / listMySentEmailsCore（staff 全部，家长只�
     const mine = await listMySentEmailsCore(db, orgA.orgId, email);
     expect(mine).toHaveLength(1);
     expect(mine[0]?.id).toBe(inA.sendId);
+  });
+});
+
+describe("prepare/process（bcc + html + 打开像素）", () => {
+  it("bcc/html 落库；投递透传 bcc，html 追加像素且 token 与收件人绑定", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const email = `${unique("m")}@test.local`;
+    const prepared = await prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: "S",
+        body: "B",
+        html: "<p>Hi</p>",
+        bcc: "audit@test.local",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: unique("dk"),
+        audience: audienceOf(email),
+        suppressedEmails: new Set<string>(),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+    const stored = await db
+      .select({ bcc: schema.emailSends.bcc, html: schema.emailSends.html })
+      .from(schema.emailSends)
+      .where(eq(schema.emailSends.id, prepared.sendId));
+    expect(stored[0]?.bcc).toBe("audit@test.local");
+    expect(stored[0]?.html).toBe("<p>Hi</p>");
+
+    const rows = await recipientRows(prepared.sendId);
+    const row = findRecipientRow(rows, email);
+    const sender = new MockEmailSender();
+    const result = await processEmailRecipient(db, sender, {
+      sendId: prepared.sendId,
+      recipientId: row.id,
+      attempts: 1,
+      now: NOW,
+    });
+    expect(result.outcome).toBe("sent");
+    expect(sender.sent[0]?.bcc).toBe("audit@test.local");
+    const html = sender.sent[0]?.html ?? "";
+    expect(html).toContain("<p>Hi</p>");
+    expect(html).toContain("/api/track/open/");
+  });
+
+  it("suppressed 收件人不分配 openToken", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const optedOut = `${unique("opt")}@test.local`;
+    const prepared = await prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: "S",
+        body: "B",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: unique("dk"),
+        audience: audienceOf(optedOut),
+        suppressedEmails: new Set([optedOut]),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+    const rows = await db
+      .select({
+        status: schema.emailSendRecipients.status,
+        openToken: schema.emailSendRecipients.openToken,
+      })
+      .from(schema.emailSendRecipients)
+      .where(eq(schema.emailSendRecipients.sendId, prepared.sendId));
+    expect(rows[0]?.status).toBe("suppressed");
+    expect(rows[0]?.openToken).toBeNull();
+  });
+});
+
+describe("markEmailOpenedCore（像素打开追踪）", () => {
+  it("首次打开落 openedAt 并记事件；重复打开只累加次数不改首次时间", async () => {
+    const { orgId, membershipId } = await seedOrg();
+    const email = `${unique("m")}@test.local`;
+    const prepared = await prepareEmailSend(
+      db,
+      {
+        organizationId: orgId,
+        kind: "bulk",
+        subject: "S",
+        body: "B",
+        objectType: "bulk",
+        objectId: "obj",
+        dedupKey: unique("dk"),
+        audience: audienceOf(email),
+        suppressedEmails: new Set<string>(),
+        requestedByMembershipId: membershipId,
+      },
+      NOW,
+    );
+    const tokenRow = await db
+      .select({ openToken: schema.emailSendRecipients.openToken })
+      .from(schema.emailSendRecipients)
+      .where(eq(schema.emailSendRecipients.sendId, prepared.sendId));
+    const token = tokenRow[0]?.openToken;
+    expect(token).toBeTruthy();
+    if (!token) throw new Error("missing openToken");
+
+    expect((await markEmailOpenedCore(db, token, { now: NOW })).ok).toBe(true);
+    expect((await markEmailOpenedCore(db, token, { now: NOW + 1000 })).ok).toBe(true);
+    const after = await db
+      .select({
+        openedAt: schema.emailSendRecipients.openedAt,
+        openCount: schema.emailSendRecipients.openCount,
+      })
+      .from(schema.emailSendRecipients)
+      .where(eq(schema.emailSendRecipients.sendId, prepared.sendId));
+    expect(after[0]?.openedAt).toBe(NOW);
+    expect(after[0]?.openCount).toBe(2);
+
+    const opened = await listEmailSendRecipientsCore(db, orgId, prepared.sendId, {
+      page: 1,
+      pageSize: 20,
+      sort: "email",
+      order: "asc",
+      opened: "opened",
+    });
+    expect(opened.total).toBe(1);
+    const unopened = await listEmailSendRecipientsCore(db, orgId, prepared.sendId, {
+      page: 1,
+      pageSize: 20,
+      sort: "email",
+      order: "asc",
+      opened: "unopened",
+    });
+    expect(unopened.total).toBe(0);
+  });
+
+  it("未知 token 返回 ok:false 且不写库", async () => {
+    expect((await markEmailOpenedCore(db, "no-such-token", { now: NOW })).ok).toBe(false);
   });
 });

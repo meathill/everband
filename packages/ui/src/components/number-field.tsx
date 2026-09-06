@@ -3,7 +3,8 @@
 import { NumberField as NumberFieldPrimitive } from "@base-ui/react/number-field";
 import { Label } from "@everband/ui/components/label";
 import { cn } from "@everband/ui/lib/utils";
-import { MinusIcon, PlusIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
 import * as React from "react";
 
 export const NumberFieldContext: React.Context<{

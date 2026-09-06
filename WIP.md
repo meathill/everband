@@ -45,38 +45,22 @@
 - 表单交互与信息架构调整（2026-08-15）：field 间距统一、DatePicker、Events 默认全量、
   表格 refresh、隐藏 Rehearsals/Finance、Group 完整恢复与成员管理、Members 去直接编辑、
   用户菜单版本号与反馈入口；单测 211、e2e 44 例全绿
+- 群发邮件与邮件中心（2026-08-15~16）：queue 逐收件人分发（2 次失败标 failed）、
+  受众白名单 + dedupKey、TipTap 富文本写信页三入口、草稿自动保存 + 离开拦截、
+  家长只看发给自己的、Overview 月份局部刷新；迁移 0011、0012
+- Events 富文本与可选时间（2026-08-31）：time 可选（date-only，迁移 0013）、
+  Update 内联编辑替代 Drawer、Form/Attachments 隐藏、附件下沉到 Update、
+  富文本接入 typography + ProseMirror 兜底、邮件 html（迁移 0014）
+- 邮件 BCC 与审计追踪（2026-08-31）：BCC 密送多地址逗号分隔（迁移 0015）、
+  CC/BCC 透传日志、邮件审计抽屉 + 打开像素追踪（迁移 0016）
+- Overview 与品牌壳层（2026-08-31）：staff 双栏 Groups+WIP、parent 保留月历、
+  Everband 登录公共壳层补齐
+- Landing SEO 修正（2026-08-31~09-04）：JSON-LD 合并单脚本、去掉无真实评价的
+  SoftwareApplication 降级为 WebPage/WebSite
+- 运维降本（2026-09-05）：三 Worker observability 显式关闭，排障走 wrangler tail
 
-## 当前任务：群发邮件（2026-08-15）
+## 当前任务：无（维护轮后待规划）
 
-目标：选中一个或多个 group / member / event 受众 → 跳转写信页
-（Subject + CC + 富文本正文 + 可多选/取消的收件人列表）→ queue 逐封分发发送。
-邮件管线改为 queue 驱动逐收件人消息（非串行），投递 2 次失败即标 failed。
-
-- [x] 迁移 0011：email_sends 加 cc、dev_outbox 加 cc
-- [x] integrations/email 与 core/email-sender：cc 支持
-- [x] core/notify：prepareEmailSend 加 cc；processEmailSend → processEmailRecipient
-      （错误分级 + 2 次上限 + 收尾汇总）
-- [x] core/notify：resolveAudienceContactsForSelection（groupIds/studentIds/eventId
-      union + 邮箱去重）+ RSVP 表单排除
-- [x] tasks consumer 适配逐收件人消息 + wrangler max_batch_size=50/max_retries=1/
-      max_concurrency=10
-- [x] server：sendUpdateEmail 适配逐收件人入队；getEmailComposeData/sendBulkEmail
-      （服务端重算受众白名单防伪造、dedupKey=SHA-256 内容+收件人）
-- [x] validation：emailComposeSearchSchema
-- [x] 富文本编辑器组件（TipTap 3 + StarterKit）+ 写信页 /o/$orgId/emails
-- [x] 入口：Groups/Members 多选 checkbox + Email 按钮；Event 详情 Email audience 按钮
-      （默认带 RSVP 排除）；DataTable 通用 selection 支持
-- [x] 测试：集成 119 例（逐封消费/错误分级/受众解析/RSVP/dedup）、
-      e2e 新增群发主链路（选组 → 写信 → 微调收件人 → 发送 → 历史），66 例全绿
-- [x] 邮件 UI 第二轮（2026-08-15）：Emails 移入侧边栏（邮件中心：草稿 + 发送历史，
-      Settings 移除 Email delivery tab）；写信页全宽、输入框白色背景（Input/Textarea
-      组件 bg-background → bg-card）、收件人单行 truncate；草稿自动保存（debounce 1s，
-      每成员一条，迁移 0012）、离开未保存询问（beforeunload + 链接点击捕获拦截）、
-      发送后删草稿；集成 124 例、e2e 68 例全绿
-- [x] 家长视角的邮件筛选（2026-08-15）：listEmailSends 按角色分支——staff 看全部，
-      parent 只看发给自己的（收件人快照按邀请邮箱匹配，排除 suppressed），只读列表
-      可展开看正文、无写信入口；侧边栏家长加 Emails；集成 127 例、e2e 70 例全绿
-- [x] Overview 月份切换局部刷新（2026-08-16）：月份与日历数据改本地 state，切月
-      只刷日历（导航按钮 loading/禁用 + 日历骨架），不再整页骨架屏；日历 Today
-      圆点标注；抽屉创建/编辑后 onSubmitted 手动刷新本地日历；e2e 72 例全绿
-- [ ] 部署：先 `wrangler d1 migrations apply --remote`（0011、0012）再部署 app/tasks
+- `feat-instruments`（器材管理 + dyqr 动态二维码，39 文件 +5653 行）仍在独立分支，未合并，
+  不纳入本维护轮，另起任务评估合并。
+- WIP 已归档至 2026-09-05，下一任务另起章节。

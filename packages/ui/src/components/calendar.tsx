@@ -2,7 +2,8 @@
 
 import { DayPicker } from "@daypicker/react";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronLeftIcon, ChevronRightIcon, ChevronsUpDownIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretLeftIcon, CaretRightIcon, CaretUpDownIcon } from "@phosphor-icons/react";
 import type * as React from "react";
 
 const buttonClassNames =
@@ -68,7 +69,7 @@ export function Calendar({
     }): React.ReactElement => {
       if (orientation === "left") {
         return (
-          <ChevronLeftIcon
+          <CaretLeftIcon
             className={cn(className, "rtl:rotate-180")}
             {...props}
             aria-hidden="true"
@@ -78,7 +79,7 @@ export function Calendar({
 
       if (orientation === "right") {
         return (
-          <ChevronRightIcon
+          <CaretRightIcon
             className={cn(className, "rtl:rotate-180")}
             {...props}
             aria-hidden="true"
@@ -86,7 +87,7 @@ export function Calendar({
         );
       }
 
-      return <ChevronsUpDownIcon className={className} {...props} aria-hidden="true" />;
+      return <CaretUpDownIcon className={className} {...props} aria-hidden="true" />;
     },
   };
 

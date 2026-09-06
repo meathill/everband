@@ -9,7 +9,8 @@ import { useRender } from "@base-ui/react/use-render";
 import { Button } from "@everband/ui/components/button";
 import { ScrollArea } from "@everband/ui/components/scroll-area";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronRightIcon, XIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretRightIcon, XIcon } from "@phosphor-icons/react";
 import type React from "react";
 import { createContext, useContext } from "react";
 
@@ -474,7 +475,7 @@ export function DrawerMenuTrigger({
       {...props}
     >
       {children}
-      <ChevronRightIcon className="ms-auto -me-0.5 opacity-80" />
+      <CaretRightIcon className="ms-auto -me-0.5 opacity-80" />
     </DrawerTrigger>
   );
 }

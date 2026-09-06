@@ -34,6 +34,7 @@ function parseDate(value: string): Date | undefined {
 }
 
 function formatDate(date: Date): string {
+  // 本地时区 YYYY-MM-DD（表单输入语义），与 domain/rehearsal 的 UTC 版同名但语义不同，勿合并
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");

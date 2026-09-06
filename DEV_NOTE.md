@@ -300,13 +300,18 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
 - `pagination.tsx`：3 个 lucide 图标换 phosphor（`CaretLeft`/`CaretRight`/`DotsThree`）。
   组件本身是链接语义（`<a>`），我们的列表分页只用它的 nav/ul/li 与省略号，页码按钮另拼。
 - `select.tsx`：3 个 lucide 图标换 phosphor。
+- **图标全量 phosphor 化（2026-09-06 维护轮）**：剩余 12 个 vendored 组件的 lucide
+  引用全部换成 phosphor 等价图标并删 `lucide-react` 依赖——accordion（CaretDown）、
+  autocomplete/combobox（CaretUpDown + X）、breadcrumb（CaretRight + DotsThree）、
+  calendar（CaretLeft/CaretRight/CaretUpDown）、command（MagnifyingGlass）、
+  menu/context-menu/drawer（CaretRight + X）、dialog/sheet（X）、number-field
+  （Minus/Plus）、spinner（CircleNotch 替代 Loader2）。映射原则：chevron 系一律
+  用 caret 系，ellipsis 用 DotsThree，loading 用 CircleNotch。
 - **全局（2026-08-12，提交"统一边框颜色"）**：20 处 `border`/`border-t/b/e/s` 显式补
   `border-border` token（Tailwind v4 默认 border 色是 currentColor，会跟着文字颜色走）。
   涉及 sidebar/alert/alert-dialog/card/dialog/drawer/empty/frame/menu/popover/preview-card/
   select/sheet/table/toast/toolbar/tooltip/combobox/command 与 overview-month-calendar。
   同步上游后需重新检查共享容器的边框颜色。
-
-其余组件仍留着 lucide，策略不变：用到哪个改哪个。
 
 ## 工程坑位记录
 
@@ -458,3 +463,51 @@ Base UI ToggleGroup 的受控方式（2026-08-12 踩坑）：
 - **匹配按邀请邮箱而非收件人快照之外的账号体系**：家长邮箱可能被修改，但
   membership.invitedEmail 是邀请时地址，与发送快照一致的概率最高，且是唯一
   与账号直接绑定的邮箱。
+
+## 组织角色模型定稿（2026-08-13）
+
+- **staffAccess 是叠加位不是 role**：`membership.role` 存基础身份（owner/staff/parent），
+  `staffAccess` 让 parent 获得 staff 运营权限；`canActAs`（domain/membership）是唯一
+  判定入口，server 层一律 `hasStaffAccess(role, staffAccess)`，不再 STAFF_ROLES 一刀切。
+- **Owner 专属四件套**：inviteStaff、set/revoke staffAccess、transferOwnership、移除成员/
+  删组织——core（setStaffAccessCore/transferOwnershipCore + 审计）+ server 双层校验，
+  staff 调用直接 403。transfer 目标须 active 且具 staff 权限，原 owner 自动降为 staff。
+- **迁移 0010**：memberships 加 staff_access + 四张业务表加 deleted_at；部署先
+  `apply --remote` 再部署（后继 0011~0016 同法）。
+
+## Events 可选时间与富文本（2026-08-31）
+
+- **time 可选（迁移 0013）**：Event 支持 date-only；输入/存储仍按组织时区
+  `localDateTimeToUtcMs`，展示走 `formatOrgDateTimeMaybe`，禁 `toLocaleString`。
+- **Update 内联编辑替代 Drawer**：详情页直接编辑更宽敞；发布后编辑不自动重发邮件，
+  必须 staff 明确执行发送（沿 PRD §5.2）。
+- **Form/Attachments 隐藏**：新 Event 强制全组织（isOrgWide），附件下沉到 Update；
+  旧 event_groups 仍用于 parent 读取权限，编辑旧对象不得扩大受众。
+- **邮件 html（迁移 0014）**：TipTap 3 `immediatelyRender: false` 防 SSR 水合 mismatch；
+  提交走 `editor.getHTML()/getText()` 不走 FormData；服务端存 html + text 双份，
+  家长只读视图看 text。
+
+## 邮件 BCC 与打开追踪（2026-08-31）
+
+- **BCC（迁移 0015）**：多地址逗号分隔，与 cc 同走每封透传；`e72bfdc` 加 CC/BCC
+  透传日志便于 `wrangler tail` 诊断（日志只记地址不记正文）。
+- **打开像素（迁移 0016）**：`/api/track/open/$token` 返回 1x1 GIF（no-store），
+  失败静默不影响图片；IP 只存 DJB2 哈希不存明文；审计抽屉展示发送 + 打开两态。
+- **部署顺序**：0013~0016 均为向后兼容加列，先 `apply --remote` 再部署 worker。
+
+## Overview 与登录壳层（2026-08-31）
+
+- **月份 state 化局部刷新**：月份与日历数据改本地 state，切月只刷日历
+  （按钮 loading/禁用 + 日历骨架），不再整页骨架；抽屉提交后 `onSubmitted`
+  手动刷新本地日历（loader 缓存 staleTime 60s 不自动失效）。
+- **staff 双栏**：Groups + WIP 并排，parent 保留月历；角色分支走同一
+  `hasStaffAccess`，不在路由层另发明权限。
+- **登录公共壳层**：Everband brand 壳层补齐，marketing 与 app 登录视觉一致；
+  换品牌资产后重跑 `scripts/generate-favicon.ts`。
+
+## Landing 与 SEO 修正（2026-08-31~09-04）
+
+- **JSON-LD 单脚本**：head 的 `script:ld+json` 合并为单个标签（多脚本触发 SEO
+  用例重复断言）；无真实评价时不用 SoftwareApplication，降级 WebPage/WebSite。
+- **contact/about 拆分后**：联系表单直连 feedback.meathill.com（appId 区分），
+  landing 删 Turnstile 依赖；header/footer/sitemap/SEO 同步改，e2e 用 mock 断言提交。

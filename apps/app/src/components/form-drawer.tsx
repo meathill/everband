@@ -28,7 +28,7 @@ export interface FormDrawerProps {
 }
 
 /**
- * "New XXX" 类表单的统一容器：右侧抽屉 + 可滚动表单主体 + 固定底部操作区。
+ * 新建/编辑类表单的统一容器：右侧抽屉 + 可滚动表单主体 + 固定底部操作区。
  * 表单一律非受控（defaultValue + FormData 读值），关闭时 children 随 Portal 卸载天然重置。
  */
 export function FormDrawer({

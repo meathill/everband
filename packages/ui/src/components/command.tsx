@@ -13,7 +13,8 @@ import {
   AutocompleteSeparator,
 } from "@everband/ui/components/autocomplete";
 import { cn } from "@everband/ui/lib/utils";
-import { SearchIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
 import type * as React from "react";
 
 export const CommandDialog: typeof CommandDialogPrimitive.Root = CommandDialogPrimitive.Root;
@@ -120,7 +121,7 @@ export function CommandInput({
         )}
         placeholder={placeholder}
         size="lg"
-        startAddon={<SearchIcon />}
+        startAddon={<MagnifyingGlassIcon />}
         {...props}
       />
     </div>

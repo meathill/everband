@@ -2,7 +2,8 @@
 
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronDownIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretDownIcon } from "@phosphor-icons/react";
 import type React from "react";
 
 export function Accordion(props: AccordionPrimitive.Root.Props): React.ReactElement {
@@ -38,7 +39,7 @@ export function AccordionTrigger({
         {...props}
       >
         {children}
-        <ChevronDownIcon
+        <CaretDownIcon
           className="pointer-events-none size-4 shrink-0 translate-y-0.5 opacity-80 transition-transform duration-200 ease-in-out"
           data-slot="accordion-indicator"
         />

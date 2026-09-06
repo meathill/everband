@@ -4,7 +4,8 @@ import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomple
 import { Input } from "@everband/ui/components/input";
 import { ScrollArea } from "@everband/ui/components/scroll-area";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronsUpDownIcon, XIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretUpDownIcon, XIcon } from "@phosphor-icons/react";
 import type React from "react";
 
 export const Autocomplete: typeof AutocompletePrimitive.Root = AutocompletePrimitive.Root;
@@ -65,7 +66,7 @@ export function AutocompleteInput({
           {...triggerProps}
         >
           <AutocompletePrimitive.Icon data-slot="autocomplete-icon">
-            <ChevronsUpDownIcon />
+            <CaretUpDownIcon />
           </AutocompletePrimitive.Icon>
         </AutocompleteTrigger>
       )}

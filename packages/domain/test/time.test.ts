@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   currentMonthInTimezone,
+  formatOrgDate,
   formatOrgDateTime,
+  formatOrgDateTimeMaybe,
   formatOrgTime,
+  localDateOrDateTimeToUtcMs,
   monthWindow,
   toLocalDateString,
   upcomingWindow,
@@ -75,5 +78,28 @@ describe("formatOrgDateTime / formatOrgTime（显示端组织时区）", () => {
     // 2026-10-07T07:00:00Z = 悉尼 2026-10-07 18:00 (AEDT, UTC+11)
     const utcMs = Date.parse("2026-10-07T07:00:00Z");
     expect(formatOrgDateTime(utcMs, "Australia/Sydney")).toBe("10/7/2026, 6:00 PM");
+  });
+});
+
+describe("localDateOrDateTimeToUtcMs（date-only 兼容）", () => {
+  it("date-only 按当日 00:00 计，与 datetime 同一时区语义", () => {
+    expect(localDateOrDateTimeToUtcMs("2026-09-10", "Australia/Sydney")).toBe(
+      Date.parse("2026-09-09T14:00:00.000Z"),
+    );
+    expect(localDateOrDateTimeToUtcMs("2026-09-10T18:00", "Australia/Sydney")).toBe(
+      Date.parse("2026-09-10T08:00:00.000Z"),
+    );
+  });
+});
+
+describe("formatOrgDateTimeMaybe（时间待定只显示日期）", () => {
+  it("hasTime=false 只显示日期，不受时间部分影响", () => {
+    const utcMs = Date.parse("2026-09-10T08:00:00Z");
+    expect(formatOrgDateTimeMaybe(utcMs, "Australia/Sydney", false)).toBe(
+      formatOrgDate(utcMs, "Australia/Sydney"),
+    );
+    expect(formatOrgDateTimeMaybe(utcMs, "Australia/Sydney", true)).toBe(
+      formatOrgDateTime(utcMs, "Australia/Sydney"),
+    );
   });
 });

@@ -22,6 +22,7 @@ function parseDate(value: string): Date {
 }
 
 function formatDate(date: Date): string {
+  // UTC 日期 YYYY-MM-DD（排练展开语义，DST 安全），与 ui/date-picker 的本地版同名但语义不同，勿合并
   return date.toISOString().slice(0, 10);
 }
 

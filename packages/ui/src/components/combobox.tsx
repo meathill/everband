@@ -4,7 +4,8 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { Input } from "@everband/ui/components/input";
 import { ScrollArea } from "@everband/ui/components/scroll-area";
 import { cn } from "@everband/ui/lib/utils";
-import { ChevronsUpDownIcon, XIcon } from "lucide-react";
+// 本地修改（vendored 组件）：上游用 lucide-react，本项目设计红线只允许 @phosphor-icons/react。
+import { CaretUpDownIcon, XIcon } from "@phosphor-icons/react";
 import * as React from "react";
 
 export const ComboboxContext: React.Context<{
@@ -110,7 +111,7 @@ export function ComboboxInput({
           {...triggerProps}
         >
           <ComboboxPrimitive.Icon data-slot="combobox-icon">
-            <ChevronsUpDownIcon />
+            <CaretUpDownIcon />
           </ComboboxPrimitive.Icon>
         </ComboboxTrigger>
       )}
