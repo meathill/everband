@@ -79,7 +79,7 @@
 - **favicon**：`assets/brand/` 保存图像生成的 PNG 品牌源文件，`scripts/generate-favicon.ts` 将
   它们同步到 `apps/*/public/`，并通过 Pillow 生成 32x32 `favicon.ico`（Vite publicDir → Workers assets）。
   改品牌资产后重跑脚本；页面使用 `favicon.png` 与 `favicon.ico`，不再维护手写 SVG 图标。
-- **landing 尾斜杠**：Workers assets 对预渲染目录页返回 `/terms → 307 → /terms/`，正常行为。
+- **landing 尾斜杠（issue #7）**：prerender `autoSubfolderIndex: false` 产出 `about.html` 等扁平页，wrangler `assets.html_handling: drop-trailing-slash`，使 `/about` 直接 200；`/about/` 会 307 到无斜杠（CF assets 内建跳转只能是 307）。canonical / sitemap / 内链保持无尾斜杠。
 
 ## 验收修复轮（2026-08-10，issue 1-5 复验后的第二轮）
 

@@ -23,6 +23,8 @@ export function getRouter() {
   return createRouter({
     routeTree,
     scrollRestoration: true,
+    // issue #7：与 sitemap/canonical/Workers html_handling 统一为无尾斜杠
+    trailingSlash: "never",
     defaultNotFoundComponent: NotFoundPage,
   });
 }

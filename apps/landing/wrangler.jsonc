@@ -8,5 +8,10 @@
   "main": "@tanstack/react-start/server-entry",
   "observability": {
     "enabled": false
+  },
+  // issue #7：与 prerender autoSubfolderIndex:false 配套，canonical 无尾斜杠 URL 直接 200；
+  // /about/ → 307 /about（CF assets 内建跳转目前只能是 307，无法改成 301/308）。
+  "assets": {
+    "html_handling": "drop-trailing-slash"
   }
 }
