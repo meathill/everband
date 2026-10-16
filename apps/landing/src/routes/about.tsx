@@ -5,20 +5,20 @@ import { SiteHeader } from "~/components/site-header.tsx";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About — Everband" },
+      { title: "About Everband – Management for Community Bands & Clubs" },
       {
         name: "description",
         content:
           "Everband is a management workspace for community bands, teams and clubs run by volunteers — members, events, rehearsals and rosters in one place.",
       },
-      { property: "og:title", content: "About — Everband" },
+      { property: "og:title", content: "About Everband – Management for Community Bands & Clubs" },
       {
         property: "og:description",
         content:
           "Everband is a management workspace for community bands, teams and clubs run by volunteers — members, events, rehearsals and rosters in one place.",
       },
       { property: "og:url", content: "https://everband.meathill.com/about" },
-      { name: "twitter:title", content: "About — Everband" },
+      { name: "twitter:title", content: "About Everband – Management for Community Bands & Clubs" },
       {
         name: "twitter:description",
         content:
