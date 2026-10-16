@@ -88,7 +88,7 @@ test.describe("landing SEO", () => {
 
   test("about/contact head：canonical + og:url 指向自身", async ({ page }) => {
     await page.goto(`${LANDING}/about`);
-    await expect(page).toHaveTitle("About — Everband");
+    await expect(page).toHaveTitle("About Everband – Management for Community Bands & Clubs");
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "https://everband.meathill.com/about",
